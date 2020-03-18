@@ -6,4 +6,20 @@ V.~{Hayot-Sasson}, Y.~{Gao}, Y.~{Yan}, and T.~{Glatard}, ``Sequential
   IEEE International Conference on Big Data (Big Data)}, pp.~415--424, Dec
   2017.
 
+\bibitem{shorestpathsurvey}
+A.~Madkour, W.~Aref, F.~Rehman, A.~Rahman, and S.~Basalamah, ``A survey of
+  shortest-path algorithms,'' 05 2017.
+
+\bibitem{demetrescu}
+C.~Demetrescu and G.~F. Italiano, ``Fully dynamic all pairs shortest paths with
+  real edge weights,'' {\em Journal of Computer and System Sciences}, vol.~72,
+  no.~5, pp.~813 -- 837, 2006.
+\newblock Special Issue on FOCS 2001.
+
+\bibitem{thorup}
+M.~Thorup, ``Fully-dynamic all-pairs shortest paths: Faster and allowing
+  negative cycles,'' in {\em Algorithm Theory - SWAT 2004} (T.~Hagerup and
+  J.~Katajainen, eds.), (Berlin, Heidelberg), pp.~384--396, Springer Berlin
+  Heidelberg, 2004.
+
 \end{thebibliography}

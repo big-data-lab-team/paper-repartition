@@ -3,44 +3,46 @@ Capacity: max_strings=100000, hash_size=100000, hash_prime=85009
 The top-level auxiliary file: algorithm_paper.aux
 The style file: ieeetr.bst
 Database file #1: Bibliography.bib
-You've used 1 entry,
+Warning--empty journal in shorestpathsurvey
+You've used 4 entries,
             1876 wiz_defined-function locations,
-            484 strings with 3708 characters,
-and the built_in function-call counts, 386 in all, are:
-= -- 33
-> -- 14
+            505 strings with 4259 characters,
+and the built_in function-call counts, 1321 in all, are:
+= -- 125
+> -- 51
 < -- 0
-+ -- 5
-- -- 4
-* -- 28
-:= -- 57
-add.period$ -- 1
-call.type$ -- 1
-change.case$ -- 1
++ -- 18
+- -- 14
+* -- 98
+:= -- 187
+add.period$ -- 5
+call.type$ -- 4
+change.case$ -- 4
 chr.to.int$ -- 0
-cite$ -- 1
-duplicate$ -- 21
-empty$ -- 38
-format.name$ -- 4
-if$ -- 93
+cite$ -- 5
+duplicate$ -- 69
+empty$ -- 124
+format.name$ -- 14
+if$ -- 320
 int.to.chr$ -- 0
-int.to.str$ -- 1
-missing$ -- 1
-newline$ -- 6
-num.names$ -- 1
-pop$ -- 7
+int.to.str$ -- 4
+missing$ -- 4
+newline$ -- 16
+num.names$ -- 6
+pop$ -- 17
 preamble$ -- 1
 purify$ -- 0
 quote$ -- 0
-skip$ -- 15
+skip$ -- 50
 stack$ -- 0
-substring$ -- 28
-swap$ -- 9
+substring$ -- 96
+swap$ -- 29
 text.length$ -- 0
 text.prefix$ -- 0
 top$ -- 0
 type$ -- 0
-warning$ -- 0
-while$ -- 3
-width$ -- 2
-write$ -- 11
+warning$ -- 1
+while$ -- 12
+width$ -- 5
+write$ -- 42
+(There was 1 warning)

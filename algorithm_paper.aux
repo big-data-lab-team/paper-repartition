@@ -1,19 +1,57 @@
 \relax 
 \citation{seqalgorithms}
-\citation{seqalgorithms}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-A}}Context}{1}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-B}}Problem definition}{1}}
-\@writefile{loa}{\contentsline {algorithm}{\numberline {1}{\ignorespaces Basic resplit algorithm}}{1}}
-\newlabel{algo:generalresplit}{{1}{1}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {\unhbox \voidb@x \hbox {-B}1}Consistency with previous works}{1}}
-\bibdata{Bibliography}
-\bibcite{seqalgorithms}{1}
-\bibstyle{ieeetr}
+\citation{seqalgorithms}
+\@writefile{loa}{\contentsline {algorithm}{\numberline {1}{\ignorespaces Basic resplit algorithm}}{2}}
+\newlabel{algo:generalresplit}{{1}{2}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\unhbox \voidb@x \hbox {-B}1}Consistency with previous works}{2}}
 \@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Illustration of the reconstructed image divided into input files at the initialization of the resplit algorithm. }}{2}}
 \newlabel{fig:reconstructed_img_divided}{{1}{2}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {\unhbox \voidb@x \hbox {-B}2}Details of the sequential resplit algorithm}{2}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-C}}Naive algorithm}{2}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-D}}A particular case}{2}}
-\@writefile{toc}{\contentsline {section}{References}{2}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-E}}The ``keep" strategy}{2}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-F}}Reading more than necessary}{2}}
 \@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Illustration of the column-order storage of voxels in a file. }}{3}}
 \newlabel{fig:column_order}{{2}{3}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-G}}Input aggregates}{3}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-H}}Increasing the buffer's dimensions in the order of the fastest moving dimensions}{3}}
+\@writefile{loa}{\contentsline {algorithm}{\numberline {2}{\ignorespaces getBufferShape in ND}}{3}}
+\newlabel{algo:getbuffershape}{{2}{3}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-I}}Increasing the buffer's dimensions in the order of the fastest moving dimensions}{3}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\unhbox \voidb@x \hbox {-I}1}Introduction}{3}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\unhbox \voidb@x \hbox {-I}2}Usefulness of the keep strategy in a given dimension}{4}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\unhbox \voidb@x \hbox {-I}3}Distinctions between the overlap areas/volumes}{4}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\unhbox \voidb@x \hbox {-I}4}The order of increasing dimensions}{4}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-J}}Special case of non optimality when using the order of increasing dimensions}{4}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-K}}Stretching beyond the input aggregate shape}{4}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-L}}Ordering the buffers}{4}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-M}}Ordering impact on performance}{4}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-N}}Defining a ``naive" buffer ordering algorithm}{5}}
+\@writefile{loa}{\contentsline {algorithm}{\numberline {3}{\ignorespaces Naive buffer ordering algorithm}}{5}}
+\newlabel{algo:naivebufferordering}{{3}{5}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-O}}Algorithm details}{5}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-P}}Computing the overlap size in the 3D case}{5}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-Q}}Computing the maximum amount of memory needed for the keep strategy}{5}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Possible overlaps when resplitting 3D images. (a): Covering the $a$ area. (b): Covering the $b$ area. (c): Covering the $c$ area. (d): Converting overlap areas into overlap volumes by stretching the buffer in the $i$ direction. (e): Further increasing $B_i$ creates a $d$ overlap volume. }}{6}}
+\newlabel{fig:overlapsin3d}{{3}{6}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Buffer in position (k,j,i) in the referential of the buffers.  }}{6}}
+\newlabel{fig:bufferkji}{{4}{6}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-R}}Solution of the ordering problem}{6}}
+\citation{shorestpathsurvey}
+\citation{demetrescu}
+\citation{thorup}
+\bibdata{Bibliography}
+\bibcite{seqalgorithms}{1}
+\bibcite{shorestpathsurvey}{2}
+\bibcite{demetrescu}{3}
+\bibcite{thorup}{4}
+\bibstyle{ieeetr}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\unhbox \voidb@x \hbox {-R}1}Memory deltas}{7}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\unhbox \voidb@x \hbox {-R}2}Modeling the problem as a shortest path problem}{7}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\unhbox \voidb@x \hbox {-R}3}Minimizing the maximum amount of memory is equivalent to a shortest path problem}{7}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\unhbox \voidb@x \hbox {-R}4}Conclusion}{7}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-S}}Comparison with previous work}{7}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\unhbox \voidb@x \hbox {-S}1}Split behavior of the algorithm}{7}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\unhbox \voidb@x \hbox {-S}2}Merge behavior of the algorithm}{7}}
+\@writefile{toc}{\contentsline {section}{References}{7}}

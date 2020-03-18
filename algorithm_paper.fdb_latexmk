@@ -1,12 +1,12 @@
 # Fdb version 3
-["bibtex algorithm_paper"] 1584546427 "algorithm_paper.aux" "algorithm_paper.bbl" "algorithm_paper" 1584546440
+["bibtex algorithm_paper"] 1584566899 "algorithm_paper.aux" "algorithm_paper.bbl" "algorithm_paper" 1584566899
   "/usr/share/texlive/texmf-dist/bibtex/bst/base/ieeetr.bst" 1553009060 18361 1a00e58565e7f19bf2b3e1bfb82254ae ""
   "Bibliography.bib" 1584545652 3937 20cff1c848d2509667ffdbff34c28b1d ""
-  "algorithm_paper.aux" 1584546440 1424 3e0fce4228c781d12d0a1789635ca826 "pdflatex"
+  "algorithm_paper.aux" 1584566899 5592 53689900e8f89e70e40583862638c8b0 "pdflatex"
   (generated)
   "algorithm_paper.bbl"
   "algorithm_paper.blg"
-["pdflatex"] 1584546440 "algorithm_paper.tex" "algorithm_paper.pdf" "algorithm_paper" 1584546440
+["pdflatex"] 1584566899 "algorithm_paper.tex" "algorithm_paper.pdf" "algorithm_paper" 1584566899
   "/home/user/.texlive2018/texmf-var/web2c/pdftex/pdflatex.fmt" 1561246777 789641 18556bb2b16464003d5aaf304afe1847 ""
   "/usr/share/texlive/texmf-dist/fonts/enc/dvips/base/8r.enc" 1553009060 4850 80dc9bab7f31fb78a000ccfed0e27cab ""
   "/usr/share/texlive/texmf-dist/fonts/map/pdftex/updmap/pdftex.map" 1530836625 2850648 765161d183c5509465c2744baf096a7a ""
@@ -42,10 +42,13 @@
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/cm/cmsy8.tfm" 1480098701 1120 8b7d695260f3cff42e636090a8002094 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/cm/cmsy9.tfm" 1480098701 1116 25a7bf822c58caf309a702ef79f4afbb ""
   "/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb" 1480098733 36299 5f9df58c2139e7edcf37c8fca4bd384d ""
-  "/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi5.pfb" 1480098733 37912 77d683123f92148345f3fc36a38d9ab1 ""
+  "/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb" 1480098733 37166 8ab3487cbe3ab49ebce74c29ea2418db ""
   "/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb" 1480098733 36281 c355509802a035cadc5f15869451dcee ""
+  "/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb" 1480098733 35469 70d41d2b9ea31d5d813066df7c99281c ""
   "/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb" 1480098733 35752 024fb6c41858982481f6968b5fc26508 ""
   "/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb" 1480098733 32762 224316ccc9ad3ca0423a14971cfa7fc1 ""
+  "/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb" 1480098733 32569 5e5ddc8df908dea60932f3c484a54c0d ""
+  "/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy5.pfb" 1480098733 32915 7bf7720c61a5b3a7ff25b0964421c9b6 ""
   "/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb" 1480098733 32716 08e384dc442464e7285e891af9f45947 ""
   "/usr/share/texlive/texmf-dist/fonts/type1/urw/times/utmb8a.pfb" 1480098746 44729 811d6c62865936705a31c797a1d5dada ""
   "/usr/share/texlive/texmf-dist/fonts/type1/urw/times/utmbi8a.pfb" 1480098746 44656 0cbca70e0534538582128f6b54593cca ""
@@ -98,12 +101,14 @@
   "/usr/share/texlive/texmf-dist/tex/latex/xcolor/xcolor.sty" 1480098843 55589 34128738f682d033422ca125f82e5d62 ""
   "/usr/share/texlive/texmf-dist/web2c/texmf.cnf" 1553009075 33523 3a2c32bd77384f8f4508d61b4be83582 ""
   "IEEEtran.cls" 1440654524 288304 b67b6fc6c2abb39f9b461923f5199343 ""
-  "algorithm_paper.aux" 1584546440 1424 3e0fce4228c781d12d0a1789635ca826 "pdflatex"
-  "algorithm_paper.bbl" 1584546427 308 3f3db624504cd2cb95fe6e6e7ae02a86 "bibtex algorithm_paper"
-  "algorithm_paper.tex" 1584546440 10929 cfffef0b9e6badb6cd6a0f0d058564a1 ""
+  "algorithm_paper.aux" 1584566899 5592 53689900e8f89e70e40583862638c8b0 "pdflatex"
+  "algorithm_paper.bbl" 1584566899 963 54f90b1376a051eaf1de7cb453cb35c9 "bibtex algorithm_paper"
+  "algorithm_paper.tex" 1584566898 35397 85646898ff9c76b7f361d785bea13ce5 ""
+  "figures/bufferkji.png" 1584545879 40059 af0e0131d3a22a17156604abc5882f72 ""
   "figures/column_order.png" 1584545879 102054 707294cbda1e7fb68af82b04758fad3d ""
+  "figures/overlapsin3d.png" 1584545879 51737 ab63789bec9c2530e7e5e62895e7d1ca ""
   "figures/reconstructed_img_divided.png" 1584545879 33678 c2ac3475e9cfa58eae800b44c1a1a018 ""
   (generated)
   "algorithm_paper.log"
-  "algorithm_paper.aux"
   "algorithm_paper.pdf"
+  "algorithm_paper.aux"
