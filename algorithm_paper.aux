@@ -13,36 +13,36 @@
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-E}}The ``keep" strategy}{2}}
 \@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Illustration of the column-order storage of voxels in a file. }}{3}}
 \newlabel{fig:column_order}{{2}{3}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-F}}Input aggregates}{3}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-G}}Growing the buffer in the storage order}{3}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-H}}Stretching beyond the input aggregate shape}{4}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-F}}Input and output aggregates}{3}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-G}}Stretching the buffer in the storage order}{3}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-H}}Stretching beyond the input aggregate shape}{3}}
 \@writefile{loa}{\contentsline {algorithm}{\numberline {2}{\ignorespaces getBufferShape in ND}}{4}}
 \newlabel{algo:getbuffershape}{{2}{4}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-I}}Special case of non optimality when using the order of increasing dimensions}{4}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-J}}Buffers' ordering impact on performance}{4}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-K}}Defining a ``naive" buffer ordering algorithm}{5}}
-\@writefile{loa}{\contentsline {algorithm}{\numberline {3}{\ignorespaces Naive buffer ordering algorithm}}{5}}
-\newlabel{algo:naivebufferordering}{{3}{5}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-K}}Defining a ``naive" buffer ordering algorithm}{4}}
+\@writefile{loa}{\contentsline {algorithm}{\numberline {3}{\ignorespaces Naive buffer ordering algorithm}}{4}}
+\newlabel{algo:naivebufferordering}{{3}{4}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-L}}Algorithm details}{5}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-M}}Computing the overlap size in the 3D case}{5}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-N}}Computing the maximum amount of memory needed for the keep strategy}{5}}
+\citation{shorestpathsurvey}
+\citation{demetrescu}
+\citation{thorup}
 \@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Possible overlaps when resplitting 3D images. (a): Covering the $a$ area. (b): Covering the $b$ area. (c): Covering the $c$ area. (d): Converting overlap areas into overlap volumes by stretching the buffer in the $i$ direction. (e): Further increasing $B_i$ creates a $d$ overlap volume. }}{6}}
 \newlabel{fig:overlapsin3d}{{3}{6}}
 \@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Buffer in position (k,j,i) in the referential of the buffers.  }}{6}}
 \newlabel{fig:bufferkji}{{4}{6}}
-\citation{shorestpathsurvey}
-\citation{demetrescu}
-\citation{thorup}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-O}}Solution of the ordering problem}{6}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\unhbox \voidb@x \hbox {-O}1}Memory deltas}{6}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\unhbox \voidb@x \hbox {-O}2}Modeling the problem as a shortest path problem}{6}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\unhbox \voidb@x \hbox {-O}3}Minimizing the maximum amount of memory is equivalent to a shortest path problem}{6}}
 \bibdata{Bibliography}
 \bibcite{seqalgorithms}{1}
 \bibcite{shorestpathsurvey}{2}
 \bibcite{demetrescu}{3}
 \bibcite{thorup}{4}
 \bibstyle{ieeetr}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-O}}Solution of the ordering problem}{7}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {\unhbox \voidb@x \hbox {-O}1}Memory deltas}{7}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {\unhbox \voidb@x \hbox {-O}2}Modeling the problem as a shortest path problem}{7}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {\unhbox \voidb@x \hbox {-O}3}Minimizing the maximum amount of memory is equivalent to a shortest path problem}{7}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {\unhbox \voidb@x \hbox {-O}4}Conclusion}{7}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-P}}Comparison with previous work}{7}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {\unhbox \voidb@x \hbox {-P}1}Split behavior of the algorithm}{7}}

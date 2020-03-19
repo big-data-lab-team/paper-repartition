@@ -143,69 +143,52 @@ The algorithm presented in this paper is called the ``keep" algorithm, as it rel
 
 \subsection{The ``keep" strategy}
 At initialization, we assign a shape $B = (0, 0,..., 0)$ for the buffer.
-We will then stretch the buffer in each dimension until all the available memory $m$ is used while keeping the number of seeks as small as possible. \\
+We will then stretch the buffer in each dimension until all the available memory $m$ has been used while keeping the number of seeks as small as possible. \\
 
-In case of an overlap between the input and output files' shapes, we assume that an optimal length for each dimension $i$ of the buffer would be the length of the maximum length between the lengths of the input and output files: $B_i = max(I_i,O_i)$.
-If $O_i > I_i$ then it seems preferable for $B_i$ to be equal to $2I_i$.
-Indeed, if we were to read just the data for the output files' data that we can write in one seek we would read the input files in more seeks without being able to do anything to minimize the number of seeks.
-If we read a multiple of $I_k$ however, we will be able to write an output file in one shot.
-For more details about the intuition behind this choice, see Appendix x. \\
+Let us consider the first dimension $f$ that we increase: Ideally, one wants the buffer to cover both the input file and the output file, $I_f$ and $O_f$, such that we read and write in one seek each.
+If there is a mismatch between $O_f$ and $I_f$ (meaning one is not a multiple of the other) we want to read a multiple of $O_f$ or $I_f$ such that we either read partially or write partially but not both at the same time.
+We must therefore choose between reading a multiple of $O_f$ or $I_f$.
+Reading a multiple of $I_f$ in the case of a shape mismatch is equivalent to $B_f = nI_f = mO_f+xO_f$ with $0<x<1$.
+We call ``extra data" the data contained in the overlap areas/volumes between input and output shapes (Figure \ref{fig:overlap}).
+In this example the extra data is $xO_f$. \\
 
-We call ``extra data" the data contained in the overlap areas/volumes between input and output shapes (Figure \ref{fig:overlap}). \\
-Let us define the ``keep strategy" the strategy of keeping the ``extra data" of a buffer in main memory \ref{fig:keepstrategy}.
+One can try to keep the extra data in memory instead of writing it directly into the output file: this is what we call the ``keep strategy" (Figure \ref{fig:keepstrategy}).
 The idea is to read ``more than necessary" from the input files, ideally reading each input file in one seek, and to keep as much extra data in memory as possible.
-
 The goal of this strategy is to read input files in one seek, and write as much output files as possible in one seek as well.
+If we were to read a multiple of $O_f$, $B_f = nO_f$ however, we would read an intput file partially and there is nothing that one can do about it.
 It may be that we can only keep some of the overlaps in memory as it could take too much buffers until we can write an incomplete output file in one seek without running out of memory.
 Extra data that cannot be kept in memory is written directly in the output file(s).
-By doing so we ensure that when the algorithm ends all the data has successfully been written. \\
+By doing so we ensure that when the algorithm ends all the data has successfully been written.
 
-\subsection{Input aggregates}
-Let us consider a buffer sitting in the corner of the reconstructed image (see Figure \ref{fig:firstbuffer}).
-We define an ``input aggregate", $\Lambda$, as the rectangle composed of the minimum number of input files needed by the first buffer to cover an output file completely in all dimensions (see Figure \ref{fig:input_aggregates}).
-Although it is not always possible to make it happen, the input aggregate has the optimal buffer shape we would like to have to be capable of minimizing the number of seeks as it allows the keep strategy to be used.
-The mismatch between the input and output shapes and the limited memory available for the buffer may prevent this ideal case to be possible. \\
+\subsection{Input and output aggregates}
+We call ``input aggregate" $\Lambda$ the aggregate of the minimum number of input files that covers one output file entirely in all dimensions (see Figure \ref{fig:input_aggregates}, Figure \ref{fig:firstbuffer}).
+Although it will not always possible to make it happen, the input aggregate is the minimal buffer shape we would like to have to be capable of minimizing the number of seeks as it allows to read the input files in one seek and to use the keep strategy.
+The mismatch between the input and output shapes and the limited memory available for the buffer may prevent it to be possible. \\
 
-By definition, it is possible that the input aggregate covers more than one output file completely (if $\Lambda_k > 2O_k$ for example for a given dimension $k$).
 We call ``output aggregate", $\Omega$, the aggregate of the output files that are being written by the $i^{th}$ buffer. It includes the incomplete output files for which the missing data have been loaded by the $i^{th}$ buffer. \\
 
-% ---  so far
-
-\subsection{Growing the buffer in the storage order}
-We want the dimensions of the buffer to match the dimensions of the input aggregate as much as possible.
+\subsection{Stretching the buffer in the storage order}
+The first step of the algorithm is therefore to make the dimensions of the buffer match the dimensions of the input aggregate as much as possible (we want $B=\Lambda$).
+If more memory is available after that, we may want to increase the buffer's dimension even further (it is discussed in subsection ``Stretching beyond the input aggregate shape" below).
 The question of which dimension should be increased first remains.
 One should increase the buffer's dimensions in the order of the fastest moving dimensions.
 For example if one is processing a 3D image stored in files following the column-order, one should increase the buffer in the $k$ dimension first, then the $j$ dimension and finally the $i$ dimension. \\
 
-Let us consider a 2D case in which the input and output files overlap in the $j$ dimension only (see Figure \ref{fig:case_2_1}).
-Keeping the extra data in memory would only save 1 seek:
-Consider the case in which we read the first buffer before the second buffer.
-Writing the second output file would take one seek only thanks to the extra data kept in memory from the first buffer rather than two seeks, one per buffer, without using the ``keep strategy".
-Notice that the keep strategy is not useful if we cannot store the extra data in one direction completely (see Figure \ref{fig:case_2_1}).
-In case of treating 3D cuboids the overlap would be a volume.
+Let us first consider the 2D case in which the input and output files overlap in one dimension only.
+An overlap occuring in the $k$ dimension would incur $B_k$ seeks as opposed to 1 seek only (see Figure \ref{fig:case_1_2}) in the case of an overlap in the $j$ dimension (see Figure \ref{fig:case_2_1}).
+Note that the keep strategy is not useful if we cannot store the extra data in one direction completely (see Figure \ref{fig:case_2_1}). \\
 
-Consider that we stretched the buffer in the $j$ direction such that $B_j = \Lambda_j$ but the available buffer memory is too small to keep more than one input aggregate slice: $B=(\Lambda_k, \Lambda_j, 1)$.
-The resplit process would produce 1 seek per slice, multiplied by each buffer in the $i$ direction.
-In this situation, the keep strategy would reveal to be worth it if we had enough available memory to store more slices, hence creating a volume (see Figure \ref{fig:case_2_1}).
-The keep strategy saves only 1 seek in 2D, while it saves $B_i$ seeks in 3D.
-We remark that the keep strategy saves a negligible amount of seeks in the last dimension of the buffer.
-More generally, one can save more seeks by using the keep strategy on the first dimensions of the buffer than in the last ones.
-
-Back to the 2D case, let us now consider overlaping in both the $k$ and the $j$ axes:
-We define 3 overlaping areas, represented in Figure \ref{fig:areasabc}.
+Let us define 3 overlaping areas, represented in Figure \ref{fig:areasabc}.
 The $a$ area is the overlap in the $k$ axis.
-Using the ``keep strategy" saves $\Omega_j$ seeks in 2D, $\Omega_j*B_i$ seeks in 3D, etc.
-The $b$ area is the upper right overlap which combines the overlaps in both axis. The keep strategy saves $(\Lambda_j-\Omega_j)$ seeks in 2D, $(\Lambda_j-\Omega_j)*B_i$ in 3D etc.
+The $b$ area is the upper right overlap which combines the overlaps in both axis.
 One can see the $b$ area as the continuity of the $a$ area.
 The $c$ area is the overlap in the $j$ axis only.
-The keep strategy saves 1 seek in the $j$ direction.
-It is a negligible gain compared to saving $a$ or $b$.
-The $a$ becomes the $A$ volume in 3D, the $B$ volume corresponds to the $b$ area, etc.
+The $a$ area becomes the $A$ volume in 3D, the $B$ volume corresponds to the $b$ area, etc. \\
 
 In terms of the number of seeks, $$\Omega_j > (\Lambda_j-\Omega_j) > 1 => \textrm{seeksIn(a)} > \textrm{seeksIn(b)} > \textrm{seeksIn(c)}$$ in 2D, and this stays true when increasing the number of dimensions.
 We must therefore use the memory available for stretching the buffer to store $a$ first, then $b$, and finally $c$.
 The same way that it is not useful to save part of the $c$ area as opposed to storing the whole $c$ area, it is not useful to inrease $B_j$ if $B_k < \Lambda_k$.
-Indeed, the number of seeks will be the same than without using the keep strategy (see Figure x).
+Indeed, the number of seeks will be the same than without using the keep strategy.
 As the $b$ area is the continuity of the $a$ area in the $j$ direction, if the available buffer memory $m'$ allows to store the $b$ area but not the $b$ and $c$ areas together it seems that increasing $B_j$ from $\Omega_j$ to $\Lambda_j$ while storing only the $b$ area could save a lot of seeks. \\
 
 As a conclusion, we should increase the fastest moving dimension first to allow the reduction of the number of seeks in the $a$ and $b$ areas in the $k$ direction.
@@ -213,7 +196,6 @@ Then we should increase $B_j$ as much as possible, while saving only $a$ and the
 Finally, if we can store the whole $c$ area, we should do it before inreasing the $i$ dimension to prevent the 1 seek to be multiplied by $B_i$. \\
 
 \subsection{Stretching beyond the input aggregate shape}
-
 Using small input and output file shapes, it is probable for the buffer to have been stretched to the input aggregate, which means that a good amount of RAM is still available.
 One have no reason to stop increasing the shape of the buffer from that point.
 The first idea which comes to mind is to stretch the buffer such that the buffer length becomes a multiple of the output file length in a given dimension $x$: $B_x = nO_x$.
@@ -263,6 +245,8 @@ Details:
   \item line 16: for each dimension in this order, try to increase the buffer size
   \item lines 17, 18: keep adding the length of an input aggregate in that dimension while there is memory left.
 \end{itemize}
+
+%------------ so far
 
 \subsection{Special case of non optimality when using the order of increasing dimensions}
 

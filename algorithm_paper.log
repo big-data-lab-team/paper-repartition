@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.19 (TeX Live 2018) (preloaded format=pdflatex 2019.6.22)  18 MAR 2020 22:02
+This is pdfTeX, Version 3.14159265-2.6-1.40.19 (TeX Live 2018) (preloaded format=pdflatex 2019.6.22)  19 MAR 2020 10:58
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -596,72 +596,70 @@ Underfull \hbox (badness 10000) in paragraph at lines 145--147
  []
 
 
-Underfull \hbox (badness 1418) in paragraph at lines 148--153
-\OML/cmm/m/it/10 i$ \OT1/ptm/m/n/10 of the buffer would be the length of the ma
-x-i-mum
- []
+LaTeX Warning: Reference `fig:overlap' on page 2 undefined on input line 152.
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 148--153
+Underfull \hbox (badness 10000) in paragraph at lines 148--154
 
  []
-
-
-LaTeX Warning: Reference `fig:overlap' on page 2 undefined on input line 154.
 
 
 LaTeX Warning: Reference `fig:keepstrategy' on page 2 undefined on input line 1
 55.
 
-
-Underfull \hbox (badness 10000) in paragraph at lines 158--162
-
- []
-
 [2 <./figures/reconstructed_img_divided.png>]
+
+LaTeX Warning: Reference `fig:input_aggregates' on page 3 undefined on input li
+ne 164.
+
 
 LaTeX Warning: Reference `fig:firstbuffer' on page 3 undefined on input line 16
 4.
 
 
-LaTeX Warning: Reference `fig:input_aggregates' on page 3 undefined on input li
-ne 165.
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 164--168
+Underfull \hbox (badness 10000) in paragraph at lines 164--167
 
  []
 
 
-Underfull \hbox (badness 1565) in paragraph at lines 169--171
-[]\OT1/ptm/m/n/10 By def-i-ni-tion, it is pos-si-ble that the in-put ag-gre-gat
-e
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 169--171
+Underfull \hbox (badness 10000) in paragraph at lines 168--169
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 175--179
+Underfull \hbox (badness 2837) in paragraph at lines 171--176
+\OT1/ptm/m/n/10 ``Stretch-ing be-yond the in-put ag-gre-gate shape" be-low).
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 171--176
 
  []
 
 
-LaTeX Warning: Reference `fig:case_2_1' on page 3 undefined on input line 180.
+LaTeX Warning: Reference `fig:case_1_2' on page 3 undefined on input line 178.
 
 
-LaTeX Warning: Reference `fig:case_2_1' on page 3 undefined on input line 184.
+LaTeX Warning: Reference `fig:case_2_1' on page 3 undefined on input line 178.
 
 
-LaTeX Warning: Reference `fig:case_2_1' on page 3 undefined on input line 189.
+LaTeX Warning: Reference `fig:case_2_1' on page 3 undefined on input line 179.
 
 
-LaTeX Warning: Reference `fig:areasabc' on page 3 undefined on input line 195.
+Underfull \hbox (badness 10000) in paragraph at lines 177--180
+
+ []
 
 
-Overfull \hbox (0.8576pt too wide) detected at line 205
+LaTeX Warning: Reference `fig:areasabc' on page 3 undefined on input line 181.
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 181--187
+
+ []
+
+
+Overfull \hbox (0.8576pt too wide) detected at line 188
 \OT1/cmr/m/n/10 
 [] \OML/cmm/m/it/10 > \OT1/cmr/m/n/10 (^^C[] \OMS/cmsy/m/n/10 ^^@ \OT1/cmr/m/n/
 10 
@@ -669,106 +667,102 @@ Overfull \hbox (0.8576pt too wide) detected at line 205
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 205--210
+Underfull \hbox (badness 10000) in paragraph at lines 188--193
 
  []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 194--197
+
+ []
+
+
+LaTeX Warning: Reference `fig:extendingbuffers' on page 3 undefined on input li
+ne 203.
 
 [3 <./figures/column_order.png>]
-Underfull \hbox (badness 10000) in paragraph at lines 211--214
-
- []
-
-
-LaTeX Warning: Reference `fig:extendingbuffers' on page 4 undefined on input li
-ne 221.
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 237--237
+Underfull \hbox (badness 10000) in paragraph at lines 219--219
 [] []\OT1/ptm/b/n/10 if $[]\OT1/cmr/m/n/10 (\OML/cmm/m/it/10 :::[]; \OT1/cmr/m/
 n/10 1) \OML/cmm/m/it/10 <\OT1/cmr/m/n/10 = \OML/cmm/m/it/10 m[] <
  []
 
 
-Overfull \hbox (31.61781pt too wide) in paragraph at lines 250--250
+Overfull \hbox (31.61781pt too wide) in paragraph at lines 232--232
 [] []\OT1/ptm/b/n/10 while $\OML/cmm/m/it/10 m[] > []\OT1/cmr/m/n/10 ([]\OML/cm
 m/m/it/10 :add\OT1/cmr/m/n/10 (^^C[])\OML/cmm/m/it/10 ; maxIndex\OT1/cmr/m/n/10
  )$
  []
 
 
-Underfull \vbox (badness 10000) has occurred while \output is active []
+LaTeX Warning: Reference `fig:case_1_2' on page 4 undefined on input line 253.
 
 
-
-LaTeX Warning: Reference `fig:case_1_2' on page 4 undefined on input line 269.
-
-[4]
-Underfull \hbox (badness 10000) in paragraph at lines 282--285
+Underfull \hbox (badness 10000) in paragraph at lines 266--269
 
  []
 
 
-LaTeX Warning: Reference `fig:goodorderingbadordering' on page 5 undefined on i
-nput line 291.
+LaTeX Warning: Reference `fig:goodorderingbadordering' on page 4 undefined on i
+nput line 275.
 
 
-Overfull \hbox (21.04048pt too wide) in paragraph at lines 307--308
+Overfull \hbox (21.04048pt too wide) in paragraph at lines 291--292
 [] []$\OML/cmm/m/it/10 overlap \OMS/cmsy/m/n/10   []$ 
  []
 
 
-Underfull \hbox (badness 1389) in paragraph at lines 316--321
+Underfull \hbox (badness 1389) in paragraph at lines 300--305
 []$ \OT1/ptm/m/n/10 re-turns, for each di-men-sion, the
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 316--321
+Underfull \hbox (badness 10000) in paragraph at lines 300--305
+
+ []
+
+[4]
+Underfull \hbox (badness 10000) in paragraph at lines 309--311
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 325--327
-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 328--331
+Underfull \hbox (badness 10000) in paragraph at lines 312--315
 
  []
 
 <./figures/overlapsin3d.png, id=30, 1180.41pt x 609.27625pt>
 File: ./figures/overlapsin3d.png Graphic file (type png)
 <use ./figures/overlapsin3d.png>
-Package pdftex.def Info: ./figures/overlapsin3d.png  used on input line 346.
+Package pdftex.def Info: ./figures/overlapsin3d.png  used on input line 330.
 (pdftex.def)             Requested size: 354.12573pt x 182.78427pt.
 
 LaTeX Warning: `!h' float specifier changed to `!ht'.
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 373--377
-
- []
-
-[5]
-Underfull \hbox (badness 10000) in paragraph at lines 378--381
+Underfull \hbox (badness 10000) in paragraph at lines 357--361
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 382--383
+Underfull \hbox (badness 10000) in paragraph at lines 362--365
 
  []
 
-<./figures/bufferkji.png, id=34, 713.66624pt x 446.66875pt>
+
+Underfull \hbox (badness 10000) in paragraph at lines 366--367
+
+ []
+
+<./figures/bufferkji.png, id=31, 713.66624pt x 446.66875pt>
 File: ./figures/bufferkji.png Graphic file (type png)
 <use ./figures/bufferkji.png>
-Package pdftex.def Info: ./figures/bufferkji.png  used on input line 396.
+Package pdftex.def Info: ./figures/bufferkji.png  used on input line 380.
 (pdftex.def)             Requested size: 214.10152pt x 134.00165pt.
 
 LaTeX Warning: `!h' float specifier changed to `!ht'.
 
 
-Overfull \hbox (125.96399pt too wide) detected at line 404
+Overfull \hbox (125.96399pt too wide) detected at line 388
 \OML/cmm/m/it/10 MAX \OT1/cmr/m/n/10 = \OML/cmm/m/it/10 bufferSize \OT1/cmr/m/n
 /10 + \OML/cmm/m/it/10 C[]\OT1/cmr/m/n/10 (\OML/cmm/m/it/10 x\OT1/cmr/m/n/10 ) 
 + [\OML/cmm/m/it/10 kC[]\OT1/cmr/m/n/10 (\OML/cmm/m/it/10 y\OT1/cmr/m/n/10 ) + 
@@ -781,35 +775,36 @@ MS/cmsy/m/n/10 ^^@ \OT1/cmr/m/n/10 1)] + [\OML/cmm/m/it/10 n[] \OMS/cmsy/m/n/10
 \OT1/cmr/m/n/10 )]
  []
 
-
-Underfull \hbox (badness 10000) in paragraph at lines 430--432
-
- []
-
-
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [6 <./figures/overlapsin3d.png> <./figures/bufferkji.png>]
-Underfull \hbox (badness 10000) in paragraph at lines 434--438
+[5]
+Underfull \hbox (badness 10000) in paragraph at lines 414--416
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 440--445
+Underfull \hbox (badness 10000) in paragraph at lines 418--422
 
  []
 
 
-Underfull \hbox (badness 5548) in paragraph at lines 447--452
+Underfull \hbox (badness 10000) in paragraph at lines 424--429
+
+ []
+
+
+Underfull \hbox (badness 5548) in paragraph at lines 431--436
  \OT1/ptm/m/it/10 3) Min-i-miz-ing the max-i-mum amount of mem-ory is
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 447--452
+Underfull \hbox (badness 10000) in paragraph at lines 431--436
 
  []
 
-(./algorithm_paper.bbl)
+
+Underfull \vbox (badness 1259) has occurred while \output is active []
+
+ [6 <./figures/overlapsin3d.png> <./figures/bufferkji.png>] (./algorithm_paper.
+bbl)
 
 ** Conference Paper **
 Before submitting the final camera ready copy, remember to:
@@ -821,7 +816,9 @@ Before submitting the final camera ready copy, remember to:
  uses only Type 1 fonts and that every step in the generation
  process uses the appropriate paper size.
 
-[7] (./algorithm_paper.aux)
+[7
+
+] (./algorithm_paper.aux)
 
 LaTeX Warning: There were undefined references.
 
@@ -829,7 +826,7 @@ LaTeX Warning: There were undefined references.
 Here is how much of TeX's memory you used:
  4596 strings out of 494587
  66341 string characters out of 6177759
- 137091 words of memory out of 5000000
+ 139091 words of memory out of 5000000
  8145 multiletter control sequences out of 15000+600000
  48718 words of font info for 107 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
@@ -847,7 +844,7 @@ m/cmsy10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy
 ive/texmf-dist/fonts/type1/urw/times/utmbi8a.pfb></usr/share/texlive/texmf-dist
 /fonts/type1/urw/times/utmr8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/ur
 w/times/utmri8a.pfb>
-Output written on algorithm_paper.pdf (7 pages, 430997 bytes).
+Output written on algorithm_paper.pdf (7 pages, 429645 bytes).
 PDF statistics:
  90 PDF objects out of 1000 (max. 8388607)
  59 compressed objects within 1 object stream
