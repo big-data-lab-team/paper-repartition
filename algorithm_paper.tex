@@ -420,16 +420,27 @@ In a given dimension $x$, when loading the $n^{th}$ buffer, the overlap length i
 
 % figure of the overlap sizes (could reuse the overlapsabc and just adding the sizes)
 
-In 2D, the size of the overlap is:
+In 2D, the amount of extra data $e$ is:
 \begin{itemize}
   \item $C_k(x)B_j$ while the $a$ and $b$ areas are not totally covered by the buffer ($B_j < \Lambda_j$).
-  \item The sum of the sizes of the $a$, $b$ and $c$ areas:
+  \item $e = f_1+f_2+f_3$ else, with:
   \begin{itemize}
-    \item Size of the b area: $C_k(x)(B_j-C_j(y))$
-    \item Size of the b area: $C_k(x)C_j(y)$
-    \item Size of the c area: $C_j(y)(B_k-C_k(x))$
+    \item Size of the a area: $f_1 = C_k(x)(B_j-C_j(y))$
+    \item Size of the b area: $f_2 = C_k(x)C_j(y)$
+    \item Size of the c area: $f_3 = C_j(y)(B_k-C_k(x))$
   \end{itemize}
 \end{itemize}
+
+% figure of 3D overlap size with nomenclature or recylcle previous 3D overlap sizes, with d1 and d2
+
+Then, in 3D, the amount of extra data is:
+\begin{itemize}
+  \item $e = (f_1+f_2+f_3)B_i$ while $B_i < d_1$ (see Figure x)
+  \item $e = (f_1+f_2+f_3)d_1 + B_jB_k(B_i-d_1)$ while $B_i-d_1 < d_2$
+  \item $e = (f_1+f_2+f_3)d_1 + B_jB_kd_2$, else
+\end{itemize}
+
+Then when extending the buffer more than $\Lambda$;
 
 % \subsection{Computing the overlap size in the 3D case}
 % In this analysis we express the overlap size in terms of the number of voxels that constitutes the overlap because the real quantity of memory used depends on the size of a voxel in memory.

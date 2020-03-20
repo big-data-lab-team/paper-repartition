@@ -1,12 +1,12 @@
 # Fdb version 3
-["bibtex algorithm_paper"] 1584741566 "algorithm_paper.aux" "algorithm_paper.bbl" "algorithm_paper" 1584741567
+["bibtex algorithm_paper"] 1584741566 "algorithm_paper.aux" "algorithm_paper.bbl" "algorithm_paper" 1584742316
   "/usr/share/texlive/texmf-dist/bibtex/bst/base/ieeetr.bst" 1553009060 18361 1a00e58565e7f19bf2b3e1bfb82254ae ""
   "Bibliography.bib" 1584545652 3937 20cff1c848d2509667ffdbff34c28b1d ""
-  "algorithm_paper.aux" 1584741567 7653 01f62a9d2f3bc18b4f9c5e2dfb7a6355 "pdflatex"
+  "algorithm_paper.aux" 1584742315 7653 01f62a9d2f3bc18b4f9c5e2dfb7a6355 "pdflatex"
   (generated)
-  "algorithm_paper.blg"
   "algorithm_paper.bbl"
-["pdflatex"] 1584741566 "algorithm_paper.tex" "algorithm_paper.pdf" "algorithm_paper" 1584741567
+  "algorithm_paper.blg"
+["pdflatex"] 1584742315 "algorithm_paper.tex" "algorithm_paper.pdf" "algorithm_paper" 1584742316
   "/home/user/.texlive2018/texmf-var/web2c/pdftex/pdflatex.fmt" 1561246777 789641 18556bb2b16464003d5aaf304afe1847 ""
   "/usr/share/texlive/texmf-dist/fonts/enc/dvips/base/8r.enc" 1553009060 4850 80dc9bab7f31fb78a000ccfed0e27cab ""
   "/usr/share/texlive/texmf-dist/fonts/map/pdftex/updmap/pdftex.map" 1530836625 2850648 765161d183c5509465c2744baf096a7a ""
@@ -98,9 +98,9 @@
   "/usr/share/texlive/texmf-dist/tex/latex/xcolor/xcolor.sty" 1480098843 55589 34128738f682d033422ca125f82e5d62 ""
   "/usr/share/texlive/texmf-dist/web2c/texmf.cnf" 1553009075 33523 3a2c32bd77384f8f4508d61b4be83582 ""
   "IEEEtran.cls" 1440654524 288304 b67b6fc6c2abb39f9b461923f5199343 ""
-  "algorithm_paper.aux" 1584741567 7653 01f62a9d2f3bc18b4f9c5e2dfb7a6355 "pdflatex"
+  "algorithm_paper.aux" 1584742315 7653 01f62a9d2f3bc18b4f9c5e2dfb7a6355 "pdflatex"
   "algorithm_paper.bbl" 1584741566 308 3f3db624504cd2cb95fe6e6e7ae02a86 "bibtex algorithm_paper"
-  "algorithm_paper.tex" 1584741565 41364 afd767414cd787b6db4267d529177c30 ""
+  "algorithm_paper.tex" 1584742314 41776 13a49dd41e3ca2acf10394b35094cec3 ""
   "figures/areasabc.png" 1584545879 31575 a7ab03dab64e539bfcf8db1d64d4ca0c ""
   "figures/case_1_2.png" 1584545879 28516 660145b40acea152b9800824acb09fdc ""
   "figures/case_2_1.png" 1584545879 42202 1f49077adf0b76117fbb08ae3c60cd2e ""
@@ -113,6 +113,6 @@
   "figures/overlap.png" 1584545879 24576 7241eccb48625a22604530c4373a341d ""
   "figures/reconstructed_img_divided.png" 1584545879 33678 c2ac3475e9cfa58eae800b44c1a1a018 ""
   (generated)
-  "algorithm_paper.aux"
-  "algorithm_paper.pdf"
   "algorithm_paper.log"
+  "algorithm_paper.pdf"
+  "algorithm_paper.aux"
