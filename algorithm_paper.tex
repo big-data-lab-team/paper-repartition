@@ -374,21 +374,16 @@ In particular, we remark that the falls tends to be smaller when the buffer shap
 We can stimulate this property by using small chunks such that we use buffer bigger input aggregates (see Stretching beyond the input aggregate shape), while keeping the overlaps small at the borders.
 
 %----------------------------------------
-\section*{A memory analysis}
+\section*{A memory analysis of the keep strategy}
 %----------------------------------------
-
 The keep algorithm assumes that $m$ is big enough to keep at least a ``complete column" of length $B_k$.
-As it has been explained, the buffer is then stretched in the $j^{th}$ dimension and so on as long as there is enough main memory available to use the keep strategy.
+As it has been explained, in 3D the buffer is then stretched in the $j^{th}$ dimension and finally in the $i^{th}$ dimension as long as there is enough main memory available to use the keep strategy.
 This section covers how we estimate the amount of memory required by the keep strategy in order to know how much we can stretch the buffer in one dimension at a time. \\
 
-According to the ``keep" algorithm, the buffer is stretched in the storage order.
-As a consequence, only a set of possible overlaps may happen, as illustrated on Figure x.
-In order to compute the maximum amount of memory required by the keep strategy given a specific buffer shape, we must proceed as follows:
-\begin{itemize}
-  \item 1) Given a buffer shape, identify the current case among those presented on Figure x. For each case we shall define a formula that computes the amount of extra data when loading a given buffer at step $s$.
-  \item 2) Compute the maximum overlap length in all dimensions.
-  \item 3) Compute the worst case in terms of memory consumption, according to the buffer ordering.
-\end{itemize}
+Two pieces of information are required to know the worst case memory consumption of the keep algorithm: what is the maximum number of each overlap area/volume we will have to keep in memory during the algorithm and what is the maximum size that those overlap areas/volumes can have. The maximum number of overlap to keep in memory is defined by the buffer order. \\
+
+In this analysis we express the overlap size in terms of the number of voxels that constitutes the overlap because the real quantity of memory used depends on the size of a voxel in memory.
+For convenience one can avoid this extra parameter by setting the number of bytes per voxel to 1. \\
 
 \subsection{A ``naive" buffer ordering algorithm}
 The buffer order defines the maximum amount of extra data we will have to keep in memory.
@@ -413,10 +408,26 @@ For example if the order is (j, k, i), we will read the buffers in direction j f
 We evaluate the amount of overlap thanks to the function $\textrm{getOverlapUpperBounds}$.
 $\textrm{getOverlapUpperBounds}$ returns, for each dimension, the amount of memory needed to keep the extra data in memory if we read a buffer row (a row of buffers in the reconstructed image) in this dimension. \\
 
-\subsection{Computing the overlap size in 3D}
+% figure for the paragraph below:
+
+According to this ordering, we can now find the formula of the maximum number of overlap areas/volumes that will be stored during the keep algorithm execution.
+Let us say that the ordering is $[k,j,i]$: we keep at a maximum
+\begin{itemize}
+  \item one time the overlap in the first dimension of the buffer order: $f_1$.
+  \item $n_k-1$ times the overlap in the second dimension of the buffer order: $(n_k-1)(f_2+f_3)$.
+  \item $F_1 + n_j(F_2 + F_3) + F_4(N_s-1)$
+\end{itemize}
+
+% TODO: f_1 etc may not be complete
+
+\subsection{Overlap sizes in 3D}
+According to the ``keep" algorithm, the buffer is stretched in the storage order.
+As a consequence, only a set of possible overlaps may happen, as illustrated on Figure x.
+Let us define the amount of extra data to be stored in each case.
+
 % figure of $b_x$
 
-In a given dimension $x$, when loading the $n^{th}$ buffer, the overlap length is $C_x(n) = nB_x mod (O_x)$ with $i \in [1, b_x]$ where $b_x$ is the number of buffers in the direction $x$.
+In a given dimension $x$, when loading the $n^{th}$ buffer, the overlap length is $C_x(n) = nB_x mod (O_x)$ with $i \in [1, b_x]$ where $b_x$ is the number of buffers in the direction $x$. Let us call the index of the buffer in dimension $k$, $j$, $i$: $x$, $y$ and $z$ respectively.
 
 % figure of the overlap sizes (could reuse the overlapsabc and just adding the sizes)
 
@@ -436,103 +447,20 @@ In 2D, the amount of extra data $e$ is:
 Then, in 3D, the amount of extra data is:
 \begin{itemize}
   \item $e = (f_1+f_2+f_3)B_i$ while $B_i < d_1$ (see Figure x)
-  \item $e = (f_1+f_2+f_3)d_1 + B_jB_k(B_i-d_1)$ while $B_i-d_1 < d_2$
-  \item $e = (f_1+f_2+f_3)d_1 + B_jB_kd_2$, else
+  \item $e = (f_1+f_2+f_3)d_1 + B_jB_k(B_i-d_1)$ while $B_i-d_1 < C_i(z)$
+  \item $e = (f_1+f_2+f_3)d_1 + B_jB_kC_i(z)$, else
 \end{itemize}
 
-Then when extending the buffer more than $\Lambda$;
+When extending the buffer more than $\Lambda$ we add $I_x$ to the dimension $x$ in which the amount of extra data is the most important while $B_x < R_x$.
+If there is still some memory available after $B_x=R_x$, we start adding $I_y$ in the second dimension $y$ with the biggest amount of extra data, etc.
+The above formulas still stands, it only changes the value of $B$. \\
 
-% \subsection{Computing the overlap size in the 3D case}
-% In this analysis we express the overlap size in terms of the number of voxels that constitutes the overlap because the real quantity of memory used depends on the size of a voxel in memory.
-% For convenience one can avoid this extra parameter by setting the number of bytes per voxel to 1. \\
-%
-% When loading the first buffer in a given dimension $i$, the overlap length $C_{x}(1)$ (value of $C_x$ when loading the first buffer) is $B_x \mod O_x$ by definition of an output aggregate (see Figure x).
-% When loading the $i^{th}$ buffer, the overlap length is therefore $C_{x}(i) = i * B_x \mod O_x$ with $i \in [1, b_x]$ ($b_x$ is the number of buffers in direction $x$).
-% Let us call the index of the buffer in dimension $k$, $j$, $i$: $x$, $y$ and $z$ respectively. \\
-%
-% In two dimensions, there are three overlap areas: $a$, $b$ and $c$. When we are loading the $(x, y)^{th}$ buffer, the $x^{th}$ buffer in dimension $k$ which is also the $y^{th}$ buffer in dimension $j$, the overlap size in voxels is:
-% \begin{itemize}
-%   \item $a = C_k(x) * (B_j - C_j(y))$ ($C_k(x)$ is the length of the overlap in direction $k$ for the $k^{th}$ buffer)
-%   \item $b = C_k(x) * C_j(y)$
-%   \item $c = C_j(y) * (B_k - C_k(x))$
-% \end{itemize}
-%
-% According to the algorithm, $c$ can be kept in memory by the keep strategy only if there is enough memory to store $a$ and $b$.
-% The same way, $b$ is kept in memory only if we can keep $a$ before.
-% When stretching the buffer shape, we start by adding as much rows as possible in the first moving direction, then the second one until we can keep b entirely,
-% Keep in mind that c can only be stored completely, or it is not stored, as storing it only saves 1 seek.
-%
-% \begin{figure*}[h!]
-% \centering
-% \includegraphics[scale=0.3]{./figures/overlapsin3d.png}
-% \caption{Possible overlaps when resplitting 3D images.
-% (a): Covering the $a$ area.
-% (b): Covering the $b$ area.
-% (c): Covering the $c$ area.
-% (d): Converting overlap areas into overlap volumes by stretching the buffer in the $i$ direction.
-% (e): Further increasing $B_i$ creates a $d$ overlap volume.
-% }
-% \label{fig:overlapsin3d}
-% \end{figure*}
-%
-% In 2D, the overlap area in number of pixels is either (see Figure \ref{fig:overlapsin3d}):
-% \begin{itemize}
-%   \item $\textrm{overlap} = C_k(x) * B_j$ if we keep only $a$ in memory.
-%   \item $\textrm{overlap} = C_k(x) * B_j$ if we keep $a$ in memory as well as $b$ or a part of $b$.
-%   \item $\textrm{overlap} = a + b + c$ as defined above i.e. we store c completely.
-% \end{itemize}
-%
-% In 3D (see same Figure x), the overlap area is first increased into an overlap volume:
-% $\textrm{overlap} = (a + b + c) * B_i$ if we cannot store $d$ completely.
-% Then, if $B_i = \Lambda_i$ we add the whole $d$ volume directly.
-% The overlap area is therefore:
-% $$\textrm{overlap} = [(a + b + c) * (B_i - C_j(z))] + d_{\textrm{volume}}$$, with
-% $$d_{\textrm{volume}} = C_j(z) * C_j(y) * C_k(x)$$
-%
-% \subsection{Computing the maximum amount of memory needed for the keep strategy}
-%
-% \noindent \textbf{Maximum length of the overlap in a given dimension} \\
-% By definition of the modulo, the maximum overlap length in a given dimension $x$ is $O_x$.
-% $O_x$ is an upper bound as in some cases like in Figure x we may never reach this point.
-% We could therefore compute $k * B_x \mod O_x$ for all $k \in [1, b_x]$ to find the maximum if it is not too compute intensive in order to find the exact maximum length of the overlap in direction $x$. \\
-%
-% \noindent \textbf{Maximum overlap size} \\
-% Now that we know how to compute the maximum length of the overlap, we can use the overlap sizes found in section ``Computing the overlap size in the 3D case" and replace the $C$s by their maximum value to get the maximum volumes we can expect for $a$, $b$, $c$ and $d$ during the algorithm's execution.
-% Given a buffer ordering, we may have to store several times one or more volumes at the same time in memory. \\
-%
-% \noindent \textbf{Total overlap size at a given time} \\
-%
-% Using the naive ordering, we read buffers in the direction of the biggest overlap volume first.
-% For example, if the buffer shape is the same as the shape of the input aggregate and if $volumes(k) > volumes(j) > volumes(i)$, then we read the buffers in the $k$ direction first.
-% The amount of memory needed to read in the $k$ direction is $m_{\textrm{needed}} = B.size + volumes(k)$:
-%
-% \begin{itemize}
-%   \item At step $t = 1$, the first buffer is read, and there is no preceeding overlap.
-%   \item At step $t > 1$, we have the $C_k(t-1)$ overlap in main memory. We need to read the $t^{th}$ buffer first in order to get rid of the previous overlap and store the new one.
-%   \item The last buffer being read in the $k$ direction has no overlap by definition of the resplit process: everything is written down, including the previous overlap $C_k(t-1)$.
-% \end{itemize}
-%
-% \begin{figure}[h!]
-% \centering
-% \includegraphics[scale=0.3]{./figures/bufferkji.png}
-% \caption{Buffer in position (k,j,i) in the referential of the buffers.
-% \label{fig:bufferkji}
-% }
-% \end{figure}
-%
-% During the buffering process in direction $k$, we must store the overlap volumes in the $j$ and $i$ directions, too, according to the keep strategy in order not to write it down which would incur a lot of seeks.
-% In 3D, when loading the buffer in position (k, j, i) in the referential of the buffers (see Figure \ref{fig:bufferkji}), the overlap size is:
-% $$ MAX =  bufferSize + C_k(x) + [kC_j(y) + (n_k-k)*C_j(j-1)] + [n_s*C_j(z) + (N_s - n_s)*C_j(z)] $$
-%
-% \begin{itemize}
-%   \item $N_s$ is the number of buffers in a slice.
-%   \item $n_s$ is the number of buffers read so far from the current slice.
-% \end{itemize}
-%
-% \noindent \textbf{Maximum amount of memory needed for the process} \\
-% Defining $x_{max}$ and $y_{max}$ the index at which we are storing the biggest overlap in $k$ axis and the index of the buffer row at which there is the biggest overlap in $j$, respectively, we know that the case $(x_{max}, y_{max})$ will happen.
-% The same way, the case $(x_{max}, y_{max}, z_{max})$ will also happen.
-% Therefore, the maximum memory size we will need during the whole process is $MAX$ with all $C$ replaced by their maximum possible value: either the upper bound or the computed value as explained in the preceeding paragraph.
+By definition of the modulo, the maximum overlap length in a given dimension $x$ is $O_x$.
+$O_x$ is an upper bound as in some cases like in Figure x we may never reach this point.
+We could therefore compute $C_x(k)$ for all $k \in [1, b_x]$ to find the maximum if it is not too compute intensive in order to find the exact maximum length of the overlap in direction $x$. Now that we know how to compute the maximum $C$ value we can replace it in the above formula. \\
+
+Finally, the maximum amount of memory needed is: .
+We can use this analysis to compute the buffer shape according to the following algorithm:
 
 %----------------------------------------
 \section*{Implementation}
