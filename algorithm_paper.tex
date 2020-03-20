@@ -262,7 +262,8 @@ One have no reason to stop increasing the shape of the buffer from that point.
 The first idea which comes to mind is to stretch the buffer such that the buffer length becomes a multiple of the output file length in a given dimension $x$: $B_x = nO_x$.
 Again, this would create an overlap in the input files however, which would prevent the keep strategy to be applied and create a maximum number of seeks.
 Therefore, one can only stretch the buffer by adding one input file length to a given dimension of the buffer shape (see Figure \ref{fig:extendingbuffers}).
-A good idea would be to extends the dimension of the biggest overlap volume s.t. we accumulate extra data from the smallest overlap volumes only.
+A good idea seems to be to extend the buffer shape in the dimension of the biggest overlap area/volume such that we accumulate extra data from the smallest overlap volumes only.
+Again, if we can stretch the buffer such that $B_x = R_x$ in the dimension $x$ of the biggest overlap area/volume, we then increase in the dimension of the second biggest overlap size, etc.
 
 \begin{figure*}[h]
 \centering
@@ -350,7 +351,6 @@ This observation is true for the other dimensions as well: as soon as $B_x = \La
 This proves that we should not increase a dimension if $B_x < \Lambda_x$ in the preceeding dimensions.
 
 \subsection{Impact of the buffer order on performance}
-
 Using the keep strategy in case of overlaps, one may order the buffer loadings to further reduce the number of seeks.
 By optimizing the buffer ordering one can reduce the maximum quantity used to store the extra data in memory.
 For example, if an overlap occurs only in the $k$ axis, loading the next buffers in this direction will enable recycling the extra data kept in memory, resulting in a smallest memory consumption over time.
@@ -376,33 +376,61 @@ We can stimulate this property by using small chunks such that we use buffer big
 %----------------------------------------
 \section*{A memory analysis}
 %----------------------------------------
-%
-% \subsection{Defining a ``naive" buffer ordering algorithm}
-% As stated in a preceeding section, there is not any solution of the ordering problem that would be optimal for all possible input and output shapes.
-% For the time being we do not have a good solution of the ordering problem which do not imply a compute-intensive algorithm, therefore let us define a naive algorithm (Algorithm \ref{algo:naivebufferordering}) as follows:
-%
-% \begin{algorithm}[H]
-%   \caption{Naive buffer ordering algorithm}
-%   \begin{algorithmic}[1]
-%   \STATE \textbf{INPUTS}: inputShape, outputShape
-%   \STATE $overlap \leftarrow dict()$
-%   \STATE $overlap \leftarrow \textrm{getOverlapUpperBounds(\textrm{inputShape, outputShape})}$
-%   \STATE $\textrm{sort(overlap, by=values)}$
-%   \RETURN $\textrm{overlap.keys()}$
-%
-%   \end{algorithmic}
-%   \label{algo:naivebufferordering}
-% \end{algorithm}
-%
-% \subsection{Algorithm details}
-% The algorithm return an array of dimensions ordered by decreasing overlap size.
-% The idea is to read the buffers in the first direction where the overlap is the most important, then the second etc.
-% For example if the order is j, k, i, we will read buffer rows in direction j, the rows being ordered in increasing `k` (see figure x).
-% We evaluate the amount of overlap thanks to the function $\textrm{getOverlapUpperBounds}$.
-% $\textrm{getOverlapUpperBounds}$ returns, for each dimension, the amount of memory needed to keep the extra data in memory if we read a buffer row (a row of buffers in the reconstructed image) in this dimension. \\
-%
-% \noindent Based on this algorithm, let us try to find the function $\textrm{getOverlapUpperBounds}$.
-%
+
+The keep algorithm assumes that $m$ is big enough to keep at least a ``complete column" of length $B_k$.
+As it has been explained, the buffer is then stretched in the $j^{th}$ dimension and so on as long as there is enough main memory available to use the keep strategy.
+This section covers how we estimate the amount of memory required by the keep strategy in order to know how much we can stretch the buffer in one dimension at a time. \\
+
+According to the ``keep" algorithm, the buffer is stretched in the storage order.
+As a consequence, only a set of possible overlaps may happen, as illustrated on Figure x.
+In order to compute the maximum amount of memory required by the keep strategy given a specific buffer shape, we must proceed as follows:
+\begin{itemize}
+  \item 1) Given a buffer shape, identify the current case among those presented on Figure x. For each case we shall define a formula that computes the amount of extra data when loading a given buffer at step $s$.
+  \item 2) Compute the maximum overlap length in all dimensions.
+  \item 3) Compute the worst case in terms of memory consumption, according to the buffer ordering.
+\end{itemize}
+
+\subsection{A ``naive" buffer ordering algorithm}
+The buffer order defines the maximum amount of extra data we will have to keep in memory.
+As we do not know a good ordering which do not imply a compute-intensive algorithm (see section ``Discussion"), let us define a naive ordering as follows (Algorithm \ref{algo:naivebufferordering}):
+
+\begin{algorithm}[H]
+  \caption{Naive buffer ordering algorithm}
+  \begin{algorithmic}[1]
+  \STATE \textbf{INPUTS}: inputShape, outputShape
+  \STATE $overlap \leftarrow dict()$
+  \STATE $overlap \leftarrow \textrm{getOverlapUpperBounds(\textrm{inputShape, outputShape})}$
+  \STATE $\textrm{sort(overlap, by=values)}$
+  \RETURN $\textrm{overlap.keys()}$
+
+  \end{algorithmic}
+  \label{algo:naivebufferordering}
+\end{algorithm}
+
+The algorithm returns an array of dimension indices, ordered by decreasing overlap size.
+The idea is to read the buffers in the first direction where the overlap is the most important, then the second etc.
+For example if the order is (j, k, i), we will read the buffers in direction j first (see figure x).
+We evaluate the amount of overlap thanks to the function $\textrm{getOverlapUpperBounds}$.
+$\textrm{getOverlapUpperBounds}$ returns, for each dimension, the amount of memory needed to keep the extra data in memory if we read a buffer row (a row of buffers in the reconstructed image) in this dimension. \\
+
+\subsection{Computing the overlap size in 3D}
+% figure of $b_x$
+
+In a given dimension $x$, when loading the $n^{th}$ buffer, the overlap length is $C_x(n) = nB_x mod (O_x)$ with $i \in [1, b_x]$ where $b_x$ is the number of buffers in the direction $x$.
+
+% figure of the overlap sizes (could reuse the overlapsabc and just adding the sizes)
+
+In 2D, the size of the overlap is:
+\begin{itemize}
+  \item $C_k(x)B_j$ while the $a$ and $b$ areas are not totally covered by the buffer ($B_j < \Lambda_j$).
+  \item The sum of the sizes of the $a$, $b$ and $c$ areas:
+  \begin{itemize}
+    \item Size of the b area: $C_k(x)(B_j-C_j(y))$
+    \item Size of the b area: $C_k(x)C_j(y)$
+    \item Size of the c area: $C_j(y)(B_k-C_k(x))$
+  \end{itemize}
+\end{itemize}
+
 % \subsection{Computing the overlap size in the 3D case}
 % In this analysis we express the overlap size in terms of the number of voxels that constitutes the overlap because the real quantity of memory used depends on the size of a voxel in memory.
 % For convenience one can avoid this extra parameter by setting the number of bytes per voxel to 1. \\
