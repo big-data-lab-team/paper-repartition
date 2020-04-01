@@ -1,5 +1,6 @@
 \relax 
 \citation{seqalgorithms}
+\citation{seqalgorithms}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-A}}Context}{1}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-B}}Problem definition}{1}}
 \citation{seqalgorithms}
@@ -15,7 +16,7 @@
 \newlabel{fig:column_order}{{2}{3}}
 \@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Illustration of the concept of extra data with a 2D case. In this example the black bordered rectangles represent the input files and the gray bordered rectangles represent the output files. After having read the red buffer we can see that the output file covered by the light red area can be written directly. After having written the data from the light red area however, we are left with the dark red, dotted area which represents some extra data we would like to keep in memory until we read the rest of the incomplete ouptut files in order to read the incomplete output files with one seek. }}{3}}
 \newlabel{fig:overlap}{{3}{3}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-G}}Input and output aggregates}{3}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-G}}Input aggregates}{3}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-H}}Stretching the buffer in the storage order}{3}}
 \@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Illustration of the keep strategy with a 2D case. In this example the black bordered rectangles represent the input files and the gray bordered rectangles represent the output files. As shown on the left figure, the keep strategy consists in reading more than one output file (light red area) into the first buffer. Then the first output file is written and the dark red area is kept in memory. On the left figure the second buffer has been loaded. It allows to free part of the overlap in the $k$ direction (the green area) as the second file data is complete in main memory. The third output file has been read completely and can therefore be written. This lets the overlap in the $j$ direction (dark red area) in main memory for the next buffer. }}{4}}
 \newlabel{fig:keepstrategy}{{4}{4}}
@@ -31,23 +32,26 @@
 \newlabel{fig:case_2_1}{{8}{5}}
 \@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Illustration of the different overlaping areas in 2D. The blue area is called the $a$ area, the red area is called the $b$ area and we call $c$ area the green one. }}{5}}
 \newlabel{fig:areasabc}{{9}{5}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-K}}Special case of non optimality}{5}}
 \@writefile{loa}{\contentsline {algorithm}{\numberline {2}{\ignorespaces getBufferShape in ND}}{5}}
 \newlabel{algo:getbuffershape}{{2}{5}}
 \@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces  Left side: Extending the buffer to the next input length. Right side: Extending the buffer to the next output length. The crosses indicates the number of seeks. As we can see, extending the buffer to the next output shape incurs a lot of seeks in the next input file when loading the buffer. As the input file is incomplete, there is no extra data, therefore the keep strategy cannot be used. }}{6}}
 \newlabel{fig:extendingbuffers}{{10}{6}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-K}}Special case of non optimality}{6}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-L}}Impact of the buffer order on performance}{6}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-M}}A ``naive" buffer ordering algorithm}{6}}
 \@writefile{loa}{\contentsline {algorithm}{\numberline {3}{\ignorespaces Naive buffer ordering algorithm}}{6}}
 \newlabel{algo:naivebufferordering}{{3}{6}}
-\bibdata{Bibliography}
-\bibcite{seqalgorithms}{1}
-\bibstyle{ieeetr}
 \@writefile{lof}{\contentsline {figure}{\numberline {11}{\ignorespaces  Comparison of a bad buffer ordering (left side) against a good buffer ordering (right side), given an overlap in the $k$ dimension. The red area represents the amount of extra data kept in memory after loading the third buffer. The right side order allowed to release the extra data from the first buffer after reading the second buffer. }}{7}}
 \newlabel{fig:goodorderingbadordering}{{11}{7}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-N}}Overlap sizes in 3D}{7}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-O}}Comparison with previous work}{7}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-P}}Solution of the ordering problem}{7}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-Q}}Extending the algorithm for ROI extraction}{7}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-R}}Distributed keep algorithm}{7}}
-\@writefile{toc}{\contentsline {section}{References}{7}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-O}}Putting all together}{7}}
+\bibdata{Bibliography}
+\bibcite{seqalgorithms}{1}
+\bibstyle{ieeetr}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-P}}Usage and support for MINC/Nifti file formats}{8}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-Q}}Comparison with previous work}{8}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-R}}Solution of the ordering problem}{8}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-S}}Extending the algorithm for ROI extraction}{8}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-T}}Distributed keep algorithm}{8}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-U}}Improvements}{8}}
+\@writefile{toc}{\contentsline {section}{References}{8}}
