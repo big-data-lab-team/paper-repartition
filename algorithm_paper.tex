@@ -399,40 +399,52 @@ This order reduces the number of big overlaps to keep in memory. \\
 % TODO: figure for the paragraph below
 % Formula of the number of overlaps to keep at max:
 According to this ordering, we can now find the formula of the maximum number of overlap areas/volumes that will be stored during the keep algorithm execution:
-If, for example, the ordering was $[k,j,i]$, we would keep at a maximum $F_1 + (n_k-1)(F_2 + F_3) + F_4(N_s-1)$ in memory.
+If, for example, the ordering was $[k,j,i]$, we would keep at a maximum $$\Sigma = (F_1 + (n_{x1}-1)(F_2 + F_3) + F_4(N_{x2}-1) + B_iB_jB_k)\alpha$$ in memory, with $n_{x1}$ the number of buffers in direction $x1$ of the biggest overlap and $N_{x2}$ the number of buffers in a buffer slice in the direction $x2$ of biggest overlap.
 This formula is for the 3D case, but it can be extended to the N dimensional case with the same reasoning.
 
-\subsection{Overlap sizes in 3D}
-According to the ``keep" algorithm, the buffer is stretched in the storage order.
-As a consequence, only a set of possible overlaps may happen, as illustrated on Figure x.
-Let us define the amount of extra data to be stored in each case.
+\subsection{Extension of the buffer to match $\Lambda$}
+%In a given dimension $x$, when loading the $n^{th}$ buffer, the overlap length is $C_x(n) = nB_x mod (O_x)$ with $i \in [1, b_x]$ where $b_x$ is the number of buffers in the direction $x$. Let us call the index of the buffer in dimension $k$, $j$, $i$: $x$, $y$ and $z$ respectively.
+% TODO: figure of the overlap sizes (could reuse the overlapsabc and just adding the sizes)
+Considering a buffer $B$ and its associated input aggregate $\Lambda$, we can define the overlap sizes in terms of the number of voxels as follows (see Figure x):
+$$F_1 = \Omega_k min(B_j, \Theta_j) min(B_i, \Theta_i)$$
+$$F_2 = \Omega_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i)$$
+$$F_3 = \Theta_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i)$$
+$$F_4 = \Lambda_k \Lambda_j max(0, min(B_i - \Theta_i, \Omega_i))$$
+with
+$$\Theta_x = \Lambda_x - \Omega_x$$
 
-% figure of $b_x$
+From the above formulas and the keep algorithm previously introduced, we can find the following formulas to compute the buffer dimensions (see Annexe x):
+At first, we assume that we have enough main memory $m$ such that $B_k = \Lambda_k$.
+We start increasing in the $j$ dimension using the following formula until we have completely store $f_1$:
+$$B_j < \lfloor \frac{m}{(\Omega_k + \Lambda_k)\alpha} \rfloor$$
+Let us call the left side of the inequation $\phi$.
+If $\phi \leq \Theta_j$, $B_j$ takes $\phi-1$ and the algorithm stops here.
+If $\phi > \Theta_j$, $B_j$ takes $\Theta_j$ and we continue the algorithm.
+Indeed, the last inequation means that we could increase $B_j$ more than $\Theta_j$ but our goal is to first extend the buffer shape $B$ so that it matches the input aggregate shape $\Lambda$. \\
 
-In a given dimension $x$, when loading the $n^{th}$ buffer, the overlap length is $C_x(n) = nB_x mod (O_x)$ with $i \in [1, b_x]$ where $b_x$ is the number of buffers in the direction $x$. Let us call the index of the buffer in dimension $k$, $j$, $i$: $x$, $y$ and $z$ respectively.
+We then use the following formula to find the maximum $B_j$ possible until we can store the $f_2$ area completely:
+$$B_j < \lfloor \frac{m - \Omega_k\Theta_j(2-n_{x1})\alpha}{(n_{x1}-1)(\Omega_k+\Lambda_k)\alpha} \rfloor$$
 
-% figure of the overlap sizes (could reuse the overlapsabc and just adding the sizes)
+As explained in the keep algorithm, we either store all of $f_3$ or nothing, as it saves only 1 seek in 2D.
+The amount of data to store $f1$, $f2$ and $f_3$ together with one complete buffer can be expressed as follows:
+$$\Sigma = [\Omega_k\Theta_j + (n_{x1}-1)\Omega_j\Lambda_k + \Lambda_j\Lambda_k]\alpha$$
+If $\Sigma < m$ we can continue the algorithm and start increasing $B_i$.
+If $\Sigma = m$ we stop the algorithm and return that we can store $f_3$.
+If $\Sigma > m$ we stop the algorithm and return that we cannot store $f_3$.
 
-In 2D, the amount of extra data $e$ is:
-\begin{itemize}
-  \item $C_k(x)B_j$ while the $a$ and $b$ areas are not totally covered by the buffer ($B_j < \Lambda_j$).
-  \item $e = f_1+f_2+f_3$ else, with:
-  \begin{itemize}
-    \item Size of the a area: $f_1 = C_k(x)(B_j-C_j(y))$
-    \item Size of the b area: $f_2 = C_k(x)C_j(y)$ % refaire en fonction du buffer a la place
-    \item Size of the c area: $f_3 = C_j(y)(B_k-C_k(x))$
-  \end{itemize}
-\end{itemize}
+Now that we successfully extended the buffer to match $(\Lambda_k, \Lambda_j)$, we start increasing $B_i$.
+The volumes $F_1$, $F_2$ and $F_3$ are defined as follows:
+$$F_1 = \Omega_k \Theta_j B_i$$
+$$F_2 = \Omega_k \Omega_j B_i$$
+$$F_3 = \Theta_k \Omega_j B_i$$
 
-% figure of 3D overlap size with nomenclature or recylcle previous 3D overlap sizes, with d1 and d2
+Wich gives us the following formula to extend $B_i$ until $B_i = \Theta_i$:
+$$B_i < \lfloor \frac{m}{[\Omega_k\Theta_j + (n_{x1}-1)\Omega_j\Lambda_k + \Lambda_j\Lambda_k]\alpha} \rfloor$$
 
-Then, in 3D, the amount of extra data is:
-\begin{itemize}
-  \item $e = (f_1+f_2+f_3)B_i$ while $B_i < d_1$ (see Figure x)
-  \item $e = (f_1+f_2+f_3)d_1 + B_jB_k(B_i-d_1)$ while $B_i-d_1 < C_i(z)$
-  \item $e = (f_1+f_2+f_3)d_1 + B_jB_kC_i(z)$, else
-\end{itemize}
+Finally, we compute the cost of keeping all the overlap volumes in memory:
+$$\Sigma = [\Omega_k\Theta_j\Theta_i + (n_{x1}-1)\Omega_j\Theta_i\Lambda_k + (N_{x2}-1)\Lambda_k\Lambda_j\Omega_i]\alpha$$
 
+\subsection{Extension of the buffer beyond $\Lambda$}
 When extending the buffer more than $\Lambda$ we add $I_x$ to the dimension $x$ in which the amount of extra data is the most important while $B_x < R_x$.
 If there is still some memory available after $B_x=R_x$, we start adding $I_y$ in the second dimension $y$ with the biggest amount of extra data, etc.
 The above formulas still stands, it only changes the value of $B$. \\
@@ -537,5 +549,43 @@ We can use this analysis to compute the buffer shape according to the following 
 
 \bibliography{Bibliography}
 \bibliographystyle{ieeetr}
+
+\appendices
+
+  \section{First Appendix}
+  \label{FirstAppendix}
+
+  $$F_1 = \Omega_k min(B_j, \Theta_j) min(B_i, \Theta_i)$$
+  $$F_2 = \Omega_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i)$$
+  $$F_3 = \Theta_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i)$$
+  $$F_4 = \Lambda_k \Lambda_j max(0, min(B_i - \Theta_i, \Omega_i))$$
+
+  % 1)
+  $$B_j < \lfloor \frac{m}{(\Omega_k + \Lambda_k)\alpha} \rfloor$$
+
+  Let us call the left side of the inequation $\phi$.
+  If $\phi \leq \Theta_j$, $B_j$ takes $\phi-1$ and the algorithm stops here.
+  If $\phi > \Theta_j$, $B_j$ takes $\Theta_j$ and we continue the algorithm.
+  Indeed, the last inequation means that we could increase $B_j$ more than $\Theta_j$ but our goal is to first extend the buffer shape $B$ so that it matches the input aggregate shape $\Lambda$. \\
+
+  % 2)
+  $$B_j < \lfloor \frac{m - \Omega_k\Theta_j(2-n_{x1})\alpha}{(n_{x1}-1)(\Omega_k+\Lambda_k)\alpha} \rfloor$$
+
+  % 3)
+  $$\Sigma = [\Omega_k\Theta_j + (n_{x1}-1)\Omega_j\Lambda_k + \Lambda_j\Lambda_k]\alpha$$
+  If $\Sigma < m$ we can continue the algorithm and start increasing $B_i$.
+  If $\Sigma = m$ we stop the algorithm and return that we can store $f_3$.
+  If $\Sigma > m$ we stop the algorithm and return that we cannot store $f_3$.
+
+  % 4)
+  The volumes $F_1$, $F_2$ and $F_3$ are defined as follows:
+  $$F_1 = \Omega_k \Theta_j B_i$$
+  $$F_2 = \Omega_k \Omega_j B_i$$
+  $$F_3 = \Theta_k \Omega_j B_i$$
+
+  $$B_i < \lfloor \frac{m}{[\Omega_k\Theta_j + (n_{x1}-1)\Omega_j\Lambda_k + \Lambda_j\Lambda_k]\alpha} \rfloor$$
+
+  % 5)
+  $$\Sigma = [\Omega_k\Theta_j\Theta_i + (n_{x1}-1)\Omega_j\Theta_i\Lambda_k + (N_{x2}-1)\Lambda_k\Lambda_j\Omega_i]\alpha$$
 
 \end{document}
