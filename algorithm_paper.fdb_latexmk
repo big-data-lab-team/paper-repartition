@@ -1,12 +1,12 @@
 # Fdb version 3
-["bibtex algorithm_paper"] 1585943508 "algorithm_paper.aux" "algorithm_paper.bbl" "algorithm_paper" 1585943653
+["bibtex algorithm_paper"] 1585948609 "algorithm_paper.aux" "algorithm_paper.bbl" "algorithm_paper" 1585948711
   "/usr/share/texlive/texmf-dist/bibtex/bst/base/ieeetr.bst" 1553009060 18361 1a00e58565e7f19bf2b3e1bfb82254ae ""
   "Bibliography.bib" 1584545652 3937 20cff1c848d2509667ffdbff34c28b1d ""
-  "algorithm_paper.aux" 1585943653 8115 8e9f573e28c2b0bbbcfc908d303f1ec8 "pdflatex"
+  "algorithm_paper.aux" 1585948710 9024 daf2ae2cf85f6b97119f9dd56152fad5 "pdflatex"
   (generated)
   "algorithm_paper.blg"
   "algorithm_paper.bbl"
-["pdflatex"] 1585943652 "algorithm_paper.tex" "algorithm_paper.pdf" "algorithm_paper" 1585943653
+["pdflatex"] 1585948710 "algorithm_paper.tex" "algorithm_paper.pdf" "algorithm_paper" 1585948711
   "/home/user/.texlive2018/texmf-var/web2c/pdftex/pdflatex.fmt" 1561246777 789641 18556bb2b16464003d5aaf304afe1847 ""
   "/usr/share/texlive/texmf-dist/fonts/enc/dvips/base/8r.enc" 1553009060 4850 80dc9bab7f31fb78a000ccfed0e27cab ""
   "/usr/share/texlive/texmf-dist/fonts/map/pdftex/updmap/pdftex.map" 1530836625 2850648 765161d183c5509465c2744baf096a7a ""
@@ -43,6 +43,7 @@
   "/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb" 1480098733 36281 c355509802a035cadc5f15869451dcee ""
   "/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb" 1480098733 35469 70d41d2b9ea31d5d813066df7c99281c ""
   "/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb" 1480098733 35752 024fb6c41858982481f6968b5fc26508 ""
+  "/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr5.pfb" 1480098733 31809 8670ca339bf94e56da1fc21c80635e2a ""
   "/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb" 1480098733 32762 224316ccc9ad3ca0423a14971cfa7fc1 ""
   "/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb" 1480098733 32569 5e5ddc8df908dea60932f3c484a54c0d ""
   "/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy5.pfb" 1480098733 32915 7bf7720c61a5b3a7ff25b0964421c9b6 ""
@@ -98,9 +99,9 @@
   "/usr/share/texlive/texmf-dist/tex/latex/xcolor/xcolor.sty" 1480098843 55589 34128738f682d033422ca125f82e5d62 ""
   "/usr/share/texlive/texmf-dist/web2c/texmf.cnf" 1553009075 33523 3a2c32bd77384f8f4508d61b4be83582 ""
   "IEEEtran.cls" 1440654524 288304 b67b6fc6c2abb39f9b461923f5199343 ""
-  "algorithm_paper.aux" 1585943653 8115 8e9f573e28c2b0bbbcfc908d303f1ec8 "pdflatex"
-  "algorithm_paper.bbl" 1585943508 308 3f3db624504cd2cb95fe6e6e7ae02a86 "bibtex algorithm_paper"
-  "algorithm_paper.tex" 1585943652 41493 7f57efcd40390487e33289c05acf24f1 ""
+  "algorithm_paper.aux" 1585948710 9024 daf2ae2cf85f6b97119f9dd56152fad5 "pdflatex"
+  "algorithm_paper.bbl" 1585948610 308 3f3db624504cd2cb95fe6e6e7ae02a86 "bibtex algorithm_paper"
+  "algorithm_paper.tex" 1585948709 44697 832ce3ce2609aa279d00c1b650c4c880 ""
   "figures/areasabc.png" 1584545879 31575 a7ab03dab64e539bfcf8db1d64d4ca0c ""
   "figures/case_1_2.png" 1584545879 28516 660145b40acea152b9800824acb09fdc ""
   "figures/case_2_1.png" 1584545879 42202 1f49077adf0b76117fbb08ae3c60cd2e ""
@@ -114,5 +115,5 @@
   "figures/reconstructed_img_divided.png" 1584545879 33678 c2ac3475e9cfa58eae800b44c1a1a018 ""
   (generated)
   "algorithm_paper.log"
-  "algorithm_paper.pdf"
   "algorithm_paper.aux"
+  "algorithm_paper.pdf"

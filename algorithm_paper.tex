@@ -399,7 +399,7 @@ This order reduces the number of big overlaps to keep in memory. \\
 % TODO: figure for the paragraph below
 % Formula of the number of overlaps to keep at max:
 According to this ordering, we can now find the formula of the maximum number of overlap areas/volumes that will be stored during the keep algorithm execution:
-If, for example, the ordering was $[k,j,i]$, we would keep at a maximum $$\Sigma = (F_1 + (n_{x1}-1)(F_2 + F_3) + F_4(N_{x2}-1) + B_iB_jB_k)\alpha$$ in memory, with $n_{x1}$ the number of buffers in direction $x1$ of the biggest overlap and $N_{x2}$ the number of buffers in a buffer slice in the direction $x2$ of biggest overlap.
+If, for example, the ordering was $[k,j,i]$, we would keep at a maximum $$\Sigma = (F_1 + (n_{x_1}-1)(F_2 + F_3) + F_4(N_{x_2}-1) + B_iB_jB_k)\alpha$$ in memory, with $n_{x_1}$ the number of buffers in direction $x_1$ of the biggest overlap and $N_{x_2}$ the number of buffers in a buffer slice in the direction $x_2$ of biggest overlap.
 This formula is for the 3D case, but it can be extended to the N dimensional case with the same reasoning.
 
 \subsection{Extension of the buffer to match $\Lambda$}
@@ -417,17 +417,17 @@ From the above formulas and the keep algorithm previously introduced, we can fin
 At first, we assume that we have enough main memory $m$ such that $B_k = \Lambda_k$.
 We start increasing in the $j$ dimension using the following formula until we have completely store $f_1$:
 $$B_j < \lfloor \frac{m}{(\Omega_k + \Lambda_k)\alpha} \rfloor$$
-Let us call the left side of the inequation $\phi$.
+Let us call the right side of the inequation $\phi$.
 If $\phi \leq \Theta_j$, $B_j$ takes $\phi-1$ and the algorithm stops here.
 If $\phi > \Theta_j$, $B_j$ takes $\Theta_j$ and we continue the algorithm.
 Indeed, the last inequation means that we could increase $B_j$ more than $\Theta_j$ but our goal is to first extend the buffer shape $B$ so that it matches the input aggregate shape $\Lambda$. \\
 
 We then use the following formula to find the maximum $B_j$ possible until we can store the $f_2$ area completely:
-$$B_j < \lfloor \frac{m - \Omega_k\Theta_j(2-n_{x1})\alpha}{(n_{x1}-1)(\Omega_k+\Lambda_k)\alpha} \rfloor$$
+$$B_j < \lfloor \frac{m - \Omega_k\Theta_j(2-n_{x_1})\alpha}{(n_{x_1}-1)(\Omega_k+\Lambda_k)\alpha} \rfloor$$
 
 As explained in the keep algorithm, we either store all of $f_3$ or nothing, as it saves only 1 seek in 2D.
 The amount of data to store $f1$, $f2$ and $f_3$ together with one complete buffer can be expressed as follows:
-$$\Sigma = [\Omega_k\Theta_j + (n_{x1}-1)\Omega_j\Lambda_k + \Lambda_j\Lambda_k]\alpha$$
+$$\Sigma = [\Omega_k\Theta_j + (n_{x_1}-1)\Omega_j\Lambda_k + \Lambda_j\Lambda_k]\alpha$$
 If $\Sigma < m$ we can continue the algorithm and start increasing $B_i$.
 If $\Sigma = m$ we stop the algorithm and return that we can store $f_3$.
 If $\Sigma > m$ we stop the algorithm and return that we cannot store $f_3$.
@@ -439,10 +439,10 @@ $$F_2 = \Omega_k \Omega_j B_i$$
 $$F_3 = \Theta_k \Omega_j B_i$$
 
 Wich gives us the following formula to extend $B_i$ until $B_i = \Theta_i$:
-$$B_i < \lfloor \frac{m}{[\Omega_k\Theta_j + (n_{x1}-1)\Omega_j\Lambda_k + \Lambda_j\Lambda_k]\alpha} \rfloor$$
+$$B_i < \lfloor \frac{m}{[\Omega_k\Theta_j + (n_{x_1}-1)\Omega_j\Lambda_k + \Lambda_j\Lambda_k]\alpha} \rfloor$$
 
 Finally, we compute the cost of keeping all the overlap volumes in memory:
-$$\Sigma = [\Omega_k\Theta_j\Theta_i + (n_{x1}-1)\Omega_j\Theta_i\Lambda_k + (N_{x2}-1)\Lambda_k\Lambda_j\Omega_i]\alpha$$
+$$\Sigma = [\Omega_k\Theta_j\Theta_i + (n_{x_1}-1)\Omega_j\Theta_i\Lambda_k + (N_{x_2}-1)\Lambda_k\Lambda_j\Omega_i]\alpha$$
 
 \subsection{Extension of the buffer beyond $\Lambda$}
 When extending the buffer more than $\Lambda$ we add $I_x$ to the dimension $x$ in which the amount of extra data is the most important while $B_x < R_x$.
@@ -555,37 +555,129 @@ We can use this analysis to compute the buffer shape according to the following 
   \section{First Appendix}
   \label{FirstAppendix}
 
-  $$F_1 = \Omega_k min(B_j, \Theta_j) min(B_i, \Theta_i)$$
-  $$F_2 = \Omega_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i)$$
-  $$F_3 = \Theta_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i)$$
-  $$F_4 = \Lambda_k \Lambda_j max(0, min(B_i - \Theta_i, \Omega_i))$$
+  \noindent $F_1 = \Omega_k min(B_j, \Theta_j) min(B_i, \Theta_i)$ \\
+  $F_2 = \Omega_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i)$ \\
+  $F_3 = \Theta_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i)$ \\
+  $F_4 = \Lambda_k \Lambda_j max(0, min(B_i - \Theta_i, \Omega_i))$ \\
+  $\Sigma = (F_1 + (n_{x_1}-1)(F_2 + F_3) + F_4(N_{x_2}-1) + B_iB_jB_k)\alpha$
 
-  % 1)
-  $$B_j < \lfloor \frac{m}{(\Omega_k + \Lambda_k)\alpha} \rfloor$$
+  \subsection{Part I}
+  \noindent $f_1 = \Omega_k B_j B_i = \Omega_k B_j$ \\
+  $\Sigma = (f_1 + B_iB_jB_k)\alpha$ \\
+  $\Sigma < m \Leftrightarrow (\Omega_k B_j + B_j \Lambda_k)\alpha < m$ \\
+  $\Leftrightarrow B_j (\Omega_k + \Lambda_k) \alpha < m $ \\
+  $\Leftrightarrow B_j < \lfloor \frac{m}{(\Omega_k + \Lambda_k)\alpha} \rfloor$
 
-  Let us call the left side of the inequation $\phi$.
-  If $\phi \leq \Theta_j$, $B_j$ takes $\phi-1$ and the algorithm stops here.
-  If $\phi > \Theta_j$, $B_j$ takes $\Theta_j$ and we continue the algorithm.
-  Indeed, the last inequation means that we could increase $B_j$ more than $\Theta_j$ but our goal is to first extend the buffer shape $B$ so that it matches the input aggregate shape $\Lambda$. \\
+  \begin{algorithm}[h]
+    \caption{tmp}
+    \begin{algorithmic}[1]
+    \IF{$\phi > \Theta_j$}
+      \STATE $B_j \leftarrow \Theta_j$
+      \STATE continue
+    \ELSE
+      \STATE $B_j \leftarrow \phi - 1$
+      \STATE return $B$ //stop algorithm
+    \ENDIF
+    \end{algorithmic}
+  \end{algorithm}
 
-  % 2)
-  $$B_j < \lfloor \frac{m - \Omega_k\Theta_j(2-n_{x1})\alpha}{(n_{x1}-1)(\Omega_k+\Lambda_k)\alpha} \rfloor$$
+  \subsection{Part II}
+  \noindent $f_2 = \Omega_k (B_j - \Theta_j)B_i = \Omega_k(B_j - \Theta_j)$ \\
+  $f_1 = \Omega_k\Theta_jB_i = \Omega_k\Theta_j $ \\
+  $\Sigma = [f_1 + (n_{x_1} - 1)f_2 + B_iB_jB_k]\alpha$ \\
+  $\Sigma = [\Omega_k\Theta_j + (n_{x_1}-1)[\Omega_k(B_j -\Theta_j)] + B_j\Delta_k]\alpha$ \\
+  $\Sigma = \alpha\Omega_k\Theta_j(2-n_{x_1})+(n_{x_1}-1)B_j(\Omega_k+\Delta_k)\alpha$ \\
+  $\Sigma < m \Leftrightarrow B_j < \lfloor \frac{m - \Omega_k\Theta_j(2-n_{x_1})\alpha}{(n_{x_1}-1)(\Omega_k+\Lambda_k)\alpha} \rfloor $
 
-  % 3)
-  $$\Sigma = [\Omega_k\Theta_j + (n_{x1}-1)\Omega_j\Lambda_k + \Lambda_j\Lambda_k]\alpha$$
-  If $\Sigma < m$ we can continue the algorithm and start increasing $B_i$.
-  If $\Sigma = m$ we stop the algorithm and return that we can store $f_3$.
-  If $\Sigma > m$ we stop the algorithm and return that we cannot store $f_3$.
+  \begin{algorithm}[h]
+    \caption{tmp}
+    \begin{algorithmic}[1]
+    \IF{$\phi > \Delta_j$}
+      \STATE $B_j \leftarrow \Delta_j$
+      \STATE continue
+    \ELSE
+      \STATE $B_j \leftarrow \phi - 1$
+      \STATE return $B$ //stop algorithm
+    \ENDIF
+    \end{algorithmic}
+  \end{algorithm}
 
-  % 4)
+  \subsection{Part III}
+  \noindent $f_1 = \Omega_k \Theta_j B_i = \Omega_k \Theta_j $ \\
+  $f_2 = \Omega_k \Omega_j B_i = \Omega_k \Omega_j $ \\
+  $f_3 = \Theta_k \Omega_j B_i = \Theta_k \Omega_j $ \\
+
+  \noindent $\Sigma = (f_1 + (n_{x_1} - 1)(f_2 + f_3) + B_iB_jB_k)\alpha$
+  $\Sigma = [ \Omega_k\Theta_j + (n_{x_1} - 1)[\Omega_k \Omega_j + \Theta_k \Omega_j] + \Delta_k\Delta_j]\alpha$ \\
+  $\Sigma = [\Omega_k\Theta_j + (n_{x_1}-1)\Omega_j\Lambda_k + \Lambda_j\Lambda_k]\alpha$
+
+  \begin{algorithm}[h]
+    \caption{tmp}
+    \begin{algorithmic}[1]
+    \IF{$\Sigma < m$}
+      \STATE continue
+    \ELSIF{$\Sigma = m$}
+      \STATE $\textrm{storeF3} \leftarrow \textrm{True}$
+      \STATE return $B$ //stop algorithm
+    \ELSE
+      \STATE $\textrm{storeF3} \leftarrow \textrm{False}$
+      \STATE return $B$ //stop algorithm
+    \ENDIF
+    \end{algorithmic}
+  \end{algorithm}
+
+  \subsection{Part IV}
   The volumes $F_1$, $F_2$ and $F_3$ are defined as follows:
-  $$F_1 = \Omega_k \Theta_j B_i$$
-  $$F_2 = \Omega_k \Omega_j B_i$$
-  $$F_3 = \Theta_k \Omega_j B_i$$
+  \noindent $F_1 = \Omega_k \Theta_j B_i$ \\
+  $F_2 = \Omega_k \Omega_j B_i$ \\
+  $F_3 = \Theta_k \Omega_j B_i$ \\
 
-  $$B_i < \lfloor \frac{m}{[\Omega_k\Theta_j + (n_{x1}-1)\Omega_j\Lambda_k + \Lambda_j\Lambda_k]\alpha} \rfloor$$
+  \noindent $\Sigma = [ F_1 + (n_{x_1} - 1)(F_2 + F_3) + B_iB_jB_k ]$ \\
+  $\Sigma = [\Omega_k\Theta_jB_i + (n_{x_1} - 1)[\Omega_k\Omega_jB_i + \Theta_k\Omega_jB_i] + B_i\Delta_j\Delta_k]\alpha$ \\
+  $\Sigma = [\Omega_k\Theta_j + (n_{x_1}-1)\Omega_j\Lambda_k + \Lambda_j\Lambda_k]B_i\alpha$ \\
+  $\Sigma < m \Leftrightarrow B_i < \lfloor \frac{m}{[\Omega_k\Theta_j + (n_{x_1}-1)\Omega_j\Lambda_k + \Lambda_j\Lambda_k]\alpha} \rfloor$
 
-  % 5)
-  $$\Sigma = [\Omega_k\Theta_j\Theta_i + (n_{x1}-1)\Omega_j\Theta_i\Lambda_k + (N_{x2}-1)\Lambda_k\Lambda_j\Omega_i]\alpha$$
+  \begin{algorithm}[h]
+    \caption{tmp}
+    \begin{algorithmic}[1]
+    \IF{$\phi > \Theta_i$}
+      \STATE $B_i \leftarrow \Theta_i$
+      \STATE continue
+    \ELSE
+      \STATE $B_i \leftarrow \phi - 1$
+      \STATE return $B$ //stop algorithm
+    \ENDIF
+    \end{algorithmic}
+  \end{algorithm}
+
+  \subsection{Part V}
+  \noindent $F_1 = \Omega_k \Theta_j \Theta_i$ \\
+  $F_2 = \Omega_k \Omega_j \Theta_i$ \\
+  $F_3 = \Theta_k \Omega_j \Theta_i$ \\
+  $F_4 = \Delta_k \Delta_j \Omega_i$ \\
+
+  \noindent $\Sigma = (F_1 + (n_{x_1}-1)(F_2 + F_3) + F_4(N_{x_2}-1) + B_iB_jB_k)\alpha$ \\
+  $\Sigma = [\Omega_k\Theta_j\Theta_i + (n_{x_1}-1)\Omega_j\Theta_i\Lambda_k + (N_{x_2}-1)\Lambda_k\Lambda_j\Omega_i]\alpha$
+
+  \begin{algorithm}[h]
+    \caption{tmp}
+    \begin{algorithmic}[1]
+    \STATE $B_i = \Lambda_i$
+    \IF{$\Sigma < m$}
+      \STATE continue
+    \ELSIF{$\Sigma = m$}
+      \STATE $\textrm{storeF4} \leftarrow \textrm{True}$
+      \STATE return $B$ //stop algorithm
+    \ELSE
+      \STATE $\textrm{storeF4} \leftarrow \textrm{False}$
+      \STATE return $B$ //stop algorithm
+    \ENDIF
+    \end{algorithmic}
+  \end{algorithm}
+
+  Not setting $B_i = \Lambda_i$ would be equivalent to letting $B_i = \Theta_i$.
+  The two options are equivalent if we do not store $F_4$.
+  In one case we write with seeks and in the other case we read with seeks.
+  However, we chose to read more, hence setting $B_i = \Lambda_i$ but writing the extra data from $F_4$ directly.
 
 \end{document}
