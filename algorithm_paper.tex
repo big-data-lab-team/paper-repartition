@@ -386,43 +386,21 @@ Two pieces of information are required to know the worst case memory consumption
 In this analysis we express the overlap size in terms of the number of voxels that constitutes the overlap because the real quantity of memory used depends on the size of a voxel in memory.
 For convenience one can avoid this extra parameter by setting the number of bytes per voxel to 1.
 
-\subsection{A ``naive" buffer ordering algorithm}
+\subsection{A ``naive" buffer ordering}
+% TODO: figure for the paragraph below
+% Description of the naive ordering:
 The maximum number of each overlap to keep in memory depends on the buffer order.
-Therefore, the buffer order defines the maximum amount of extra data we will have to keep in memory.
-As we do not know a good ordering which do not imply a compute-intensive algorithm (see section ``Discussion"), let us define a naive ordering as follows (Algorithm \ref{algo:naivebufferordering}):
-
-\begin{algorithm}[H]
-  \caption{Naive buffer ordering algorithm}
-  \begin{algorithmic}[1]
-  \STATE \textbf{Inputs}: inputShape, outputShape
-  \STATE $overlap \leftarrow dict()$
-  \STATE $overlap \leftarrow \textrm{getOverlapUpperBounds(\textrm{inputShape, outputShape})}$
-  \STATE $\textrm{sort(overlap, by=values)}$
-  \RETURN $\textrm{overlap.keys()}$
-
-  \end{algorithmic}
-  \label{algo:naivebufferordering}
-\end{algorithm}
-
-% figure for the paragraph below:
-This naive algorithm computes the overlap size in each dimension and returns an array of indices representing the dimensions, ordered by decreasing overlap size.
-If there is no overlap in a given dimension, then the overlap size is 0.
-The idea is to read the buffers in the direction where the overlap is the most important first, then read those columns of buffers in the order of the second dimension where the overlap is the biggest, etc.
+Therefore, the buffer order defines the maximum amount of extra data that we will have to keep in memory.
+As we do not know a good ordering which do not imply a compute-intensive algorithm (see section ``Discussion"), let us define a naive ordering.
+This naive ordering read the buffers in the direction where the overlap is the most important first, then read those buffer columns in the order of the second dimension where the overlap is the biggest, etc.
 For example if the order is (j, k, i), we will read the buffers in direction j first (see figure x).
-We evaluate the amount of overlap thanks to the function $\textrm{getOverlapUpperBounds}$.
-$\textrm{getOverlapUpperBounds}$ returns, for each dimension, the amount of memory needed to keep the extra data in memory if we read a buffer row (a row of buffers in the reconstructed image) in this dimension. \\
+This order reduces the number of big overlaps to keep in memory. \\
 
-% figure for the paragraph below:
-According to this ordering, we can now find the formula of the maximum number of overlap areas/volumes that will be stored during the keep algorithm execution.
-We present the formulas for the 3D case, but it can be extended to the N dimensional case.
-Let us say that the ordering is $[k,j,i]$. We keep at a maximum
-\begin{itemize}
-  \item one time the overlap in the first dimension of the buffer order: $f_1$.
-  \item $n_k-1$ times the overlap in the second dimension of the buffer order: $(n_k-1)(f_2+f_3)$.
-  \item $F_1 + n_j(F_2 + F_3) + F_4(N_s-1)$ % nani? cannot use f1 and F1 at same time
-\end{itemize}
-
-% TODO: f_1 etc may not be complete
+% TODO: figure for the paragraph below
+% Formula of the number of overlaps to keep at max:
+According to this ordering, we can now find the formula of the maximum number of overlap areas/volumes that will be stored during the keep algorithm execution:
+If, for example, the ordering was $[k,j,i]$, we would keep at a maximum $F_1 + (n_k-1)(F_2 + F_3) + F_4(N_s-1)$ in memory.
+This formula is for the 3D case, but it can be extended to the N dimensional case with the same reasoning.
 
 \subsection{Overlap sizes in 3D}
 According to the ``keep" algorithm, the buffer is stretched in the storage order.
