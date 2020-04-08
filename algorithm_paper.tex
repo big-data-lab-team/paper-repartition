@@ -141,6 +141,7 @@ In case of an overlap however, the order may have an important impact on the num
 \section*{The ``keep" algorithm}
 %----------------------------------------
 The algorithm presented in this paper is called the ``keep" algorithm, as it relies on a so-called ``keep strategy" that is presented below.
+The ``keep" algorithm is an algorithm to find the best buffer shape for a resplit.
 
 \subsection{The ``keep" strategy}
 At initialization, we assign a shape $B = (0, 0,..., 0)$ for the buffer.
@@ -306,7 +307,7 @@ Nomenclature:
 \end{itemize}
 
 \begin{algorithm}[h]
-  \caption{getBufferShape in ND}
+  \caption{old Pseudocode of the ``keep" algorithm}
 
   \begin{algorithmic}[1]
 
@@ -339,6 +340,27 @@ Nomenclature:
   \end{algorithmic}
   \label{algo:getbuffershape}
 
+\end{algorithm}
+
+\begin{algorithm}[h]
+  \caption{Pseudocode of the ``keep" algorithm in 3D}
+
+  \begin{algorithmic}[1]
+    \STATE $B = [\Lambda_k, 1, 1]$
+
+    % increase j to cover f1
+    \STATE $ \phi = \lfloor \frac{m}{(\Omega_k + \Lambda_k)\alpha} \rfloor $
+    \IF{$\phi > \Theta_j$}
+      \STATE $B_j \leftarrow \Theta_j$
+    \ELSE
+      \STATE $B_j \leftarrow \phi - 1$
+      \STATE return $B$ //stop algorithm
+    \ENDIF
+
+    \STATE $\phi = $
+
+  \end{algorithmic}
+  \label{algo:keep_algorithm}
 \end{algorithm}
 
 \subsection{Special case of non optimality}
@@ -552,14 +574,52 @@ We can use this analysis to compute the buffer shape according to the following 
 
 \appendices
 
-  \section{First Appendix}
-  \label{FirstAppendix}
+  \section{Formula for buffer extension}
+  \label{FormulasKeep}
 
-  \noindent $F_1 = \Omega_k min(B_j, \Theta_j) min(B_i, \Theta_i)$ \\
-  $F_2 = \Omega_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i)$ \\
-  $F_3 = \Theta_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i)$ \\
-  $F_4 = \Lambda_k \Lambda_j max(0, min(B_i - \Theta_i, \Omega_i))$ \\
-  $\Sigma = (F_1 + (n_{x_1}-1)(F_2 + F_3) + F_4(N_{x_2}-1) + B_iB_jB_k)\alpha$
+  This appendix presents the reasoning and computations leading to the formulas used for the keep algorithm to find the biggest buffer shape possible given $m$, the amount of memory available.
+
+  Let us first define the nomenclature we will use (see Figure \ref{fig:nomenclature_overlaps}).
+  Given a buffer shape $B$ and the output file shape $O$, we define the overlap $C_k(x)$ as the overlap length in direction $k$ for the $x{th}$ buffer:
+  $$C_k(x) = xB_k mod(O_k)$$
+  $C_k(x)$ is not fixed during the buffer shape extension as it extends progressively.
+  We therefore define $\Omega_k(x)$ as the overlap length in direction $k$ if the buffer had shape $B=\Lambda$:
+  $$\Omega_k(x) = x\Lambda_k mod(O_k)$$
+  Finally, we define $\Theta_k(x)$ as follows:
+  $\Theta_k(x) = \Lambda_k - \Omega_k(x)$
+
+  \begin{figure*}[h]
+  \centering
+  \includegraphics[scale=0.45]{./figures/new/nomenclature_overlaps.png}
+  \caption{Figure (a) represents an input aggregate of shape $\Lambda$. The white cube represents the output file that can be written completely and the other blue blocks represent incomplete files. Figure (b) shows how the different volumes are indexed following the buffer order. Here the buffer order is the storage order. Another way of naming volumes is by using the decimal value or their positions, for example (0,0,1) is block 1, (1,1,0) is block 6.
+  }
+  \label{fig:nomenclature_overlaps}
+  \end{figure*}
+
+  At step $x$, for $B(x)$ and the corresponding $\Omega(x)$ and $\Theta(x)$, we define the size of each volume (in number of voxels) as follows:
+  \noindent $F_1 = (0,0,1) \Omega_k min(B_j, \Theta_j) min(B_i, \Theta_i)$ \\
+  $F_2 = (0,1,0) = \Theta_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i)$ \\
+  $F_3 = (0,1,1) = \Omega_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i)$ \\
+  $F_4 = (1,0,0) = \Theta_k \Theta_j max(0, min(B_i-\Theta_i, \Omega_i))$ \\
+  $F_5 = (1,0,1) = \Omega_k \Theta_j max(0, min(B_i-\Theta_i, \Omega_i))$ \\
+  $F_6 = (1,1,1) = \Theta_k \Omega_j max(0, min(B_i-\Theta_i, \Omega_i))$ \\
+  $F_7 = (1,1,0) = \Omega_k \Omega_j max(0, min(B_i-\Theta_i, \Omega_i))$ \\
+
+  For the sake of clarity we did not write the $(x)$ suffix ($B$ means $B(x)$).
+  Also, we are only interested in the maximum amount of memory we would have to keep.
+  To that aim, we will not evaluate the above volume formulas for each $x$ but only replace $\Omega_k(x)$ by its maximum and replace it in the formulas.
+  By definition of $\Omega_k(x)$ an upper bound is $O_k$ but one can find the exact maximum value by computing $\Omega_k(x)$ for all $x$, for each dimension $k$.
+
+  % on en est là
+  According to the naive buffer ordering, the maximum amount of volumes to keep during the execution is:
+  $$\Sigma = (G_1 + (n_{x_1}-1)(G_2 + G_3) + G_4(N_{x_2}-1) + B_iB_jB_k)\alpha$$
+  With $x_1$ the second dimension of the maximum overlap size and $x_2$ the dimension of the third maximum overlap size and $G_n$ is the value of the overlap $F_x$ in the dimension of the $n^{th}$ biggest overlap.
+  $\alpha$ is the number of bytes per voxel i.e. the data type of the input and output files.
+  For the sake of simplicity we assume that the data types of all files are the same.
+
+  The overlap vary across buffers which implies that the values of $\Omega$ and $\Theta$ will vary, too.
+  In order to take the upper bound of $\Sigma$, we need to replace $\Omega$ by its upper bound or its real maximum value and then adjust the $\Theta$ values according to $\Theta_x = \Lambda_x - \Omega_x$.
+  To find its real maximum value one can compute all its possible values knowing that $\Omega_x = n\Delta_xmod(O_x)$.
 
   \subsection{Part I}
   \noindent $f_1 = \Omega_k B_j B_i = \Omega_k B_j$ \\
