@@ -32,27 +32,27 @@
 \newlabel{fig:case_2_1}{{8}{5}}
 \@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Illustration of the different overlaping areas in 2D. The blue area is called the $a$ area, the red area is called the $b$ area and we call $c$ area the green one. }}{5}}
 \newlabel{fig:areasabc}{{9}{5}}
-\@writefile{loa}{\contentsline {algorithm}{\numberline {2}{\ignorespaces old Pseudocode of the ``keep" algorithm}}{5}}
-\newlabel{algo:getbuffershape}{{2}{5}}
+\@writefile{loa}{\contentsline {algorithm}{\numberline {2}{\ignorespaces Pseudocode of the ``keep" algorithm in 3D}}{5}}
+\newlabel{algo:keep_algorithm_3D}{{2}{5}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-K}}Special case of non optimality}{5}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-L}}Impact of the buffer order on performance}{5}}
 \@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces  Left side: Extending the buffer to the next input length. Right side: Extending the buffer to the next output length. The crosses indicates the number of seeks. As we can see, extending the buffer to the next output shape incurs a lot of seeks in the next input file when loading the buffer. As the input file is incomplete, there is no extra data, therefore the keep strategy cannot be used. }}{6}}
 \newlabel{fig:extendingbuffers}{{10}{6}}
-\@writefile{loa}{\contentsline {algorithm}{\numberline {3}{\ignorespaces Pseudocode of the ``keep" algorithm in 3D}}{6}}
-\newlabel{algo:keep_algorithm}{{3}{6}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-K}}Special case of non optimality}{6}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-L}}Impact of the buffer order on performance}{6}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-M}}Nomenclature}{6}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-N}}A ``naive" buffer ordering}{6}}
 \@writefile{lof}{\contentsline {figure}{\numberline {11}{\ignorespaces  Comparison of a bad buffer ordering (left side) against a good buffer ordering (right side), given an overlap in the $k$ dimension. The red area represents the amount of extra data kept in memory after loading the third buffer. The right side order allowed to release the extra data from the first buffer after reading the second buffer. }}{7}}
 \newlabel{fig:goodorderingbadordering}{{11}{7}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-M}}Nomenclature}{7}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-N}}A ``naive" buffer ordering}{7}}
+\@writefile{lof}{\contentsline {figure}{\numberline {12}{\ignorespaces Figure (a) represents an input aggregate of shape $\Lambda $. The white cube represents the data that can be written directly into output files and the other blue blocks represent incomplete files. Figure (b) shows how the different volumes are indexed following the buffer order. Here the buffer order is the storage order. Another way of naming volumes is by using the decimal value or their positions, for example (0,0,1) is block 1, (1,1,0) is block 6. }}{7}}
+\newlabel{fig:nomenclature_overlaps}{{12}{7}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-O}}Extension of the buffer to match $\Lambda $}{7}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-P}}Extension of the buffer beyond $\Lambda $}{7}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-Q}}Putting all together}{7}}
 \bibdata{Bibliography}
 \bibcite{seqalgorithms}{1}
-\@writefile{lof}{\contentsline {figure}{\numberline {12}{\ignorespaces Figure (a) represents an input aggregate of shape $\Lambda $. The white cube represents the data that can be written directly into output files and the other blue blocks represent incomplete files. Figure (b) shows how the different volumes are indexed following the buffer order. Here the buffer order is the storage order. Another way of naming volumes is by using the decimal value or their positions, for example (0,0,1) is block 1, (1,1,0) is block 6. }}{8}}
-\newlabel{fig:nomenclature_overlaps}{{12}{8}}
 \@writefile{lof}{\contentsline {figure}{\numberline {13}{\ignorespaces On both figures the solid black borders blocks are buffers and the dotted red blocks are output files. On figure (a) an overlap in the first buffer order dimension is shown. One can see that each buffer recycles the previous extra data such that one never store more that the size of a buffer plus the size of $F_1$ in memory during the resplit process. Figure (b) shows that an overlap in the second dimension of the buffer order has to be kept in memory $b_k$ times with $b_k$ the number of buffers in the $k^{th}$ dimension. This can be extended to 3D by adding the overlaps in the third dimension of buffer order $N_s$ times with $N_s$ the number of buffers in a buffer slice. }}{8}}
 \newlabel{fig:naive_buffer_order}{{13}{8}}
+\@writefile{lof}{\contentsline {figure}{\numberline {14}{\ignorespaces Figure (a). Figure (b). }}{8}}
+\newlabel{fig:g_s}{{14}{8}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-Q}}Putting all together}{8}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-R}}Usage and support for MINC/Nifti file formats}{8}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-S}}Comparison with previous work}{8}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-T}}Solution of the ordering problem}{8}}
@@ -60,20 +60,16 @@
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-V}}Distributed keep algorithm}{8}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-W}}Improvements}{8}}
 \bibstyle{ieeetr}
-\@writefile{lof}{\contentsline {figure}{\numberline {14}{\ignorespaces Figure (a). Figure (b). }}{9}}
-\newlabel{fig:g_s}{{14}{9}}
 \@writefile{toc}{\contentsline {section}{References}{9}}
-\@writefile{toc}{\contentsline {section}{Appendix\nobreakspace  A: Formula for buffer extension}{9}}
+\@writefile{toc}{\contentsline {section}{Appendix\nobreakspace  A: Formulas for buffer extension}{9}}
 \newlabel{FormulasKeep}{{A}{9}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {A-A}}Overlap volume memory sizes}{9}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {A-B}}Maximum amount of overlap to keep in memory}{9}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {A-C}}Part I}{9}}
-\@writefile{loa}{\contentsline {algorithm}{\numberline {4}{\ignorespaces tmp}}{9}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {A-D}}Part II}{9}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {A-E}}Part III}{9}}
-\@writefile{loa}{\contentsline {algorithm}{\numberline {5}{\ignorespaces tmp}}{10}}
-\@writefile{loa}{\contentsline {algorithm}{\numberline {6}{\ignorespaces tmp}}{10}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {A-F}}Part IV}{10}}
-\@writefile{loa}{\contentsline {algorithm}{\numberline {7}{\ignorespaces tmp}}{10}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {A-G}}Part V}{10}}
-\@writefile{loa}{\contentsline {algorithm}{\numberline {8}{\ignorespaces tmp}}{10}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {A-C}}Keeping f1}{9}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {A-D}}Keeping f3}{9}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {A-E}}Keeping f2}{9}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {A-F}}Increasing f1, f2, f3 to F1, F2, F3}{9}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {A-G}}Keeping F5, F6, F7}{9}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {A-H}}Keeping F4}{9}}
+\@writefile{loa}{\contentsline {algorithm}{\numberline {3}{\ignorespaces Pseudocode the buffer extension algorithm}}{10}}
+\newlabel{algo:buffer_extension}{{3}{10}}

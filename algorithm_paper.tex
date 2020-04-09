@@ -276,7 +276,7 @@ Again, if we can stretch the buffer such that $B_x = R_x$ in the dimension $x$ o
 \end{figure*}
 
 \subsection{Pseudo-code of the algorithm}
-The algorithm is described in Algorithm \ref{algo:getbuffershape}. \\
+The algorithm is described in Algorithm \ref{algo:keep_algorithm_3D}. \\
 
 Details:
 \begin{itemize}
@@ -307,48 +307,22 @@ Nomenclature:
 \end{itemize}
 
 \begin{algorithm}[h]
-  \caption{old Pseudocode of the ``keep" algorithm}
+  \caption{Pseudocode of the ``keep" algorithm in 3D}
 
   \begin{algorithmic}[1]
-
-    \STATE \textbf{Inputs}: $m$, $\Lambda$, $B$
-
-    \STATE $m' \gets m$
-
-    \FOR {$d$ in $dims$}
-      \IF{$m' >= \textrm{maxMemoryCost}(\textrm{B}.add(\Lambda_{dim}), dim)$}
-        \STATE $\textrm{B.append}(\Lambda_{dim})$
-      \ENDIF
-      \IF{$\textrm{maxMemoryCost}(...\textrm{B}, 1) <= m' < \textrm{maxMemoryCost}(\textrm{B}.add(\Lambda_{dim}, dim)$}
-        \STATE $maxnbcols = \frac{m'}{\textrm{cost}}$
-	      \STATE $\textrm{buffershape.append}(maxnbcols)$
-      \ENDIF
-      \IF{$m' < \textrm{maxMemoryCost}(\textrm{B}.add(1, dim)$}
-        \STATE $\textrm{nb dims so far = (dim - 1)}$
-        \STATE $\textrm{nb dims left = nbdims - nb dims so far}$
-        \STATE $\textrm{buffershape} = \textrm{buffershape} + \textrm{ones(nbDimsLeft)}$
-      \ENDIF
-    \ENDFOR
-
-    \STATE $\textrm{maxIndexes = sortIndexOfMaximumFall(B)}$ % get axis of maximum overlap
-    \FOR{$maxIndex$ in $maxIndexes$}
-      \WHILE{$m' > \textrm{maxMemoryCost}(\textrm{B}.add(\Lambda_{maxIndex}), maxIndex)$}
-        \STATE $\textrm{B[maxIndex]} += \Lambda_{maxIndex}$
-      \ENDWHILE
-    \ENDFOR
-
+  \STATE in progress
   \end{algorithmic}
-  \label{algo:getbuffershape}
+  \label{algo:keep_algorithm_3D}
 
 \end{algorithm}
 
 \begin{algorithm}[h]
-  \caption{Pseudocode of the ``keep" algorithm in 3D}
+  \caption{Pseudocode the buffer extension algorithm}
 
   \begin{algorithmic}[1]
     \STATE $B = [\Lambda_k, 1, 1]$
 
-    % increase j to cover f1
+    % store f_1
     \STATE $ \phi = \lfloor \frac{m}{(\Omega_k + \Lambda_k)\alpha} \rfloor $
     \IF{$\phi > \Theta_j$}
       \STATE $B_j \leftarrow \Theta_j$
@@ -357,10 +331,74 @@ Nomenclature:
       \STATE return $B$ //stop algorithm
     \ENDIF
 
-    \STATE $\phi = $
+    % store f_3
+    \STATE $ \phi = \lfloor \frac{m - [\Omega_k \Theta_j](1-n)\alpha}{(n\Omega_k + \Lambda_k)\alpha} \rfloor $
+    \IF{$\phi > \Lambda_j$}
+      \STATE $B_j \leftarrow \Lambda_j$
+    \ELSE
+      \STATE $B_j \leftarrow \phi - 1$
+      \STATE return $B$ //stop algorithm
+    \ENDIF
+    \IF{$B_j > \Theta_j$}
+      \STATE $\textrm{storeF3} \leftarrow \textrm{True}$
+    \ELSE
+      \STATE $\textrm{storeF3} \leftarrow \textrm{False}$
+    \ENDIF
+
+    % store f_2
+    \IF{$f_1 > f_2$}
+      \STATE $g_1 = f_1$, $g_2 = f_2$, $g_3 = f_3$
+      \STATE $\phi = \lfloor \frac{m}{\alpha[\Omega_k \Theta_j + n \Lambda_k \Omega_j + \Lambda_j \Lambda_k]} \rfloor$
+      \STATE $A = F_1 + n(G_3 + F_2)$
+    \ELSE
+      \STATE $g_1 = f_3$, $g_2 = f_2$, $g_3 = f_1$
+      \STATE $\phi = \lfloor \frac{m}{\alpha (\Theta_k \Omega_j + n\Omega_k\Lambda_j + \Lambda_j \Lambda_k)} \rfloor$
+      \STATE $A = F_2 + n(G_3 + F_1)$
+    \ENDIF
+
+    \STATE $\Sigma = [g_1 + n(g_3 + g_2) + B_iB_jB_k]$
+    \IF{$\Sigma < m$}
+      \STATE continue
+    \ELSIF{$\Sigma = m$}
+      \STATE $\textrm{storeF2} \leftarrow \textrm{True}$
+      \STATE return $B$ //stop algorithm
+    \ELSE
+      \STATE $\textrm{storeF2} \leftarrow \textrm{False}$
+      \STATE return $B$ //stop algorithm
+    \ENDIF
+
+    % store F_1, F_2, F_3
+    \IF{$\phi > \Theta_i$}
+      \STATE $B_i \leftarrow \Theta_i$
+    \ELSE
+      \STATE $B_i \leftarrow \phi - 1$
+      \STATE return $B$ //stop algorithm
+    \ENDIF
+
+    % store F_5 F_6 F_7
+    \STATE $\phi = \lfloor \frac{\frac{m}{\alpha} - A + \Theta_iB}{(B + \Lambda_k\Lambda_j)} \rfloor$
+    \IF{$\phi > \Delta_i$}
+      \STATE $B_i \leftarrow \Delta_i$
+    \ELSE
+      \STATE $B_i \leftarrow \phi - 1$
+      \STATE return $B$ //stop algorithm
+    \ENDIF
+    \IF{$B_i > \Theta_i$}
+      \STATE $\textrm{storeF5F6F7} \leftarrow \textrm{True}$
+    \ELSE
+      \STATE $\textrm{storeF5F6F7} \leftarrow \textrm{False}$
+    \ENDIF
+
+    % store F_4
+    $\Sigma = [G(1) + n(G(3) + G(2)) + N(G(4) + G(5) + G(6) + G(7)) + B_iB_jB_k]\alpha$
+    \IF{$\Sigma > m$}
+      \STATE $\textrm{storeF4} \leftarrow \textrm{True}$
+    \ELSE
+      \STATE $\textrm{storeF4} \leftarrow \textrm{False}$
+    \ENDIF
 
   \end{algorithmic}
-  \label{algo:keep_algorithm}
+  \label{algo:buffer_extension}
 \end{algorithm}
 
 \subsection{Special case of non optimality}
@@ -457,8 +495,11 @@ If, for example, the ordering was $[k,j,i]$ (see Figure \ref{fig:naive_buffer_or
 $$\Sigma = (F_1 + n(F_2 + F_3) + N(F_4 + F_5 + F_6 + F_7) + B_iB_jB_k)\alpha$$
 
 in memory.
+$\alpha$ is the number of bytes per voxel i.e. the data type of the input and output files.
+For the sake of simplicity we assume that the data types of all files are the same.
 $n$ is the number of buffers in direction of the biggest overlap and $N$ is the number of buffers in a buffer slice in the direction of the second biggest overlap.
-Indeed, if we consider the overlap in the direction of the biggest overlap, direction $k$ on Figure \ref{fig:naive_buffer_order} (a), one can see that the extra data from the first buffer (in blue) is being recycled by the second buffer.
+
+If we consider the overlap in the direction of the biggest overlap, direction $k$ on Figure \ref{fig:naive_buffer_order} (a), one can see that the extra data from the first buffer (in blue) is being recycled by the second buffer.
 At any given time, the amount of memory used by the keep strategy is the size of the next buffer plus all the extra data that is pending for usage from the preceeding buffers.
 If there is no overlap in the $j$ dimension one can see that the amount of memory to keep between the buffers is only $F_1$,
 $\Sigma = (F_1 + B_iB_jB_k)\alpha$,
@@ -578,14 +619,14 @@ We can use this analysis to compute the buffer shape according to the following 
 
 \appendices
 
-  \section{Formula for buffer extension}
+  \section{Formulas for buffer extension}
   \label{FormulasKeep}
 
   \subsection{Overlap volume memory sizes}
-  This appendix presents the reasoning and computations leading to the formulas used for the keep algorithm to find the biggest buffer shape possible given $m$, the amount of memory available.
+  This appendix presents the reasoning and computations leading to the formulas used for the keep algorithm to find the biggest buffer shape possible given $m$, the amount of memory available. \\
 
-  At step $x$, for $B(x)$ and the corresponding $\Omega(x)$ and $\Theta(x)$, we define the size of each volume (in number of voxels) as follows:
-  \noindent $F_1 = (0,0,1) \Omega_k min(B_j, \Theta_j) min(B_i, \Theta_i)$ \\
+  At step $x$, for $B(x)$ and the corresponding $\Omega(x)$ and $\Theta(x)$, we define the size of each volume (in number of voxels) as follows: \\
+  $F_1 = (0,0,1) = \Omega_k min(B_j, \Theta_j) min(B_i, \Theta_i)$ \\
   $F_2 = (0,1,0) = \Theta_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i)$ \\
   $F_3 = (0,1,1) = \Omega_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i)$ \\
   $F_4 = (1,0,0) = \Theta_k \Theta_j max(0, min(B_i-\Theta_i, \Omega_i))$ \\
@@ -599,129 +640,94 @@ We can use this analysis to compute the buffer shape according to the following 
   By definition of $\Omega_k(x)$ an upper bound is $O_k$ but one can find the exact maximum value by computing $\Omega_k(x)$ for all $x$, for each dimension $k$.
 
   \subsection{Maximum amount of overlap to keep in memory}
-  According to the naive buffer ordering, the maximum amount of volumes to keep during the execution is:
+  According to the naive buffer ordering, the maximum amount of volumes to keep during the execution is (see Section x):
   $$\Sigma = (G_1 + n(G_2 + G_3) + N(G_4 + G_5 + G_6 + G_7) + B_iB_jB_k)\alpha$$
-  With $x_1$ the second dimension of the maximum overlap size and $x_2$ the dimension of the third maximum overlap size and $G_n$ is the value of the overlap $F_x$ in the dimension of the $n^{th}$ biggest overlap.
-  $\alpha$ is the number of bytes per voxel i.e. the data type of the input and output files.
-  For the sake of simplicity we assume that the data types of all files are the same.
 
-  \subsection{Part I}
-  \noindent $f_1 = \Omega_k B_j B_i = \Omega_k B_j$ \\
-  $\Sigma = (f_1 + B_iB_jB_k)\alpha$ \\
+  \subsection{Keeping f1}
+  \noindent $g_1 = f_1 = \Omega_k B_j B_i = \Omega_k B_j$ \\
+  $\Sigma = (g_1 + B_iB_jB_k)\alpha$ \\
   $\Sigma < m \Leftrightarrow (\Omega_k B_j + B_j \Lambda_k)\alpha < m$ \\
   $\Leftrightarrow B_j (\Omega_k + \Lambda_k) \alpha < m $ \\
-  $\Leftrightarrow B_j < \lfloor \frac{m}{(\Omega_k + \Lambda_k)\alpha} \rfloor$
+  $\Leftrightarrow B_j < \phi$, $\phi = \lfloor \frac{m}{(\Omega_k + \Lambda_k)\alpha} \rfloor$
 
-  \begin{algorithm}[h]
-    \caption{tmp}
-    \begin{algorithmic}[1]
-    \IF{$\phi > \Theta_j$}
-      \STATE $B_j \leftarrow \Theta_j$
-      \STATE continue
-    \ELSE
-      \STATE $B_j \leftarrow \phi - 1$
-      \STATE return $B$ //stop algorithm
-    \ENDIF
-    \end{algorithmic}
-  \end{algorithm}
+  \subsection{Keeping f3}
+  \noindent $g_1 = f_1 = \Omega_k\Theta_jB_i = \Omega_k\Theta_j $ \\
+  $g_3 = f_3 = \Omega_k (B_j - \Theta_j)B_i = \Omega_k(B_j - \Theta_j)$ \\
+  $\Sigma = [g_1 + ng_3 + B_iB_jB_k]\alpha$ \\
+  $\Sigma = [\Omega_k\Theta_j + n[\Omega_k(B_j -\Theta_j)] + B_j\Delta_k]\alpha$
+  $\Sigma = [\Omega_k \Theta_j](1-n)\alpha + B_j(n\Omega_k + \Lambda_k)\alpha$
+  $\Sigma < m \Leftrightarrow B_j < \lfloor \frac{m - [\Omega_k \Theta_j](1-n)\alpha}{(n\Omega_k + \Lambda_k)\alpha} \rfloor$
 
-  \subsection{Part II}
-  \noindent $f_2 = \Omega_k (B_j - \Theta_j)B_i = \Omega_k(B_j - \Theta_j)$ \\
-  $f_1 = \Omega_k\Theta_jB_i = \Omega_k\Theta_j $ \\
-  $\Sigma = [f_1 + (n_{x_1} - 1)f_2 + B_iB_jB_k]\alpha$ \\
-  $\Sigma = [\Omega_k\Theta_j + (n_{x_1}-1)[\Omega_k(B_j -\Theta_j)] + B_j\Delta_k]\alpha$ \\
-  $\Sigma = \alpha\Omega_k\Theta_j(2-n_{x_1})+(n_{x_1}-1)B_j(\Omega_k+\Delta_k)\alpha$ \\
-  $\Sigma < m \Leftrightarrow B_j < \lfloor \frac{m - \Omega_k\Theta_j(2-n_{x_1})\alpha}{(n_{x_1}-1)(\Omega_k+\Lambda_k)\alpha} \rfloor $
-
-  \begin{algorithm}[h]
-    \caption{tmp}
-    \begin{algorithmic}[1]
-    \IF{$\phi > \Delta_j$}
-      \STATE $B_j \leftarrow \Delta_j$
-      \STATE continue
-    \ELSE
-      \STATE $B_j \leftarrow \phi - 1$
-      \STATE return $B$ //stop algorithm
-    \ENDIF
-    \end{algorithmic}
-  \end{algorithm}
-
-  \subsection{Part III}
+  \subsection{Keeping f2}
   \noindent $f_1 = \Omega_k \Theta_j B_i = \Omega_k \Theta_j $ \\
   $f_2 = \Omega_k \Omega_j B_i = \Omega_k \Omega_j $ \\
   $f_3 = \Theta_k \Omega_j B_i = \Theta_k \Omega_j $ \\
 
-  \noindent $\Sigma = (f_1 + (n_{x_1} - 1)(f_2 + f_3) + B_iB_jB_k)\alpha$
-  $\Sigma = [ \Omega_k\Theta_j + (n_{x_1} - 1)[\Omega_k \Omega_j + \Theta_k \Omega_j] + \Delta_k\Delta_j]\alpha$ \\
-  $\Sigma = [\Omega_k\Theta_j + (n_{x_1}-1)\Omega_j\Lambda_k + \Lambda_j\Lambda_k]\alpha$
+  We are asking ourselves if we can keep $F_2$.
+  Remember that we only store all $F_2$ or nothing as it only saves 1 seek in 2D.
+  If $F_1 > F_2$ we compute $\Sigma$ with $g_1 = f_1$, $g_2 = f_2$.
+  In the other case, $g_3 = f_3$ and $g_1 = f_2$, $g_2 = f_3$, $g_3 = f_3$.
 
-  \begin{algorithm}[h]
-    \caption{tmp}
-    \begin{algorithmic}[1]
-    \IF{$\Sigma < m$}
-      \STATE continue
-    \ELSIF{$\Sigma = m$}
-      \STATE $\textrm{storeF3} \leftarrow \textrm{True}$
-      \STATE return $B$ //stop algorithm
-    \ELSE
-      \STATE $\textrm{storeF3} \leftarrow \textrm{False}$
-      \STATE return $B$ //stop algorithm
-    \ENDIF
-    \end{algorithmic}
-  \end{algorithm}
+  $$\Sigma = [g_1 + n(g_3 + g_2) + B_iB_jB_k]$$
 
-  \subsection{Part IV}
-  The volumes $F_1$, $F_2$ and $F_3$ are defined as follows:
+  \subsection{Increasing f1, f2, f3 to F1, F2, F3}
   \noindent $F_1 = \Omega_k \Theta_j B_i$ \\
-  $F_2 = \Omega_k \Omega_j B_i$ \\
-  $F_3 = \Theta_k \Omega_j B_i$ \\
+  $F_2 = \Theta_k \Omega_j B_i$ \\
+  $F_3 = \Omega_k \Omega_j B_i$ \\
 
-  \noindent $\Sigma = [ F_1 + (n_{x_1} - 1)(F_2 + F_3) + B_iB_jB_k ]$ \\
-  $\Sigma = [\Omega_k\Theta_jB_i + (n_{x_1} - 1)[\Omega_k\Omega_jB_i + \Theta_k\Omega_jB_i] + B_i\Delta_j\Delta_k]\alpha$ \\
-  $\Sigma = [\Omega_k\Theta_j + (n_{x_1}-1)\Omega_j\Lambda_k + \Lambda_j\Lambda_k]B_i\alpha$ \\
-  $\Sigma < m \Leftrightarrow B_i < \lfloor \frac{m}{[\Omega_k\Theta_j + (n_{x_1}-1)\Omega_j\Lambda_k + \Lambda_j\Lambda_k]\alpha} \rfloor$
+  We are scaling the overlap areas from previous step into volumes.
+  Therefore the buffer order is the same than at the previous step. \\
 
-  \begin{algorithm}[h]
-    \caption{tmp}
-    \begin{algorithmic}[1]
-    \IF{$\phi > \Theta_i$}
-      \STATE $B_i \leftarrow \Theta_i$
-      \STATE continue
-    \ELSE
-      \STATE $B_i \leftarrow \phi - 1$
-      \STATE return $B$ //stop algorithm
-    \ENDIF
-    \end{algorithmic}
-  \end{algorithm}
+  If $k$ is the first buffer order ($g_1 =f_1$): \\
+  $\Sigma = [G_1 + n(G_3 + G_2) + B_iB_jB_k]\alpha$ \\
+  $\Sigma = [\Omega_k \Theta_j B_i + n(\Omega_k \Omega_j B_i + \Theta_k \Omega_j B_i) + B_iB_jB_k]$ \\
+  $\Sigma = B_i\alpha[\Omega_k \Theta_j + n \Lambda_k \Omega_j + \Lambda_j \Lambda_k]$ \\
+  $\Sigma < m \Leftrightarrow B_i < \lfloor \frac{m}{\alpha[\Omega_k \Theta_j + n \Lambda_k \Omega_j + \Lambda_j \Lambda_k]} \rfloor$ \\
 
-  \subsection{Part V}
-  \noindent $F_1 = \Omega_k \Theta_j \Theta_i$ \\
-  $F_2 = \Omega_k \Omega_j \Theta_i$ \\
-  $F_3 = \Theta_k \Omega_j \Theta_i$ \\
-  $F_4 = \Delta_k \Delta_j \Omega_i$ \\
+  If $j$ is the first buffer order ($g_1 =f_2$): \\
+  $\Sigma = [G_1 + n(G_3 + G_2) + B_iB_jB_k]\alpha$ \\
+  $\Sigma = [\Theta_k \Omega_j B_i + n (\Omega_k \Omega_j B_i + \Omega_k \Theta_j B_i) + B_iB_jB_k] \alpha$ \\
+  $\Sigma = B_i \alpha (\Theta_k \Omega_j + n\Omega_k\Lambda_j + \Lambda_j \Lambda_k)$ \\
+  $\Sigma < m \Leftrightarrow B_i < \lfloor \frac{m}{\alpha (\Theta_k \Omega_j + n\Omega_k\Lambda_j + \Lambda_j \Lambda_k)} \rfloor$
 
-  \noindent $\Sigma = (F_1 + (n_{x_1}-1)(F_2 + F_3) + F_4(N_{x_2}-1) + B_iB_jB_k)\alpha$ \\
-  $\Sigma = [\Omega_k\Theta_j\Theta_i + (n_{x_1}-1)\Omega_j\Theta_i\Lambda_k + (N_{x_2}-1)\Lambda_k\Lambda_j\Omega_i]\alpha$
+  \subsection{Keeping F5, F6, F7}
+  \noindent $F_1 = \Omega_k \Theta_j B_i$ \\
+  $F_2 = \Theta_k \Omega_j B_i$ \\
+  $F_3 = \Omega_k \Omega_j B_i$ \\
+  $F_5 = \Omega_k \Theta_j (B_i-\Theta_i)$ \\
+  $F_6 = \Theta_k \Omega_j (B_i-\Theta_i)$ \\
+  $F_7 = \Omega_k \Omega_j (B_i-\Theta_i)$ \\
 
-  \begin{algorithm}[h]
-    \caption{tmp}
-    \begin{algorithmic}[1]
-    \STATE $B_i = \Lambda_i$
-    \IF{$\Sigma < m$}
-      \STATE continue
-    \ELSIF{$\Sigma = m$}
-      \STATE $\textrm{storeF4} \leftarrow \textrm{True}$
-      \STATE return $B$ //stop algorithm
-    \ELSE
-      \STATE $\textrm{storeF4} \leftarrow \textrm{False}$
-      \STATE return $B$ //stop algorithm
-    \ENDIF
-    \end{algorithmic}
-  \end{algorithm}
+  $\Sigma = [G_1 + n(G_3 + G_2) + N(G_5 + G_6 + G_7) + B_iB_jB_k]\alpha$ \\
 
-  Not setting $B_i = \Lambda_i$ would be equivalent to letting $B_i = \Theta_i$.
-  The two options are equivalent if we do not store $F_4$.
-  In one case we write with seeks and in the other case we read with seeks.
-  However, we chose to read more, hence setting $B_i = \Lambda_i$ but writing the extra data from $F_4$ directly.
+  We define A and B as follows: \\
+  $A = G_1 + n(G_3 + G_2)$ \\
+  $B = (\Omega_k \Theta_j + \Theta_k \Omega_j + \Omega_k \Omega_j)N$ \\
+  $\Sigma = [A - \Theta_iB + B_iB + \Lambda_k \Lambda_j B_i]\alpha$ \\
+  $\Sigma < m \Leftrightarrow B_i < \lfloor \frac{\frac{m}{\alpha} - A + \Theta_iB}{(B + \Lambda_k\Lambda_j)} \rfloor$
+
+  \subsection{Keeping F4}
+  We do not know which one of $F_4$, $F_1$, $F_2$ is the biggest overlap.
+  They are 9 possibilities for the buffer order.
+  If the order of biggest overlap is $i, j, k$ (Figure \ref{fig:g_s} (b)) as opposed to $k, j, i$ (Figure \ref{fig:g_s} (a)), the volume indices change.
+  Our goal is to link the good $G$ to its corresponding $F$ volume size (see Figure \ref{fig:g_s}).
+  To that aim we know that: \\
+  1) Given $\beta{old}$ the base of storage order ($i,j,k$) we have the $F$ indices.
+    $\beta{old} = (
+    \begin{bmatrix} 0 \\ 0 \\ 1 \end{bmatrix},
+    \begin{bmatrix} 0 \\ 1 \\ 0 \end{bmatrix},
+    \begin{bmatrix} 1 \\ 0 \\ 0 \end{bmatrix})$ \\
+  2) Any block index $(a,b,c)$ is in fact $(a*\beta[0] + b*\beta[1] + c*\beta[2])$ with $\beta$ the base used for indexing blocks. \\
+  3) Saying that the buffer order is $i, j, k$ is equivalent to indexing the blocks using the base $(k,j,i)$. \\
+
+  Therefore, let us say that we have a certain buffer order.
+  Any index of a block $G$ in this base can be written $(a_{new}*\beta_{new}[0] + b_{new}*\beta_{new}[1] + c_{new}*\beta[2]_{new})$.
+  To find the corresponding volume in the storage order (because we know the $F$ values) we can replace $\beta_{new}$ by $\beta_{old}$.
+  The only information we need is $\beta_{new}$. This can be found by ordering $F_1, F_2, F_4$ by their volume size.
+  If $F_1$ is the biggest volume, $\beta_{new}[0] = \begin{bmatrix} 0 \\ 0 \\ 1 \end{bmatrix}$ for example.
+  At this point we just have to fill in a dictionary $G(i)$ associating index $i$ to the corresponding volume size.
+  We then replace $G$ by $G(i)$ in $\Sigma = [G_1 + n(G_3 + G_2) + N(G_4 + G_5 + G_6 + G_7) + B_iB_jB_k]\alpha$.
+  As for $F_2$ we either store all $F_4$ or we do not store it.
+  If $\Sigma < m$ then we can store $F_4$ and move on to the final step of the algorithm. \\
 
 \end{document}
