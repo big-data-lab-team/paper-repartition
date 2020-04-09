@@ -46,12 +46,36 @@ multidimensional, array, split, merge, resplit, IO, processing, Dask, Python
 \end{IEEEkeywords}
 
 %----------------------------------------
+\section*{Nomenclature}
+%----------------------------------------
+\begin{itemize}
+  \item $A_i$: Area of the $i^{th}$ component
+  \item $m$: Amount of main memory available for the buffer at initialization
+  \item $m'$: Amount of main memory available for the buffer during the algorithm execution
+  \item $\textrm{iterable}[i]$: Access the $i^{th}$ element of an iterable
+  \item $B = (B_i, B_j, B_k)$: Shape of the buffer
+  \item $(B_i B_j B_k)$: Size of the buffer in voxels
+  \item $R_i, R_j, R_k$: Length of the reconstructed image in the $i^{th}$ dimension
+  \item $I_i, I_j, I_k$: Length of an input file in the $i^{th}$ dimension
+  \item $O_i, O_j, O_k$: Length of an output file in the $i^{th}$ dimension
+  \item $C_i(x), C_j(x), C_k(x)$: Overlap size in voxels in the $i^{th}$ dimension, when loading the $t^{th}$ buffer.
+  \item $\Lambda_i, \Lambda_j, \Lambda_k$: Length of an input aggregate in the $i^{th}$ dimension
+  % \item $\Omega_i, \Omega_j, \Omega_k$: Length of an output aggregate in the $i^{th}$ dimension
+  \item $b_i, b_j, b_k = \frac{R_i}{B_i}$: The number of buffers in the $i^{th}$ dimension in the reconstructed image
+  \item $f_1, f_2, f_3$: Names of the overlap areas in 2D
+  \item $F_1, F_2, F_3, F_4$: Names of the overlap volumes in 3D
+  \item $ N_s $: Number of buffers in a slice
+  \item $ n_s $: Number of buffers read so far from the current slice.
+  \item $\alpha$: Number of bytes per voxel i.e. the data type of the input and output files. For the sake of simplicity we assume that the data types of all files are the same.
+\end{itemize}
+
+%----------------------------------------
 \section*{Introduction}
 %----------------------------------------
 
 \subsection{Context}
 
-With the improvement of aquisition methods in several scientific domains like health sciences, geology and astrophysics, new big data challenges have emerged. It includes processing a big amount of data, as well as processing very big files like ultra high resolution images. An example of a ultra high resolution image in the neuroscience field is Big Brain, a model of the brain providing microscopic data (20 micrometers) for modeling and simulation. Most image processing pipelines process only specific ROI (Region Of Interest) or process data by block. At the end of such pipelines, merging back those blocks into one reconstructed image may be required as well. The problem is that naive algorithms perform poorly due to the amount of seeks occuring on disk\cite{seqalgorithms}. Previous work in \cite{seqalgorithms} introduced two types of sequential algorithms to split and merge multidimensional arrays: the ``clustered" and ``multiple" strategies. To the best of our knowedge however, no algorithm has been proposed for the resplit task. Moreover, the split and merge tasks are special cases of the resplit task, which gives an opportunity to solve the three problems at once. It is easy to see that the ``clustered" and ``multiple" strategies are non optimal for the resplit task, that is why we searched for another strategy.
+With the improvement of acquisition methods in several scientific domains like health sciences, geology and astrophysics, new big data challenges have emerged. It includes processing a big amount of data, as well as processing very big files like ultra high resolution images. An example of a ultra high resolution image in the neuroscience field is Big Brain, a model of the brain providing microscopic data (20 micrometers) for modeling and simulation \cite{Amunts1472}. Most image processing pipelines process only specific ROI (Region Of Interest) or process data by block. At the end of such pipelines, merging back those blocks into one reconstructed image may be required as well. The problem is that naive algorithms perform poorly due to the amount of seeks occuring on disk\cite{seqalgorithms}. Previous work in \cite{seqalgorithms} introduced two types of sequential algorithms to split and merge multidimensional arrays: the ``clustered" and ``multiple" strategies. To the best of our knowedge however, no algorithm has been proposed for the resplit task. Moreover, the split and merge tasks are special cases of the resplit task, which gives an opportunity to solve the three problems at once. It is easy to see that the ``clustered" and ``multiple" strategies are non optimal for the resplit task, that is why we searched for another strategy.
 
 \subsection{Problem definition}
 
@@ -70,13 +94,12 @@ We consider that a seek occurs either when opening a file or seeking into a file
 Let us consider a basic sequential resplit algorithm: One can repeatedly read the maximum amount of data possible from the input files into a buffer stored in main memory, and then write this buffer down into the output files requiring this data, until all output files have been completely written.
 This resplit algorithm is described in Algorithm \ref{algo:generalresplit}. \\
 
-The algorithm described in Algorithm \ref{algo:generalresplit} takes a list of input and output files $inFiles$ and $outFiles$ as parameters, as well as the amount of memory $m$ available in RAM for the buffer and the list of the buffers' coordinates. We call $m'$ the amount of memory available in the buffer at a given time during the execution of the algorithm ($m'=m$ at initialization). The list of buffers' coordinates contains the coordinates of each buffer to be loaded in the referential of the reconstructed image. \\
-
+The algorithm described in Algorithm \ref{algo:generalresplit} takes a list of input and output files $inFiles$ and $outFiles$ as parameters, as well as the amount of memory $m$ available in RAM for the buffer and the list of the buffers' coordinates. We call $m'$ the amount of memory available in the buffer at a given time during the execution of the algorithm ($m'=m$ at initialization). The list of buffers' coordinates contains the coordinates of each buffer to be loaded in the referential of the reconstructed image.
 The algorithm successively loads as much data as it can from the input files into the buffer and write it down to the output files that are supposed to contain this data.
 Although we could use a naive shape for the buffer, we can use the input and output files shapes to elaborate more efficient strategies as we will see in the next sections.
 The algorithm ends when all buffers have been read.
-Therefore, the buffers must cover the whole reconstructed image such that when the algorithm end all the output files have been completely written.
-For the latter statement to be true, we also need to ensure that all data read from input files are either stored in RAM or directly written, such that all the output files are completely written at the end of the algorithm. \\
+Therefore, the buffers must cover the whole reconstructed image such that when the algorithm ends all the output files have been completely written.
+Moreover, we must also ensure that all the data read from input files are either stored in RAM or directly written, such that all the output files are completely written at the end of the algorithm. \\
 
 Given Algorithm \ref{algo:generalresplit}, the optimization problem that we want to solve can be stated as follows:
 Given the amount of main memory available $m$, as well as the shapes of the input and output files $I$ and $O$, how to select the best buffer shape $B$ which will minimize the number of seeks that take place during reading and writing? \\
@@ -105,7 +128,7 @@ For example a 3D array with dimensions i, j and k would be written on disk by wr
 
 \begin{figure}[h!]
 \centering
-\includegraphics[scale=0.2]{./figures/reconstructed_img_divided.png}
+\includegraphics[scale=0.4]{./figures/reconstructed_img_divided.png}
 \caption{Illustration of the reconstructed image divided into input files at the initialization of the resplit algorithm.
 }
 \label{fig:reconstructed_img_divided}
@@ -113,7 +136,7 @@ For example a 3D array with dimensions i, j and k would be written on disk by wr
 
 \begin{figure*}[h!]
 \centering
-\includegraphics[scale=0.2]{./figures/column_order.png}
+\includegraphics[scale=0.3]{./figures/column_order.png}
 \caption{Illustration of the column-order storage of voxels in a file.
 }
 \label{fig:column_order}
@@ -144,7 +167,7 @@ The algorithm presented in this paper is called the ``keep" algorithm, as it rel
 The ``keep" algorithm is an algorithm to find the best buffer shape for a resplit.
 
 \subsection{The ``keep" strategy}
-At initialization, we assign a shape $B = (0, 0,..., 0)$ for the buffer.
+At initialization, we assign a shape $B = (1, 1,..., 1)$ for the buffer.
 We will then stretch the buffer in each dimension until all the available memory $m$ has been used while keeping the number of seeks as small as possible. \\
 
 Let us consider the first dimension $f$ that we increase: Ideally, one wants the buffer to cover both the input file and the output file, $I_f$ and $O_f$, such that we read and write in one seek each.
@@ -157,7 +180,7 @@ An output file that is involved in an overlap is called an ``incomplete output f
 
 \begin{figure}[h]
 \centering
-\includegraphics[scale=0.2]{./figures/overlap.png}
+\includegraphics[scale=0.3]{./figures/overlap.png}
 \caption{Illustration of the concept of extra data with a 2D case. In this example the black bordered rectangles represent the input files and the gray bordered rectangles represent the output files. After having read the red buffer we can see that the output file covered by the light red area can be written directly. After having written the data from the light red area however, we are left with the dark red, dotted area which represents some extra data we would like to keep in memory until we read the rest of the incomplete ouptut files in order to read the incomplete output files with one seek.
 }
 \label{fig:overlap}
@@ -165,7 +188,7 @@ An output file that is involved in an overlap is called an ``incomplete output f
 
 \begin{figure*}[h]
 \centering
-\includegraphics[scale=0.2]{./figures/keep_strategy.png}
+\includegraphics[scale=0.3]{./figures/keep_strategy.png}
 \caption{Illustration of the keep strategy with a 2D case. In this example the black bordered rectangles represent the input files and the gray bordered rectangles represent the output files. As shown on the left figure, the keep strategy consists in reading more than one output file (light red area) into the first buffer. Then the first output file is written and the dark red area is kept in memory. On the left figure the second buffer has been loaded. It allows to free part of the overlap in the $k$ direction (the green area) as the second file data is complete in main memory. The third output file has been read completely and can therefore be written. This lets the overlap in the $j$ direction (dark red area) in main memory for the next buffer.
 }
 \label{fig:keepstrategy}
@@ -233,30 +256,30 @@ An overlap occuring in the $k$ dimension would incur $B_k$ seeks as opposed to 1
 Note that the keep strategy is not useful if we cannot store the extra data in one direction completely (see Figure \ref{fig:case_2_1}). \\
 
 Let us define 3 overlaping areas, represented in Figure \ref{fig:areasabc}.
-The $a$ area is the overlap in the $k$ axis.
-The $b$ area is the upper right overlap which combines the overlaps in both axis.
-One can see the $b$ area as the continuity of the $a$ area.
-The $c$ area is the overlap in the $j$ axis only.
-The $a$ area becomes the $A$ volume in 3D, the $B$ volume corresponds to the $b$ area, etc. \\
+The $f_1$ area is the overlap in the $k$ axis.
+The $f_3$ area is the upper right overlap which combines the overlaps in both axis.
+One can see the $f_3$ area as the continuity of the $f_1$ area.
+The $f_2$ area is the overlap in the $j$ axis only.
+The $f_1$ area becomes the $F_1$ volume in 3D, the $F_2$ volume corresponds to the $f_2$ area, etc. \\
 
 \begin{figure}[h]
 \centering
-\includegraphics[scale=0.20]{./figures/areasabc.png}
+\includegraphics[scale=0.20]{./figures/new/f1f2f3areas.png}
 \caption{Illustration of the different overlaping areas in 2D.
-The blue area is called the $a$ area, the red area is called the $b$ area and we call $c$ area the green one.
+The blue area is called the $f_1$ area, the red area is called the $f_3$ area and we call $f_2$ area the green one.
 }
 \label{fig:areasabc}
 \end{figure}
 
-In terms of the number of seeks, $$\Omega_j > (\Lambda_j-\Omega_j) > 1 => \textrm{seeksIn(a)} > \textrm{seeksIn(b)} > \textrm{seeksIn(c)}$$ in 2D, and this stays true when increasing the number of dimensions.
-We must therefore use the memory available for stretching the buffer to store $a$ first, then $b$, and finally $c$.
-The same way that it is not useful to save part of the $c$ area as opposed to storing the whole $c$ area, it is not useful to inrease $B_j$ if $B_k < \Lambda_k$.
+In terms of the number of seeks, $$\Omega_j > (\Lambda_j-\Omega_j) > 1 => \textrm{seeksIn($f_1$)} > \textrm{seeksIn($f_3$)} > \textrm{seeksIn($f_2$)}$$ in 2D, and this stays true when increasing the number of dimensions.
+We must therefore use the memory available for stretching the buffer to store $f_1$ first, then $f_3$, and finally $f_2$.
+The same way that it is not useful to save part of the $f_2$ area as opposed to storing the whole $f_2$ area, it is not useful to inrease $B_j$ if $B_k < \Lambda_k$.
 Indeed, the number of seeks will be the same than without using the keep strategy.
-As the $b$ area is the continuity of the $a$ area in the $j$ direction, if the available buffer memory $m'$ allows to store the $b$ area but not the $b$ and $c$ areas together it seems that increasing $B_j$ from $\Omega_j$ to $\Lambda_j$ while storing only the $b$ area could save a lot of seeks. \\
+As the $f_3$ area is the continuity of the $f_1$ area in the $j$ direction, if the available buffer memory $m'$ allows to store the $f_3$ area but not the $f_3$ and $f_2$ areas together it seems that increasing $B_j$ from $\Omega_j$ to $\Lambda_j$ while storing only the $f_3$ area could save a lot of seeks. \\
 
-As a conclusion, we should increase the fastest moving dimension first to allow the reduction of the number of seeks in the $a$ and $b$ areas in the $k$ direction.
-Then we should increase $B_j$ as much as possible, while saving only $a$ and then $b$, even if we cannot cover it entirely.
-Finally, if we can store the whole $c$ area, we should do it before inreasing the $i$ dimension to prevent the 1 seek to be multiplied by $B_i$. \\
+As a conclusion, we should increase the fastest moving dimension first to allow the reduction of the number of seeks in the $f_1$ and $f_3$ areas in the $k$ direction.
+Then we should increase $B_j$ as much as possible, while saving only $f_1$ and then $f_3$, even if we cannot cover it entirely.
+Finally, if we can store the whole $f_2$ area, we should do it before inreasing the $i$ dimension to prevent the 1 seek to be multiplied by $B_i$. \\
 
 \subsection{Stretching beyond the input aggregate shape}
 Using small input and output file shapes, it is probable for the buffer to have been stretched to the input aggregate, which means that a good amount of RAM is still available.
@@ -275,37 +298,6 @@ Again, if we can stretch the buffer such that $B_x = R_x$ in the dimension $x$ o
 \label{fig:extendingbuffers}
 \end{figure*}
 
-\subsection{Pseudo-code of the algorithm}
-The algorithm is described in Algorithm \ref{algo:keep_algorithm_3D}. \\
-
-Details:
-\begin{itemize}
-  \item line 15: sort the axes in decreasing order of overlap cuboid size
-  \item line 16: for each dimension in this order, try to increase the buffer size
-  \item lines 17, 18: keep adding the length of an input aggregate in that dimension while there is memory left.
-\end{itemize}
-
-Nomenclature:
-\begin{itemize}
-  \item $A_i$: Area of the $i^{th}$ component
-  \item $m$: Amount of main memory available for the buffer at initialization
-  \item $m'$: Amount of main memory available for the buffer during the algorithm execution
-  \item $\textrm{iterable}[i]$: Access the $i^{th}$ element of an iterable
-  \item $B = (B_i, B_j, B_k)$: Shape of the buffer
-  \item $(B_i B_j B_k)$: Size of the buffer in voxels
-  \item $R_i, R_j, R_k$: Length of the reconstructed image in the $i^{th}$ dimension
-  \item $I_i, I_j, I_k$: Length of an input file in the $i^{th}$ dimension
-  \item $O_i, O_j, O_k$: Length of an output file in the $i^{th}$ dimension
-  \item $C_i(x), C_j(x), C_k(x)$: Overlap size in voxels in the $i^{th}$ dimension, when loading the $t^{th}$ buffer.
-  \item $\Lambda_i, \Lambda_j, \Lambda_k$: Length of an input aggregate in the $i^{th}$ dimension
-  % \item $\Omega_i, \Omega_j, \Omega_k$: Length of an output aggregate in the $i^{th}$ dimension
-  \item $b_i, b_j, b_k = \frac{R_i}{B_i}$: The number of buffers in the $i^{th}$ dimension in the reconstructed image
-  \item $f_1, f_2, f_3$: Names of the overlap areas in 2D
-  \item $F_1, F_2, F_3, F_4$: Names of the overlap volumes in 3D
-  \item $ N_s $: Number of buffers in a slice
-  \item $ n_s $: Number of buffers read so far from the current slice.
-\end{itemize}
-
 \begin{algorithm}[h]
   \caption{Pseudocode of the ``keep" algorithm in 3D}
 
@@ -314,91 +306,6 @@ Nomenclature:
   \end{algorithmic}
   \label{algo:keep_algorithm_3D}
 
-\end{algorithm}
-
-\begin{algorithm}[h]
-  \caption{Pseudocode the buffer extension algorithm}
-
-  \begin{algorithmic}[1]
-    \STATE $B = [\Lambda_k, 1, 1]$
-
-    % store f_1
-    \STATE $ \phi = \lfloor \frac{m}{(\Omega_k + \Lambda_k)\alpha} \rfloor $
-    \IF{$\phi > \Theta_j$}
-      \STATE $B_j \leftarrow \Theta_j$
-    \ELSE
-      \STATE $B_j \leftarrow \phi - 1$
-      \STATE return $B$ //stop algorithm
-    \ENDIF
-
-    % store f_3
-    \STATE $ \phi = \lfloor \frac{m - [\Omega_k \Theta_j](1-n)\alpha}{(n\Omega_k + \Lambda_k)\alpha} \rfloor $
-    \IF{$\phi > \Lambda_j$}
-      \STATE $B_j \leftarrow \Lambda_j$
-    \ELSE
-      \STATE $B_j \leftarrow \phi - 1$
-      \STATE return $B$ //stop algorithm
-    \ENDIF
-    \IF{$B_j > \Theta_j$}
-      \STATE $\textrm{storeF3} \leftarrow \textrm{True}$
-    \ELSE
-      \STATE $\textrm{storeF3} \leftarrow \textrm{False}$
-    \ENDIF
-
-    % store f_2
-    \IF{$f_1 > f_2$}
-      \STATE $g_1 = f_1$, $g_2 = f_2$, $g_3 = f_3$
-      \STATE $\phi = \lfloor \frac{m}{\alpha[\Omega_k \Theta_j + n \Lambda_k \Omega_j + \Lambda_j \Lambda_k]} \rfloor$
-      \STATE $A = F_1 + n(G_3 + F_2)$
-    \ELSE
-      \STATE $g_1 = f_3$, $g_2 = f_2$, $g_3 = f_1$
-      \STATE $\phi = \lfloor \frac{m}{\alpha (\Theta_k \Omega_j + n\Omega_k\Lambda_j + \Lambda_j \Lambda_k)} \rfloor$
-      \STATE $A = F_2 + n(G_3 + F_1)$
-    \ENDIF
-
-    \STATE $\Sigma = [g_1 + n(g_3 + g_2) + B_iB_jB_k]$
-    \IF{$\Sigma < m$}
-      \STATE continue
-    \ELSIF{$\Sigma = m$}
-      \STATE $\textrm{storeF2} \leftarrow \textrm{True}$
-      \STATE return $B$ //stop algorithm
-    \ELSE
-      \STATE $\textrm{storeF2} \leftarrow \textrm{False}$
-      \STATE return $B$ //stop algorithm
-    \ENDIF
-
-    % store F_1, F_2, F_3
-    \IF{$\phi > \Theta_i$}
-      \STATE $B_i \leftarrow \Theta_i$
-    \ELSE
-      \STATE $B_i \leftarrow \phi - 1$
-      \STATE return $B$ //stop algorithm
-    \ENDIF
-
-    % store F_5 F_6 F_7
-    \STATE $\phi = \lfloor \frac{\frac{m}{\alpha} - A + \Theta_iB}{(B + \Lambda_k\Lambda_j)} \rfloor$
-    \IF{$\phi > \Delta_i$}
-      \STATE $B_i \leftarrow \Delta_i$
-    \ELSE
-      \STATE $B_i \leftarrow \phi - 1$
-      \STATE return $B$ //stop algorithm
-    \ENDIF
-    \IF{$B_i > \Theta_i$}
-      \STATE $\textrm{storeF5F6F7} \leftarrow \textrm{True}$
-    \ELSE
-      \STATE $\textrm{storeF5F6F7} \leftarrow \textrm{False}$
-    \ENDIF
-
-    % store F_4
-    $\Sigma = [G(1) + n(G(3) + G(2)) + N(G(4) + G(5) + G(6) + G(7)) + B_iB_jB_k]\alpha$
-    \IF{$\Sigma > m$}
-      \STATE $\textrm{storeF4} \leftarrow \textrm{True}$
-    \ELSE
-      \STATE $\textrm{storeF4} \leftarrow \textrm{False}$
-    \ENDIF
-
-  \end{algorithmic}
-  \label{algo:buffer_extension}
 \end{algorithm}
 
 \subsection{Special case of non optimality}
@@ -437,11 +344,9 @@ We can stimulate this property by using small chunks such that we use buffer big
 %----------------------------------------
 \section*{A memory analysis of the keep strategy}
 %----------------------------------------
-The keep algorithm assumes that $m$ is big enough to keep at least a column of length $B_k$. % <- TODO: a revoir,
-% above: cest faux car si input aggregate = input file on peut plus utiliser multiple reads/writes cas particuliers
-
+The keep algorithm assumes that $m$ is big enough to keep at least a column of length $\Lambda_k$. (Note: à modifier car bad assumption) % <- TODO: a revoir
 As it has been explained, in 3D the buffer is then stretched in the $j^{th}$ dimension and finally in the $i^{th}$ dimension as long as there is enough main memory available to use the keep strategy.
-This section covers how we estimate the amount of memory required by the keep strategy in order to know how much we can stretch the buffer in each dimension. \\
+This section covers how we estimate the amount of memory required by the keep strategy for a given buffer shape in order to know how much we can stretch the buffer in each dimension. \\
 
 Two pieces of information are required to know the worst case memory consumption of the keep algorithm: what is the maximum number of each overlap area/volume we will have to keep in memory during the algorithm and what is the maximum size that those overlap areas/volumes can have.
 In this analysis we express the overlap size in terms of the number of voxels that constitutes the overlap because the real quantity of memory used depends on the size of a voxel in memory.
@@ -456,6 +361,15 @@ We therefore define $\Omega_k(x)$ as the overlap length in direction $k$ if the 
 $$\Omega_k(x) = x\Lambda_k mod(O_k)$$
 Finally, we define $\Theta_k(x)$ as follows:
 $\Theta_k(x) = \Lambda_k - \Omega_k(x)$
+
+Thanks to this nomenclature, we can now express the $(F_1, F_2...)$ volumes as follows (see Appendix \ref{FormulasKeep}): \\
+$F_1 = \Omega_k min(B_j, \Theta_j) min(B_i, \Theta_i)$ \\
+$F_2 = \Theta_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i)$ \\
+$F_3 = \Omega_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i)$ \\
+$F_4 = \Theta_k \Theta_j max(0, min(B_i-\Theta_i, \Omega_i))$ \\
+$F_5 = \Omega_k \Theta_j max(0, min(B_i-\Theta_i, \Omega_i))$ \\
+$F_6 = \Theta_k \Omega_j max(0, min(B_i-\Theta_i, \Omega_i))$ \\
+$F_7 = \Omega_k \Omega_j max(0, min(B_i-\Theta_i, \Omega_i))$ \\
 
 \begin{figure*}[h]
 \centering
@@ -476,30 +390,20 @@ This order reduces the number of big overlaps to keep in memory. \\
 \begin{figure*}[h]
 \centering
 \includegraphics[scale=0.45]{./figures/new/naive_buffer_order.png}
-\caption{On both figures the solid black borders blocks are buffers and the dotted red blocks are output files. On figure (a) an overlap in the first buffer order dimension is shown. One can see that each buffer recycles the previous extra data such that one never store more that the size of a buffer plus the size of $F_1$ in memory during the resplit process. Figure (b) shows that an overlap in the second dimension of the buffer order has to be kept in memory $b_k$ times with $b_k$ the number of buffers in the $k^{th}$ dimension. This can be extended to 3D by adding the overlaps in the third dimension of buffer order $N_s$ times with $N_s$ the number of buffers in a buffer slice.
+\caption{On both figures the solid black borders blocks are buffers and the dotted red blocks are output files. We consider a buffer of interest with a thick black border. The red areas represent the extra data loaded by the buffer of interest and the blue areas represent the extra data kept in memory from the previous buffer loadings. On figure (a) an overlap in the first buffer order dimension is shown. One can see that each buffer recycles the previous extra data such that one never store more that the size of a buffer plus the size of $F_1$ in memory during the resplit process. Figure (b) shows that an overlap in the second dimension of the buffer order has to be kept in memory $b_k$ times with $b_k$ the number of buffers in the $k^{th}$ dimension. This can be extended to 3D by adding the overlaps in the third dimension of buffer order $N_s$ times with $N_s$ the number of buffers in a buffer slice.
 }
 \label{fig:naive_buffer_order}
 \end{figure*}
 
-\begin{figure*}[h]
-\centering
-\includegraphics[scale=0.45]{./figures/new/g_s.png}
-\caption{Figure (a).  Figure (b).
-}
-\label{fig:g_s}
-\end{figure*}
-
 According to this ordering, we can now find the formula of the maximum number of overlap areas/volumes that will be stored during the keep algorithm execution:
 If, for example, the ordering was $[k,j,i]$ (see Figure \ref{fig:naive_buffer_order}), we would keep at a maximum
-
-$$\Sigma = (F_1 + n(F_2 + F_3) + N(F_4 + F_5 + F_6 + F_7) + B_iB_jB_k)\alpha$$
-
+\begin{equation} \label{eq:1}
+\Sigma = (F_1 + n(F_2 + F_3) + N(F_4 + F_5 + F_6 + F_7) + B_iB_jB_k)\alpha
+\end{equation}
 in memory.
-$\alpha$ is the number of bytes per voxel i.e. the data type of the input and output files.
-For the sake of simplicity we assume that the data types of all files are the same.
 $n$ is the number of buffers in direction of the biggest overlap and $N$ is the number of buffers in a buffer slice in the direction of the second biggest overlap.
 
-If we consider the overlap in the direction of the biggest overlap, direction $k$ on Figure \ref{fig:naive_buffer_order} (a), one can see that the extra data from the first buffer (in blue) is being recycled by the second buffer.
+Indeed, if we consider the overlap in the direction of the biggest overlap, direction $k$ on Figure \ref{fig:naive_buffer_order} (a), one can see that the extra data from the first buffer (in blue) is being recycled by the second buffer.
 At any given time, the amount of memory used by the keep strategy is the size of the next buffer plus all the extra data that is pending for usage from the preceeding buffers.
 If there is no overlap in the $j$ dimension one can see that the amount of memory to keep between the buffers is only $F_1$,
 $\Sigma = (F_1 + B_iB_jB_k)\alpha$,
@@ -507,21 +411,139 @@ i.e. the overlap in $F_1$ is always recycled by the next buffer.
 Note that after loading the last buffer in the $k$ dimension the last $F_1$ extra data stored is recyled.
 Therefore one keep only one time $F_1$ at any given time in the resplit process.
 With the same reasoning we can see that if the size of $F_2$ and $F_3$ is not 0 (Figure \ref{fig:naive_buffer_order} (b)) one will have to keep it until a complete buffer column has been processed such that the first buffer of the buffer column at buffer index $j+1$ will recycle the extra data from the first buffer from the column buffer at buffer index $j$.
-
 This formula is for the 3D case, but it can be extended to the N dimensional case with the same reasoning.
 
-\subsection{Extension of the buffer to match $\Lambda$}
-\subsection{Extension of the buffer beyond $\Lambda$}
-When extending the buffer more than $\Lambda$ we add $I_x$ to the dimension $x$ in which the amount of extra data is the most important while $B_x < R_x$.
-If there is still some memory available after $B_x=R_x$, we start adding $I_y$ in the second dimension $y$ with the biggest amount of extra data, etc.
-The above formulas still stands, it only changes the value of $B$. \\
+\subsection{The buffer extension algorithm}
+From the buffer order formula (Equation \ref{eq:1}) and the formulas of each $F$ volume we can derive the maximum amount of memory used $\Sigma$ while extending the buffer and therefore find the optimal value $\phi$ for each dimension of $B$ at each stretching stage.
+The computation details are described in Appendix \ref{FormulasKeep}.
+The buffer extension algorithm is divided in 3 parts: Algorithm \ref{algo:buffer_extension_1}, Algorithm \ref{algo:buffer_extension_3}, Algorithm \ref{algo:buffer_extension_3}.
+Algorithm \ref{algo:buffer_extension_1} describes the buffer extension in the 2D case ($f_1$, $f_3$ and $f_2$).
+Algorithm \ref{algo:buffer_extension_2} describes the buffer extension in the 3D case until the buffer shape $B$ equals the input aggregate shape $\Lambda$.
+Finally, Algorithm \ref{algo:buffer_extension_3} describes how to extend the buffer beyond the input aggrgegate shape, by successively adding one input file length to one dimension of the buffer shape (the dimension of biggest overlap). It uses the algorithm $addInputFileLength$ described in Algorithm \ref{algo:addInputFileLength} to compute the estimated memory consumption $\Sigma_{test}$. While $\Sigma_{test}$ is less than $m$ one can continue extending the buffer.
 
-By definition of the modulo, the maximum overlap length in a given dimension $x$ is $O_x$.
-$O_x$ is an upper bound as in some cases like in Figure x we may never reach this point.
-We could therefore compute $C_x(k)$ for all $k \in [1, b_x]$ to find the maximum if it is not too compute intensive in order to find the exact maximum length of the overlap in direction $x$. Now that we know how to compute the maximum $C$ value we can replace it in the above formula.
+\begin{algorithm}[h]
+  \caption{Buffer extension algorithm (part 1)}
 
-\subsection{Putting all together}
-We can use this analysis to compute the buffer shape according to the following algorithm:
+  \begin{algorithmic}[1]
+    \STATE $B = [\Lambda_k, 1, 1]$
+
+    \STATE // storing $F_1$
+    \STATE $ \phi = \lfloor \frac{m}{(\Omega_k + \Lambda_k)\alpha} \rfloor $
+    \IF{$\phi > \Theta_j$}
+      \STATE $B_j \leftarrow \Theta_j$
+    \ELSE
+      \STATE $B_j \leftarrow \phi - 1$
+      \STATE return $B$ //stop algorithm
+    \ENDIF
+
+    \STATE // storing $F_3$
+    \STATE $ \phi = \lfloor \frac{m - [\Omega_k \Theta_j](1-n)\alpha}{(n\Omega_k + \Lambda_k)\alpha} \rfloor $
+    \IF{$\phi > \Lambda_j$}
+      \STATE $B_j \leftarrow \Lambda_j$
+    \ELSE
+      \STATE $B_j \leftarrow \phi - 1$
+      \STATE return $B$ //stop algorithm
+    \ENDIF
+    \IF{$B_j > \Theta_j$}
+      \STATE $\textrm{storeF3} \leftarrow \textrm{True}$
+    \ELSE
+      \STATE $\textrm{storeF3} \leftarrow \textrm{False}$
+    \ENDIF
+
+    \STATE // take into account buffer order
+    \IF{$f_1 > f_2$}
+      \STATE $g_1 = f_1$, $g_2 = f_2$, $g_3 = f_3$
+      \STATE $\phi = \lfloor \frac{m}{\alpha[\Omega_k \Theta_j + n \Lambda_k \Omega_j + \Lambda_j \Lambda_k]} \rfloor$
+      \STATE $A = F_1 + n(G_3 + F_2)$
+    \ELSE
+      \STATE $g_1 = f_3$, $g_2 = f_2$, $g_3 = f_1$
+      \STATE $\phi = \lfloor \frac{m}{\alpha (\Theta_k \Omega_j + n\Omega_k\Lambda_j + \Lambda_j \Lambda_k)} \rfloor$
+      \STATE $A = F_2 + n(G_3 + F_1)$
+    \ENDIF
+
+    \STATE // storing $F_2$
+    \STATE $\Sigma = [g_1 + n(g_3 + g_2) + B_iB_jB_k]$
+    \IF{$\Sigma < m$}
+      \STATE continue
+    \ELSIF{$\Sigma = m$}
+      \STATE $\textrm{storeF2} \leftarrow \textrm{True}$
+      \STATE return $B$ //stop algorithm
+    \ELSE
+      \STATE $\textrm{storeF2} \leftarrow \textrm{False}$
+      \STATE return $B$ //stop algorithm
+    \ENDIF
+
+  \end{algorithmic}
+  \label{algo:buffer_extension_1}
+\end{algorithm}
+
+\begin{algorithm}[h]
+  \caption{Buffer extension algorithm (part 2)}
+
+  \begin{algorithmic}[1]
+
+    \STATE // storing $F_1, F_2, F_3$
+    \IF{$\phi > \Theta_i$}
+      \STATE $B_i \leftarrow \Theta_i$
+    \ELSE
+      \STATE $B_i \leftarrow \phi - 1$
+      \STATE return $B$ //stop algorithm
+    \ENDIF
+
+    \STATE // storing $F_5, F_6, F_7$
+    \STATE $\phi = \lfloor \frac{\frac{m}{\alpha} - A + \Theta_iB}{(B + \Lambda_k\Lambda_j)} \rfloor$
+    \IF{$\phi > \Delta_i$}
+      \STATE $B_i \leftarrow \Delta_i$
+    \ELSE
+      \STATE $B_i \leftarrow \phi - 1$
+      \STATE return $B$ //stop algorithm
+    \ENDIF
+    \IF{$B_i > \Theta_i$}
+      \STATE $\textrm{storeF5F6F7} \leftarrow \textrm{True}$
+    \ELSE
+      \STATE $\textrm{storeF5F6F7} \leftarrow \textrm{False}$
+    \ENDIF
+
+    \STATE // storing $F_4$
+    $\Sigma = computeSigma3D(F_1, F_2, ..., F_7, B, \alpha)$
+    \IF{$\Sigma > m$}
+      \STATE $\textrm{storeF4} \leftarrow \textrm{True}$
+    \ELSE
+      \STATE $\textrm{storeF4} \leftarrow \textrm{False}$
+    \ENDIF
+
+  \end{algorithmic}
+  \label{algo:buffer_extension_2}
+\end{algorithm}
+
+\begin{algorithm}[h]
+  \caption{Buffer extension algorithm (part 3)}
+
+  \begin{algorithmic}[1]
+
+  \STATE // stretching buffer beyond input aggregate
+  \STATE $p = [0, 0, 0]$
+  \STATE $ndims = len(m)$
+  \FOR{$dim$ in range(ndims)}
+    \FOR {$j$ in range($nbFiles[dim] - \frac{B_{dim}}{I_{dim}}$)}
+      \STATE $p' = p$
+      \STATE $p'[dim] += 1$
+      \STATE $\Sigma_{test} = addInputFileLength(B, p')$
+      \IF{$\Sigma_{test} < m$}
+        \STATE $p[dim] = p'[dim]$
+      \ELSE
+        \FOR{i in ndims}
+          \STATE $B[i] = B[i] + p[i]I[i]$
+        \ENDFOR
+        \RETURN $B$ // end algorithm
+      \ENDIF
+    \ENDFOR
+  \ENDFOR
+  \RETURN $B$ // end algorithm
+
+  \end{algorithmic}
+  \label{algo:buffer_extension_3}
+\end{algorithm}
 
 %----------------------------------------
 \section*{Implementation}
@@ -531,11 +553,11 @@ We can use this analysis to compute the buffer shape according to the following 
 \section*{Experiments}
 %----------------------------------------
 
-\begin{itemize}
-  \item $dask_io$ vs naive with different shapes
-  \item $dask_io$ perfs with different memory buffer sizes
-  \item $dask_io$ perfs with different shapes
-\end{itemize}
+% \begin{itemize}
+%   \item $dask_io$ vs naive with different shapes
+%   \item $dask_io$ perfs with different memory buffer sizes
+%   \item $dask_io$ perfs with different shapes
+% \end{itemize}
 
 %----------------------------------------
 \section*{Results}
@@ -550,12 +572,12 @@ We can use this analysis to compute the buffer shape according to the following 
 \subsection{Solution of the ordering problem}
 \subsection{Extending the algorithm for ROI extraction}
 \subsection{Distributed keep algorithm}
-\subsection{Improvements}
+\subsection{Future works}
 
-\begin{itemize}
-  \item proof of optimality
-  \item better ordering
-\end{itemize}
+% \begin{itemize}
+%   \item proof of optimality
+%   \item better ordering
+% \end{itemize}
 
 %
 % \subsection{Solution of the ordering problem}
@@ -625,7 +647,7 @@ We can use this analysis to compute the buffer shape according to the following 
   \subsection{Overlap volume memory sizes}
   This appendix presents the reasoning and computations leading to the formulas used for the keep algorithm to find the biggest buffer shape possible given $m$, the amount of memory available. \\
 
-  At step $x$, for $B(x)$ and the corresponding $\Omega(x)$ and $\Theta(x)$, we define the size of each volume (in number of voxels) as follows: \\
+  At step $x$, for $B(x)$ and the corresponding $\Omega(x)$ and $\Theta(x)$, we define the size of each volume (in number of voxels) as follows (see Figure \ref{fig:nomenclature_overlaps}): \\
   $F_1 = (0,0,1) = \Omega_k min(B_j, \Theta_j) min(B_i, \Theta_i)$ \\
   $F_2 = (0,1,0) = \Theta_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i)$ \\
   $F_3 = (0,1,1) = \Omega_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i)$ \\
@@ -634,14 +656,26 @@ We can use this analysis to compute the buffer shape according to the following 
   $F_6 = (1,1,1) = \Theta_k \Omega_j max(0, min(B_i-\Theta_i, \Omega_i))$ \\
   $F_7 = (1,1,0) = \Omega_k \Omega_j max(0, min(B_i-\Theta_i, \Omega_i))$ \\
 
-  For the sake of clarity we did not write the $(x)$ suffix ($B$ means $B(x)$).
+  For the sake of clarity we do not write the $(x)$ suffix ($B$ means $B(x)$).
   Also, we are only interested in the maximum amount of memory we would have to keep.
-  To that aim, we will not evaluate the above volume formulas for each $x$ but only replace $\Omega_k(x)$ by its maximum and replace it in the formulas.
+  To that aim, we will not evaluate the above volume formulas for each $x$ but we will replace $\Omega_k(x)$ by its maximum in the formulas instead.
   By definition of $\Omega_k(x)$ an upper bound is $O_k$ but one can find the exact maximum value by computing $\Omega_k(x)$ for all $x$, for each dimension $k$.
 
   \subsection{Maximum amount of overlap to keep in memory}
-  According to the naive buffer ordering, the maximum amount of volumes to keep during the execution is (see Section x):
+  We defined the values of the different $F$ volumes but we do not know which one of $F_4$, $F_1$, $F_2$ is the biggest overlap i.e. we do not know the buffer order ahead of time.
+  In 3D, they are 9 possibilities for the buffer order.
+  If the order of biggest overlap is $i, j, k$ (Figure \ref{fig:g_s} (b)) as opposed to $k, j, i$ (Figure \ref{fig:g_s} (a)), the volume indices change and therefore Equation \ref{eq:1} is false (as it defines $\Sigma$ for the $k,j,i$ buffer order only).
+  We define a more general formula for $\Sigma$ as follows:
   $$\Sigma = (G_1 + n(G_2 + G_3) + N(G_4 + G_5 + G_6 + G_7) + B_iB_jB_k)\alpha$$
+  At each step in the buffer extension process, we will assign the right $F$ volume to each $G$ (see Figure \ref{fig:g_s}).
+
+  \begin{figure*}[h]
+  \centering
+  \includegraphics[scale=0.45]{./figures/new/g_s.png}
+  \caption{Figure (a).  Figure (b).
+  }
+  \label{fig:g_s}
+  \end{figure*}
 
   \subsection{Keeping f1}
   \noindent $g_1 = f_1 = \Omega_k B_j B_i = \Omega_k B_j$ \\
@@ -707,9 +741,6 @@ We can use this analysis to compute the buffer shape according to the following 
   $\Sigma < m \Leftrightarrow B_i < \lfloor \frac{\frac{m}{\alpha} - A + \Theta_iB}{(B + \Lambda_k\Lambda_j)} \rfloor$
 
   \subsection{Keeping F4}
-  We do not know which one of $F_4$, $F_1$, $F_2$ is the biggest overlap.
-  They are 9 possibilities for the buffer order.
-  If the order of biggest overlap is $i, j, k$ (Figure \ref{fig:g_s} (b)) as opposed to $k, j, i$ (Figure \ref{fig:g_s} (a)), the volume indices change.
   Our goal is to link the good $G$ to its corresponding $F$ volume size (see Figure \ref{fig:g_s}).
   To that aim we know that: \\
   1) Given $\beta{old}$ the base of storage order ($i,j,k$) we have the $F$ indices.
@@ -729,5 +760,57 @@ We can use this analysis to compute the buffer shape according to the following 
   We then replace $G$ by $G(i)$ in $\Sigma = [G_1 + n(G_3 + G_2) + N(G_4 + G_5 + G_6 + G_7) + B_iB_jB_k]\alpha$.
   As for $F_2$ we either store all $F_4$ or we do not store it.
   If $\Sigma < m$ then we can store $F_4$ and move on to the final step of the algorithm. \\
+
+  \begin{algorithm}[h]
+    \caption{Pseudocode for addInputFileLength}
+
+    \begin{algorithmic}[1]
+
+    \STATE \textbf{Inputs:} $B, p, \alpha$
+    \STATE $B[i] = B[i] + p[0]I[i]$
+    \STATE $B[j] = B[j] + p[1]I[j]$
+    \STATE $B[k] = B[k] + p[2]I[k]$
+    \STATE $F_1 = O_k (B_j - O_j) (B_i - O_i)$
+    \STATE $F_2 = (B_k - O_k) O_j (B_i - O_i)$
+    \STATE $F_3 = O_k O_j (B_i-O_i)$
+    \STATE $F_4 = (B_k-O_k) (B_j-O_j) O_i$
+    \STATE $F_5 = O_k (B_j-O_j) O_i$
+    \STATE $F_6 = (B_k - O_k) O_j O_i$
+    \STATE $F_7 = O_k O_j O_i$
+    \RETURN $computeSigma3D(F_1, F_2, ..., F_7, B, \alpha)$ % using $G(x)$
+
+    \end{algorithmic}
+    \label{algo:addInputFileLength}
+  \end{algorithm}
+
+  \begin{algorithm}[h]
+    \caption{Pseudocode for computeSigma3D}
+
+    \begin{algorithmic}[1]
+    \STATE \textbf{Inputs:} $F_1, F_2, ..., F_7, B, \alpha$
+
+    \STATE $G = dict()$
+    \STATE $G_{old} = \{ 1: F_1, 2: F_2,..., 7: F_7\}$
+    \STATE $bufferOrder = sortByValue((0,1,2), \{ 0:F_1, 1:F_2, 2:F_4\})$ % sort arg1 by associated value in arg2
+    \STATE $\beta_{new}\_to\_\beta_{old} = replace(bufferOrder, \{
+      0:\begin{bmatrix} 0 \\ 0 \\ 1 \end{bmatrix},
+      1:\begin{bmatrix} 0 \\ 1 \\ 0 \end{bmatrix},
+      2:\begin{bmatrix} 1 \\ 0 \\ 0 \end{bmatrix}
+    \} )$ % replace element from arg1 by associated value in arg2
+
+    \FOR{$num_{new}$ in range(8)}
+      \STATE $\vec{a_{new}} = decToBin(num_{new})$ % returns tuple representing binary value
+      \STATE $\vec{a_{old}} = \vec{a_{new}}[0] * \beta_{new}\_to\_\beta_{old}[0]
+        + \vec{a_{new}}[1] * \beta_{new}\_to\_\beta_{old}[1]
+        + \vec{a_{new}}[2] * \beta_{new}\_to\_\beta_{old}[2]$
+      \STATE $num_{old} = binToDec(\vec{a_{old}})$
+      \STATE $G[num_{new}] = G_{old}[num_{old}]$
+    \ENDFOR
+
+    \STATE $\Sigma = [G_1 + n(G_3 + G_2) + N(G_4 + G_5 + G_6 + G_7) + B_iB_jB_k]\alpha$
+    \RETURN $\Sigma$
+    \end{algorithmic}
+    \label{algo:computeSigma3D}
+  \end{algorithm}
 
 \end{document}

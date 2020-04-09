@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.19 (TeX Live 2018) (preloaded format=pdflatex 2019.6.22)  8 APR 2020 22:24
+This is pdfTeX, Version 3.14159265-2.6-1.40.19 (TeX Live 2018) (preloaded format=pdflatex 2019.6.22)  9 APR 2020 12:50
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -517,38 +517,18 @@ LaTeX Font Info:    Try loading font information for U+msb on input line 35.
 (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
-Underfull \hbox (badness 10000) in paragraph at lines 58--60
+Underfull \hbox (badness 10000) in paragraph at lines 82--84
 []\OT1/ptm/m/n/10 Consider a mul-ti-di-men-sional ar-ray of shape
  []
 
 
-Underfull \hbox (badness 1466) in paragraph at lines 58--60
+Underfull \hbox (badness 1466) in paragraph at lines 82--84
 \OML/cmm/m/it/10 R \OT1/cmr/m/n/10 = (\OML/cmm/m/it/10 R[]; R[]; R[]\OT1/cmr/m/
 n/10 )$\OT1/ptm/m/n/10 , stored in some in-put files with a
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 58--60
-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 67--69
-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 70--72
-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 73--74
-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 75--80
+Underfull \hbox (badness 10000) in paragraph at lines 82--84
 
  []
 
@@ -556,127 +536,147 @@ Underfull \hbox (badness 10000) in paragraph at lines 75--80
 
 
 ]
-Underfull \hbox (badness 10000) in paragraph at lines 81--83
+Underfull \hbox (badness 10000) in paragraph at lines 91--93
 
  []
 
-<./figures/reconstructed_img_divided.png, id=14, 516.93124pt x 460.72125pt>
+
+Underfull \hbox (badness 10000) in paragraph at lines 94--96
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 97--103
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 104--106
+
+ []
+
+
+Underfull \vbox (badness 1184) has occurred while \output is active []
+
+<./figures/reconstructed_img_divided.png, id=16, 516.93124pt x 460.72125pt>
 File: ./figures/reconstructed_img_divided.png Graphic file (type png)
 <use ./figures/reconstructed_img_divided.png>
 Package pdftex.def Info: ./figures/reconstructed_img_divided.png  used on input
- line 108.
-(pdftex.def)             Requested size: 103.38441pt x 92.14261pt.
-<./figures/column_order.png, id=16, 1598.97375pt x 486.81876pt>
+ line 131.
+(pdftex.def)             Requested size: 206.76883pt x 184.28523pt.
+<./figures/column_order.png, id=18, 1598.97375pt x 486.81876pt>
 File: ./figures/column_order.png Graphic file (type png)
 <use ./figures/column_order.png>
-Package pdftex.def Info: ./figures/column_order.png  used on input line 116.
-(pdftex.def)             Requested size: 319.7891pt x 97.36201pt.
+Package pdftex.def Info: ./figures/column_order.png  used on input line 139.
+(pdftex.def)             Requested size: 479.69583pt x 146.04675pt.
+
 
 LaTeX Warning: `!h' float specifier changed to `!ht'.
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 130--132
+Underfull \hbox (badness 10000) in paragraph at lines 153--155
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 133--135
+Underfull \hbox (badness 10000) in paragraph at lines 156--158
+
+ []
+
+[2 <./figures/reconstructed_img_divided.png>]
+Underfull \hbox (badness 10000) in paragraph at lines 170--172
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 147--149
+Underfull \hbox (badness 10000) in paragraph at lines 173--180
 
  []
 
-
-Underfull \hbox (badness 10000) in paragraph at lines 150--157
-
- []
-
-<./figures/overlap.png, id=17, 763.85374pt x 597.23125pt>
+<./figures/overlap.png, id=23, 763.85374pt x 597.23125pt>
 File: ./figures/overlap.png Graphic file (type png)
 <use ./figures/overlap.png>
-Package pdftex.def Info: ./figures/overlap.png  used on input line 160.
-(pdftex.def)             Requested size: 152.76804pt x 119.44412pt.
-[2 <./figures/reconstructed_img_divided.png>]
-<./figures/keep_strategy.png, id=22, 1465.475pt x 584.1825pt>
+Package pdftex.def Info: ./figures/overlap.png  used on input line 183.
+(pdftex.def)             Requested size: 229.15788pt x 179.17075pt.
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+<./figures/keep_strategy.png, id=24, 1465.475pt x 584.1825pt>
 File: ./figures/keep_strategy.png Graphic file (type png)
 <use ./figures/keep_strategy.png>
-Package pdftex.def Info: ./figures/keep_strategy.png  used on input line 168.
-(pdftex.def)             Requested size: 293.08981pt x 116.83443pt.
-
+Package pdftex.def Info: ./figures/keep_strategy.png  used on input line 191.
+(pdftex.def)             Requested size: 439.64589pt x 175.25609pt.
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 183--186
+Underfull \hbox (badness 10000) in paragraph at lines 206--209
 
  []
 
-<./figures/first_buffer.png, id=23, 446.66875pt x 435.6275pt>
+[3 <./figures/column_order.png> <./figures/overlap.png>]
+<./figures/first_buffer.png, id=30, 446.66875pt x 435.6275pt>
 File: ./figures/first_buffer.png Graphic file (type png)
 <use ./figures/first_buffer.png>
-Package pdftex.def Info: ./figures/first_buffer.png  used on input line 189.
+Package pdftex.def Info: ./figures/first_buffer.png  used on input line 212.
 (pdftex.def)             Requested size: 89.33215pt x 87.12395pt.
-
-LaTeX Warning: `h' float specifier changed to `ht'.
-
-<./figures/input_aggregates.png, id=24, 1228.59pt x 584.1825pt>
+<./figures/input_aggregates.png, id=31, 1228.59pt x 584.1825pt>
 File: ./figures/input_aggregates.png Graphic file (type png)
 <use ./figures/input_aggregates.png>
-Package pdftex.def Info: ./figures/input_aggregates.png  used on input line 197
+Package pdftex.def Info: ./figures/input_aggregates.png  used on input line 220
 .
 (pdftex.def)             Requested size: 184.28055pt x 87.62358pt.
 
-LaTeX Warning: `h' float specifier changed to `ht'.
-
-
-Underfull \hbox (badness 2837) in paragraph at lines 206--211
+Underfull \hbox (badness 2837) in paragraph at lines 229--234
 \OT1/ptm/m/n/10 ``Stretch-ing be-yond the in-put ag-gre-gate shape" be-low).
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 206--211
+Underfull \hbox (badness 10000) in paragraph at lines 229--234
 
  []
 
-<./figures/case_1_2.png, id=25, 1286.8075pt x 615.29875pt>
+
+Underfull \vbox (badness 2119) has occurred while \output is active []
+
+<./figures/case_1_2.png, id=32, 1286.8075pt x 615.29875pt>
 File: ./figures/case_1_2.png Graphic file (type png)
 <use ./figures/case_1_2.png>
-Package pdftex.def Info: ./figures/case_1_2.png  used on input line 214.
+Package pdftex.def Info: ./figures/case_1_2.png  used on input line 237.
 (pdftex.def)             Requested size: 257.35693pt x 123.05756pt.
+
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
-<./figures/case_2_1.png, id=26, 1261.71375pt x 406.51875pt>
+<./figures/case_2_1.png, id=33, 1261.71375pt x 406.51875pt>
 File: ./figures/case_2_1.png Graphic file (type png)
 <use ./figures/case_2_1.png>
-Package pdftex.def Info: ./figures/case_2_1.png  used on input line 225.
+Package pdftex.def Info: ./figures/case_2_1.png  used on input line 248.
 (pdftex.def)             Requested size: 252.33827pt x 81.3023pt.
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 231--234
+Underfull \hbox (badness 10000) in paragraph at lines 254--257
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 235--241
+Underfull \hbox (badness 10000) in paragraph at lines 258--264
 
  []
 
-<./figures/areasabc.png, id=27, 893.3375pt x 585.18625pt>
-File: ./figures/areasabc.png Graphic file (type png)
-<use ./figures/areasabc.png>
-Package pdftex.def Info: ./figures/areasabc.png  used on input line 244.
+<./figures/new/f1f2f3areas.png, id=34, 893.3375pt x 585.18625pt>
+File: ./figures/new/f1f2f3areas.png Graphic file (type png)
+<use ./figures/new/f1f2f3areas.png>
+Package pdftex.def Info: ./figures/new/f1f2f3areas.png  used on input line 267.
+
 (pdftex.def)             Requested size: 178.66432pt x 117.03517pt.
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
 
-Overfull \hbox (0.8576pt too wide) detected at line 251
+Overfull \hbox (15.12369pt too wide) detected at line 274
 \OT1/cmr/m/n/10 
 [] \OML/cmm/m/it/10 > \OT1/cmr/m/n/10 (^^C[] \OMS/cmsy/m/n/10 ^^@ \OT1/cmr/m/n/
 10 
@@ -684,161 +684,185 @@ Overfull \hbox (0.8576pt too wide) detected at line 251
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 251--256
-
- []
-
-[3 <./figures/column_order.png> <./figures/overlap.png>]
-Underfull \hbox (badness 10000) in paragraph at lines 257--260
-
- []
-
-<./figures/extendingbuffers.png, id=34, 1477.52pt x 602.25pt>
-File: ./figures/extendingbuffers.png Graphic file (type png)
-<use ./figures/extendingbuffers.png>
-Package pdftex.def Info: ./figures/extendingbuffers.png  used on input line 272
-.
-(pdftex.def)             Requested size: 295.49876pt x 120.44786pt.
-
-LaTeX Warning: `h' float specifier changed to `ht'.
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 279--280
+Underfull \hbox (badness 10000) in paragraph at lines 274--279
 
  []
 
 [4 <./figures/keep_strategy.png> <./figures/first_buffer.png> <./figures/input_
 aggregates.png>]
-Underfull \vbox (badness 8038) has occurred while \output is active []
+Underfull \hbox (badness 10000) in paragraph at lines 280--283
+
+ []
 
 
+Underfull \vbox (badness 1838) has occurred while \output is active []
 
-LaTeX Warning: Float too large for page by 114.78679pt on input line 402.
+<./figures/extendingbuffers.png, id=43, 1477.52pt x 602.25pt>
+File: ./figures/extendingbuffers.png Graphic file (type png)
+<use ./figures/extendingbuffers.png>
+Package pdftex.def Info: ./figures/extendingbuffers.png  used on input line 295
+.
+(pdftex.def)             Requested size: 295.49876pt x 120.44786pt.
 
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
-
-Underfull \hbox (badness 10000) in paragraph at lines 415--419
+[5 <./figures/case_1_2.png> <./figures/case_2_1.png> <./figures/new/f1f2f3areas
+.png>]
+Underfull \hbox (badness 10000) in paragraph at lines 322--326
 
  []
 
-[5 <./figures/case_1_2.png> <./figures/case_2_1.png> <./figures/areasabc.png>]
-<./figures/goodorderingbadordering.png, id=51, 1521.685pt x 601.24625pt>
+<./figures/goodorderingbadordering.png, id=52, 1521.685pt x 601.24625pt>
 File: ./figures/goodorderingbadordering.png Graphic file (type png)
 <use ./figures/goodorderingbadordering.png>
 Package pdftex.def Info: ./figures/goodorderingbadordering.png  used on input l
-ine 421.
+ine 328.
 (pdftex.def)             Requested size: 304.3316pt x 120.24712pt.
-
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 443--445
+Underfull \hbox (badness 10000) in paragraph at lines 347--350
 
  []
 
-<./figures/new/nomenclature_overlaps.png, id=52, 1032.85875pt x 435.6275pt>
+
+Underfull \hbox (badness 10000) in paragraph at lines 365--373
+
+ []
+
+[6 <./figures/extendingbuffers.png>]
+<./figures/new/nomenclature_overlaps.png, id=57, 1032.85875pt x 435.6275pt>
 File: ./figures/new/nomenclature_overlaps.png Graphic file (type png)
 <use ./figures/new/nomenclature_overlaps.png>
 Package pdftex.def Info: ./figures/new/nomenclature_overlaps.png  used on input
- line 462.
+ line 376.
 (pdftex.def)             Requested size: 464.78215pt x 196.03056pt.
+
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 469--475
+Underfull \hbox (badness 10000) in paragraph at lines 383--389
 
  []
 
-<./figures/new/naive_buffer_order.png, id=53, 829.0975pt x 392.46625pt>
+<./figures/new/naive_buffer_order.png, id=58, 829.0975pt x 392.46625pt>
 File: ./figures/new/naive_buffer_order.png Graphic file (type png)
 <use ./figures/new/naive_buffer_order.png>
 Package pdftex.def Info: ./figures/new/naive_buffer_order.png  used on input li
-ne 478.
+ne 392.
 (pdftex.def)             Requested size: 373.09044pt x 176.60817pt.
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
-<./figures/new/g_s.png, id=54, 1224.575pt x 412.54124pt>
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+
+Overfull \hbox (2.19855pt too wide) in paragraph at lines 507--509
+[] []\OT1/ptm/m/n/10 // stor-ing $\OML/cmm/m/it/10 F[]$ $\OT1/cmr/m/n/10 ^^F = 
+\OML/cmm/m/it/10 computeSigma\OT1/cmr/m/n/10 3\OML/cmm/m/it/10 D\OT1/cmr/m/n/10
+ (\OML/cmm/m/it/10 F[]; F[]; :::; F[]; B; \OT1/cmr/m/n/10 )$ 
+ []
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+(./algorithm_paper.bbl
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [7 <./figures/goodorderingbadordering.png>]
+Overfull \vbox (50.45213pt too high) has occurred while \output is active []
+
+)
+Underfull \hbox (badness 10000) in paragraph at lines 648--649
+
+ []
+
+[8 <./figures/new/nomenclature_overlaps.png> <./figures/new/naive_buffer_order.
+png>]
+Underfull \hbox (badness 10000) in paragraph at lines 650--658
+
+ []
+
+
+Underfull \vbox (badness 3209) has occurred while \output is active []
+
+ [9]
+<./figures/new/g_s.png, id=73, 1224.575pt x 412.54124pt>
 File: ./figures/new/g_s.png Graphic file (type png)
 <use ./figures/new/g_s.png>
-Package pdftex.def Info: ./figures/new/g_s.png  used on input line 486.
+Package pdftex.def Info: ./figures/new/g_s.png  used on input line 674.
 (pdftex.def)             Requested size: 551.05367pt x 185.64185pt.
 
-Overfull \hbox (35.05367pt too wide) in paragraph at lines 486--488
+Overfull \hbox (35.05367pt too wide) in paragraph at lines 674--676
  [][] 
  []
 
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
-[6 <./figures/extendingbuffers.png>]
-Underfull \vbox (badness 10000) has occurred while \output is active []
 
-
-Underfull \hbox (badness 10000) in paragraph at lines 515--518
-
- []
-
-[7 <./figures/goodorderingbadordering.png> <./figures/new/nomenclature_overlaps
-.png>] (./algorithm_paper.bbl [8 <./figures/new/naive_buffer_order.png> <./figu
-res/new/g_s.png>])
-Underfull \hbox (badness 10000) in paragraph at lines 626--627
+Underfull \hbox (badness 10000) in paragraph at lines 696--699
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 628--636
+Underfull \hbox (badness 10000) in paragraph at lines 708--711
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 662--665
+Underfull \hbox (badness 10000) in paragraph at lines 712--714
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 674--677
+Underfull \hbox (badness 10000) in paragraph at lines 715--720
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 678--680
+Underfull \hbox (badness 10000) in paragraph at lines 728--734
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 681--686
+Underfull \hbox (badness 10000) in paragraph at lines 735--736
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 694--700
+Underfull \hbox (badness 10000) in paragraph at lines 744--753
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 701--702
-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 710--722
-
- []
-
-[9]
-Underfull \hbox (badness 1817) in paragraph at lines 723--732
+Underfull \hbox (badness 1817) in paragraph at lines 754--763
 []\OT1/ptm/m/n/10 Therefore, let us say that we have a cer-tain buffer
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 723--732
+Underfull \hbox (badness 10000) in paragraph at lines 754--763
 
  []
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+
+Underfull \hbox (badness 3838) in paragraph at lines 803--806
+[] []$[] \OT1/cmr/m/n/10 = [][0] \OMS/cmsy/m/n/10 ^^C \OML/cmm/m/it/10 ^^L[][]t
+o[]^^L[]\OT1/cmr/m/n/10 [0] + [][1] \OMS/cmsy/m/n/10 ^^C
+ []
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
 
 
 ** Conference Paper **
@@ -851,35 +875,37 @@ Before submitting the final camera ready copy, remember to:
  uses only Type 1 fonts and that every step in the generation
  process uses the appropriate paper size.
 
-[10] (./algorithm_paper.aux) ) 
+[10] [11
+
+ <./figures/new/g_s.png>] (./algorithm_paper.aux) ) 
 Here is how much of TeX's memory you used:
- 4632 strings out of 494587
- 67720 string characters out of 6177759
- 154458 words of memory out of 5000000
- 8176 multiletter control sequences out of 15000+600000
+ 4640 strings out of 494587
+ 67883 string characters out of 6177759
+ 154278 words of memory out of 5000000
+ 8184 multiletter control sequences out of 15000+600000
  44469 words of font info for 98 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 41i,11n,35p,1376b,402s stack positions out of 5000i,500n,10000p,200000b,80000s
-{/usr/share/texlive/texmf-dist/fonts/enc/dvips/ba
-se/8r.enc}</usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.
-pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></
-usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi5.pfb></usr/sha
-re/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb></usr/share/texl
-ive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb></usr/share/texlive/tex
-mf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/share/texlive/texmf-dist
-/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/share/texlive/texmf-dist/fonts/
-type1/public/amsfonts/cm/cmr6.pfb></usr/share/texlive/texmf-dist/fonts/type1/pu
-blic/amsfonts/cm/cmr7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/ams
-fonts/cm/cmr8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm
-/cmsy10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7
-.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/shar
-e/texlive/texmf-dist/fonts/type1/urw/times/utmbi8a.pfb></usr/share/texlive/texm
-f-dist/fonts/type1/urw/times/utmr8a.pfb></usr/share/texlive/texmf-dist/fonts/ty
-pe1/urw/times/utmri8a.pfb>
-Output written on algorithm_paper.pdf (10 pages, 739231 bytes).
+ 41i,11n,35p,1395b,610s stack positions out of 5000i,500n,10000p,200000b,80000s
+{/usr/share/texlive/texmf-di
+st/fonts/enc/dvips/base/8r.enc}</usr/share/texlive/texmf-dist/fonts/type1/publi
+c/amsfonts/cm/cmex10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsf
+onts/cm/cmmi10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/c
+m/cmmi5.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi6
+.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb></
+usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/sha
+re/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/share/texl
+ive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/share/texlive/texm
+f-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/share/texlive/texmf-dist/f
+onts/type1/public/amsfonts/cm/cmr8.pfb></usr/share/texlive/texmf-dist/fonts/typ
+e1/public/amsfonts/cm/cmsy10.pfb></usr/share/texlive/texmf-dist/fonts/type1/pub
+lic/amsfonts/cm/cmsy7.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/times/
+utmb8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/times/utmbi8a.pfb></u
+sr/share/texlive/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></usr/share/texliv
+e/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
+Output written on algorithm_paper.pdf (11 pages, 744913 bytes).
 PDF statistics:
- 131 PDF objects out of 1000 (max. 8388607)
- 74 compressed objects within 1 object stream
+ 134 PDF objects out of 1000 (max. 8388607)
+ 76 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
  71 words of extra memory for PDF output out of 10000 (max. 10000000)
 

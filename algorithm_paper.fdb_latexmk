@@ -1,12 +1,12 @@
 # Fdb version 3
-["bibtex algorithm_paper"] 1586398733 "algorithm_paper.aux" "algorithm_paper.bbl" "algorithm_paper" 1586399043
+["bibtex algorithm_paper"] 1586450902 "algorithm_paper.aux" "algorithm_paper.bbl" "algorithm_paper" 1586451043
   "/usr/share/texlive/texmf-dist/bibtex/bst/base/ieeetr.bst" 1580929837 18361 1a00e58565e7f19bf2b3e1bfb82254ae ""
-  "Bibliography.bib" 1584545652 3937 20cff1c848d2509667ffdbff34c28b1d ""
-  "algorithm_paper.aux" 1586399043 10832 d5bec965650f5f119c63f7f0f7c106a1 "pdflatex"
+  "Bibliography.bib" 1586447377 6147 a164fd0a9fbaad61718a3afda71e2b58 ""
+  "algorithm_paper.aux" 1586451043 11386 fa229fc7fda78b5e17f327a95f652dba "pdflatex"
   (generated)
-  "algorithm_paper.blg"
   "algorithm_paper.bbl"
-["pdflatex"] 1586399042 "algorithm_paper.tex" "algorithm_paper.pdf" "algorithm_paper" 1586399043
+  "algorithm_paper.blg"
+["pdflatex"] 1586451042 "algorithm_paper.tex" "algorithm_paper.pdf" "algorithm_paper" 1586451043
   "/home/user/.texlive2018/texmf-var/web2c/pdftex/pdflatex.fmt" 1561246777 789641 18556bb2b16464003d5aaf304afe1847 ""
   "/usr/share/texlive/texmf-dist/fonts/enc/dvips/base/8r.enc" 1580929836 4850 80dc9bab7f31fb78a000ccfed0e27cab ""
   "/usr/share/texlive/texmf-dist/fonts/map/pdftex/updmap/pdftex.map" 1530836625 2850648 765161d183c5509465c2744baf096a7a ""
@@ -100,10 +100,9 @@
   "/usr/share/texlive/texmf-dist/tex/latex/xcolor/xcolor.sty" 1480098843 55589 34128738f682d033422ca125f82e5d62 ""
   "/usr/share/texlive/texmf-dist/web2c/texmf.cnf" 1580929844 33523 3a2c32bd77384f8f4508d61b4be83582 ""
   "IEEEtran.cls" 1440654524 288304 b67b6fc6c2abb39f9b461923f5199343 ""
-  "algorithm_paper.aux" 1586399043 10832 d5bec965650f5f119c63f7f0f7c106a1 "pdflatex"
-  "algorithm_paper.bbl" 1586398733 308 3f3db624504cd2cb95fe6e6e7ae02a86 "bibtex algorithm_paper"
-  "algorithm_paper.tex" 1586399042 48765 7f2117bf585ef32b77b8e83487ba9b0e ""
-  "figures/areasabc.png" 1584545879 31575 a7ab03dab64e539bfcf8db1d64d4ca0c ""
+  "algorithm_paper.aux" 1586451043 11386 fa229fc7fda78b5e17f327a95f652dba "pdflatex"
+  "algorithm_paper.bbl" 1586450902 648 5b768fd939f2a3f8736119783b04bd2a "bibtex algorithm_paper"
+  "algorithm_paper.tex" 1586451041 52833 cbb3dd3d632c9970924b81a16b8e18c3 ""
   "figures/case_1_2.png" 1584545879 28516 660145b40acea152b9800824acb09fdc ""
   "figures/case_2_1.png" 1584545879 42202 1f49077adf0b76117fbb08ae3c60cd2e ""
   "figures/column_order.png" 1584545879 102054 707294cbda1e7fb68af82b04758fad3d ""
@@ -112,12 +111,13 @@
   "figures/goodorderingbadordering.png" 1584545879 26445 aee95e945073fb175ea9bf35c06dc3d7 ""
   "figures/input_aggregates.png" 1584545879 11518 0e3ccc73843a6f6148bd65a224ccdcca ""
   "figures/keep_strategy.png" 1584545879 62150 1fdf2d98ffd286891d6b0ef1d4e57f19 ""
+  "figures/new/f1f2f3areas.png" 1586448292 31031 68c44fae9e6aaf2f4749a5deb97c1f33 ""
   "figures/new/g_s.png" 1586382336 26562 7ccd736288182fc72d10bff72303f6b7 ""
   "figures/new/naive_buffer_order.png" 1586378618 22290 75ff91d3adb0a27bdc409730094adfd4 ""
   "figures/new/nomenclature_overlaps.png" 1586364789 28448 a14a15b5aba1f5c1281a564b1c16a0ae ""
   "figures/overlap.png" 1584545879 24576 7241eccb48625a22604530c4373a341d ""
   "figures/reconstructed_img_divided.png" 1584545879 33678 c2ac3475e9cfa58eae800b44c1a1a018 ""
   (generated)
+  "algorithm_paper.aux"
   "algorithm_paper.pdf"
   "algorithm_paper.log"
-  "algorithm_paper.aux"
