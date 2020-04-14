@@ -32,22 +32,20 @@
 \@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Illustration of the different overlaping areas in 2D. The blue area is called the $f_1$ area, the red area is called the $f_3$ area and we call $f_2$ area the green one. }}{5}}
 \newlabel{fig:areasabc}{{9}{5}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-I}}Stretching beyond the input aggregate shape}{5}}
-\@writefile{loa}{\contentsline {algorithm}{\numberline {2}{\ignorespaces Pseudocode of the ``keep" algorithm in 3D}}{5}}
-\newlabel{algo:keep_algorithm_3D}{{2}{5}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-J}}Special case of non optimality}{5}}
 \@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces  Left side: Extending the buffer to the next input length. Right side: Extending the buffer to the next output length. The crosses indicates the number of seeks. As we can see, extending the buffer to the next output shape incurs a lot of seeks in the next input file when loading the buffer. As the input file is incomplete, there is no extra data, therefore the keep strategy cannot be used. }}{6}}
 \newlabel{fig:extendingbuffers}{{10}{6}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-J}}Special case of non optimality}{6}}
+\@writefile{loa}{\contentsline {algorithm}{\numberline {2}{\ignorespaces Pseudocode of the ``keep" algorithm}}{6}}
+\newlabel{algo:keep_algorithm}{{2}{6}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-K}}Impact of the buffer order on performance}{6}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-L}}Nomenclature}{6}}
-\bibdata{Bibliography}
-\bibcite{Amunts1472}{1}
 \@writefile{lof}{\contentsline {figure}{\numberline {11}{\ignorespaces  Comparison of a bad buffer ordering (left side) against a good buffer ordering (right side), given an overlap in the $k$ dimension. The red area represents the amount of extra data kept in memory after loading the third buffer. The right side order allowed to release the extra data from the first buffer after reading the second buffer. }}{7}}
 \newlabel{fig:goodorderingbadordering}{{11}{7}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-L}}Nomenclature}{7}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-M}}A ``naive" buffer ordering}{7}}
 \newlabel{eq:1}{{1}{7}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-N}}The buffer extension algorithm}{7}}
-\bibcite{seqalgorithms}{2}
-\bibstyle{ieeetr}
+\bibdata{Bibliography}
+\bibcite{Amunts1472}{1}
 \@writefile{lof}{\contentsline {figure}{\numberline {12}{\ignorespaces Figure (a) represents an input aggregate of shape $\Lambda $. The white cube represents the data that can be written directly into output files and the other blue blocks represent incomplete files. Figure (b) shows how the different volumes are indexed following the buffer order. Here the buffer order is the storage order. Another way of naming volumes is by using the decimal value or their positions, for example (0,0,1) is block 1, (1,1,0) is block 6. }}{8}}
 \newlabel{fig:nomenclature_overlaps}{{12}{8}}
 \@writefile{lof}{\contentsline {figure}{\numberline {13}{\ignorespaces On both figures the solid black borders blocks are buffers and the dotted red blocks are output files. We consider a buffer of interest with a thick black border. The red areas represent the extra data loaded by the buffer of interest and the blue areas represent the extra data kept in memory from the previous buffer loadings. On figure (a) an overlap in the first buffer order dimension is shown. One can see that each buffer recycles the previous extra data such that one never store more that the size of a buffer plus the size of $F_1$ in memory during the resplit process. Figure (b) shows that an overlap in the second dimension of the buffer order has to be kept in memory $b_k$ times with $b_k$ the number of buffers in the $k^{th}$ dimension. This can be extended to 3D by adding the overlaps in the third dimension of buffer order $N_s$ times with $N_s$ the number of buffers in a buffer slice. }}{8}}
@@ -59,15 +57,17 @@
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-S}}Distributed keep algorithm}{8}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {-T}}Future works}{8}}
 \@writefile{toc}{\contentsline {section}{References}{8}}
-\@writefile{toc}{\contentsline {section}{Appendix\nobreakspace  A: Formulas for buffer extension}{8}}
-\newlabel{FormulasKeep}{{A}{8}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {A-A}}Overlap volume memory sizes}{8}}
+\bibcite{seqalgorithms}{2}
+\bibstyle{ieeetr}
 \@writefile{loa}{\contentsline {algorithm}{\numberline {3}{\ignorespaces Buffer extension algorithm (part 1)}}{9}}
 \newlabel{algo:buffer_extension_1}{{3}{9}}
 \@writefile{loa}{\contentsline {algorithm}{\numberline {4}{\ignorespaces Buffer extension algorithm (part 2)}}{9}}
 \newlabel{algo:buffer_extension_2}{{4}{9}}
 \@writefile{loa}{\contentsline {algorithm}{\numberline {5}{\ignorespaces Buffer extension algorithm (part 3)}}{9}}
 \newlabel{algo:buffer_extension_3}{{5}{9}}
+\@writefile{toc}{\contentsline {section}{Appendix\nobreakspace  A: Formulas for buffer extension}{9}}
+\newlabel{FormulasKeep}{{A}{9}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {A-A}}Overlap volume memory sizes}{9}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {A-B}}Maximum amount of overlap to keep in memory}{10}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {A-C}}Keeping f1}{10}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\unhbox \voidb@x \hbox {A-D}}Keeping f3}{10}}

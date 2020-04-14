@@ -299,12 +299,25 @@ Again, if we can stretch the buffer such that $B_x = R_x$ in the dimension $x$ o
 \end{figure*}
 
 \begin{algorithm}[h]
-  \caption{Pseudocode of the ``keep" algorithm in 3D}
+  \caption{Pseudocode of the ``keep" algorithm}
 
   \begin{algorithmic}[1]
-  \STATE in progress
+  \STATE volumesToKeep, $B \leftarrow$ bufferExtensionAlgorithm(...)
+  \STATE buffers $\leftarrow$ getBufferCoordinates($B$)
+  \STATE storage $\leftarrow$ new Dictionary()
+  \FOR {buffer in buffers}
+    \STATE bufferData $\leftarrow$ read(buffer, inputFiles)
+    \STATE writeOffSurplus(bufferData, outFiles, volumesToKeep, storage)
+    \STATE keep(storage, bufferData, outFiles)
+    \FOR {outFile in storage}
+      \IF {outFile is complete}
+        \STATE write(outFile)
+        \STATE remove outFile from storage
+      \ENDIF
+    \ENDFOR
+  \ENDFOR
   \end{algorithmic}
-  \label{algo:keep_algorithm_3D}
+  \label{algo:keep_algorithm}
 
 \end{algorithm}
 
@@ -424,7 +437,7 @@ Finally, Algorithm \ref{algo:buffer_extension_3} describes how to extend the buf
 \begin{algorithm}[h]
   \caption{Buffer extension algorithm (part 1)}
 
-  \begin{algorithmic}[1]
+  \begin{algorithmic}
     \STATE $B = [\Lambda_k, 1, 1]$
 
     \STATE // storing $F_1$
@@ -480,7 +493,7 @@ Finally, Algorithm \ref{algo:buffer_extension_3} describes how to extend the buf
 \begin{algorithm}[h]
   \caption{Buffer extension algorithm (part 2)}
 
-  \begin{algorithmic}[1]
+  \begin{algorithmic}
 
     \STATE // storing $F_1, F_2, F_3$
     \IF{$\phi > \Theta_i$}
@@ -519,7 +532,7 @@ Finally, Algorithm \ref{algo:buffer_extension_3} describes how to extend the buf
 \begin{algorithm}[h]
   \caption{Buffer extension algorithm (part 3)}
 
-  \begin{algorithmic}[1]
+  \begin{algorithmic}
 
   \STATE // stretching buffer beyond input aggregate
   \STATE $p = [0, 0, 0]$
@@ -764,7 +777,7 @@ Finally, Algorithm \ref{algo:buffer_extension_3} describes how to extend the buf
   \begin{algorithm}[h]
     \caption{Pseudocode for addInputFileLength}
 
-    \begin{algorithmic}[1]
+    \begin{algorithmic}
 
     \STATE \textbf{Inputs:} $B, p, \alpha$
     \STATE $B[i] = B[i] + p[0]I[i]$
@@ -786,7 +799,7 @@ Finally, Algorithm \ref{algo:buffer_extension_3} describes how to extend the buf
   \begin{algorithm}[h]
     \caption{Pseudocode for computeSigma3D}
 
-    \begin{algorithmic}[1]
+    \begin{algorithmic}
     \STATE \textbf{Inputs:} $F_1, F_2, ..., F_7, B, \alpha$
 
     \STATE $G = dict()$
