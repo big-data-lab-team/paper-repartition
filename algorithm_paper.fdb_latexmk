@@ -1,12 +1,12 @@
 # Fdb version 3
-["bibtex algorithm_paper"] 1586881114 "algorithm_paper.aux" "algorithm_paper.bbl" "algorithm_paper" 1586881115
+["bibtex algorithm_paper"] 1586881114 "algorithm_paper.aux" "algorithm_paper.bbl" "algorithm_paper" 1587056033
   "/usr/share/texlive/texmf-dist/bibtex/bst/base/ieeetr.bst" 1580929837 18361 1a00e58565e7f19bf2b3e1bfb82254ae ""
   "Bibliography.bib" 1586447377 6147 a164fd0a9fbaad61718a3afda71e2b58 ""
   "algorithm_paper.aux" 1586881115 11377 9edeb0ffeb9484e568ca51d145b7f2e0 "pdflatex"
   (generated)
-  "algorithm_paper.bbl"
   "algorithm_paper.blg"
-["pdflatex"] 1586881114 "algorithm_paper.tex" "algorithm_paper.pdf" "algorithm_paper" 1586881115
+  "algorithm_paper.bbl"
+["pdflatex"] 1586881114 "algorithm_paper.tex" "algorithm_paper.pdf" "algorithm_paper" 1587056033
   "/home/user/.texlive2018/texmf-var/web2c/pdftex/pdflatex.fmt" 1561246777 789641 18556bb2b16464003d5aaf304afe1847 ""
   "/usr/share/texlive/texmf-dist/fonts/enc/dvips/base/8r.enc" 1580929836 4850 80dc9bab7f31fb78a000ccfed0e27cab ""
   "/usr/share/texlive/texmf-dist/fonts/map/pdftex/updmap/pdftex.map" 1530836625 2850648 765161d183c5509465c2744baf096a7a ""
@@ -102,7 +102,7 @@
   "IEEEtran.cls" 1440654524 288304 b67b6fc6c2abb39f9b461923f5199343 ""
   "algorithm_paper.aux" 1586881115 11377 9edeb0ffeb9484e568ca51d145b7f2e0 "pdflatex"
   "algorithm_paper.bbl" 1586881114 648 5b768fd939f2a3f8736119783b04bd2a "bibtex algorithm_paper"
-  "algorithm_paper.tex" 1586881112 53337 0785d7f51b4bb6c61d2fc352972e6e26 ""
+  "algorithm_paper.tex" 1587056033 53337 0785d7f51b4bb6c61d2fc352972e6e26 ""
   "figures/case_1_2.png" 1584545879 28516 660145b40acea152b9800824acb09fdc ""
   "figures/case_2_1.png" 1584545879 42202 1f49077adf0b76117fbb08ae3c60cd2e ""
   "figures/column_order.png" 1584545879 102054 707294cbda1e7fb68af82b04758fad3d ""
@@ -118,6 +118,6 @@
   "figures/overlap.png" 1584545879 24576 7241eccb48625a22604530c4373a341d ""
   "figures/reconstructed_img_divided.png" 1584545879 33678 c2ac3475e9cfa58eae800b44c1a1a018 ""
   (generated)
-  "algorithm_paper.pdf"
-  "algorithm_paper.log"
   "algorithm_paper.aux"
+  "algorithm_paper.log"
+  "algorithm_paper.pdf"
