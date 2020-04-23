@@ -1,0 +1,8 @@
+*.log
+algorithm_paper.pdf
+*.aux
+*.fdb_latexmk
+*.synctex.gz
+*.blg
+*.fls
+*.bbl
