@@ -9,27 +9,19 @@
 \usepackage{algorithmic, algorithm}
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\newcommand{\logic}[1]{\color{red}\textbf{Logic/flow:}#1\color{black}}
+\newcommand{\writing}[1]{\color{green}\textbf{Writing:}#1\color{black}}
+\newcommand{\tristan}[1]{\color{orange}\textbf{From Tristan:}#1\color{black}}
+
 \begin{document}
 
 \title{ Dask IO for sequentially splitting, merging and resplitting multidimensional arrays }
 
-\author{\IEEEauthorblockN{1\textsuperscript{st} Timothée Guédon}
-\IEEEauthorblockA{\textit{Department of Computer Science and Software Engineering} \\
-\textit{Concordia University}\\
-Montreal, Quebec, Canada \\
-t\_guedon@encs.concordia.ca}
-\and
-\IEEEauthorblockN{2\textsuperscript{nd} Tristan Glatard}
-\IEEEauthorblockA{\textit{Department of Computer Science and Software Engineering} \\
-\textit{Concordia University}\\
-Montreal, Quebec, Canada \\
-tristan.glatard@concordia.ca}
-\and
-\IEEEauthorblockN{3\textsuperscript{rd} Valérie Hayot-Sasson}
-\IEEEauthorblockA{\textit{Department of Computer Science and Software Engineering} \\
-\textit{Concordia University}\\
-Montreal, Quebec, Canada \\
-valerie.hayot-sasson@concordia.ca}
+\author{\IEEEauthorblockN{Timoth\'ee Gu\'edon, Val\'erie Hayot-Sasson, Tristan Glatard \\
+  \IEEEauthorblockA{
+    Department of Computer Science and Software Engineering, Concordia University, Montreal, Canada
+  }}
 }
 
 \maketitle
@@ -38,15 +30,181 @@ valerie.hayot-sasson@concordia.ca}
 % This document is a model and instructions for \LaTeX.
 % This and the IEEEtran.cls file define the components of your paper [title, text, heads, etc.]. *CRITICAL: Do Not Use Symbols, Special Characters, Footnotes,
 % or Math in Paper Title or Abstract.
-In this paper, we define a new algorithm to resplit a multidimensional array stored into a set of files, and we show that it can also be used to split and merge data with the same behavior than the ``multiple" strategy. We also give an implementation of this algorithm into a Python library called ``Dask IO", available as an optimization package for the Python big data library Dask.
+In this paper, we define a new algorithm to resplit a multidimensional
+array stored into a set of files, and we show that it can also be used to
+split and merge data with the same behavior than the ``multiple" strategy.
+We also give an implementation of this algorithm into a Python library
+called ``Dask IO", available as an optimization package for the Python big
+data library Dask.
+\logic{Abstract misses an intro/context sentence and a summary of the results.
+I'd suggest to address this after the paper is complete.}
 \end{abstract}
 
 \begin{IEEEkeywords}
 multidimensional, array, split, merge, resplit, IO, processing, Dask, Python
 \end{IEEEkeywords}
 
+
+
 %----------------------------------------
-\section*{Nomenclature}
+\section{Introduction}
+%----------------------------------------
+
+\writing{Don't use section* (unnumbered sections), we like section numbers!}
+
+With the improvement of acquisition methods in several scientific domains
+like \writing{use ``such as'' instead of ``like''} health sciences, geology and astrophysics, new big data challenges
+have emerged. It \writing{It's not clear what ``it'' refers to, mostly because challenges is plural.
+ When you use pronouns, make sure they are not ambiguous.} includes processing a big amount of data, as well as
+processing very big files like ultra high resolution images. An example of
+a ultra high resolution image in the neuroscience field is Big Brain, a
+model of the brain providing microscopic data (20 micrometers) for modeling
+and simulation \cite{Amunts1472}. Most image processing pipelines process
+only specific ROI (Region Of Interest) or process data by block \logic{You should explain that block algorithms 
+are necessary when the entire image cannot be loaded in memory, and for parallelization. I'd start a new paragraph before 
+starting this explaination.}. At the end
+of such pipelines, merging back those blocks into one reconstructed image
+may be required as well. The problem is that naive algorithms \logic{Naive algorithms for what?} perform
+poorly due to the amount of seeks occurring on disk~\cite{seqalgorithms} \writing{Use unbreakable spaces (tildes) before each cite 
+command}.
+
+Previous work in \cite{seqalgorithms} introduced two
+types of sequential
+algorithms to split and merge multidimensional arrays: the ``clustered" and
+``multiple" strategies. To the best of our knowedge however, no algorithm
+has been proposed for the resplit task. Moreover, the split and merge tasks
+are special cases of the resplit task, which gives an opportunity to solve
+the three problems at once. It is easy to see that the ``clustered" and
+``multiple" strategies are non optimal for the resplit task, that is why we
+searched for another strategy. \logic{You should also refer to 
+other works: hilbert curves, openconnetome / bossDB for instance, to show that the problem is of general interest.
+The positioning of our work is that we propose an algorithmic solution to this problem rather than one based on file formats.}
+
+\tristan{Don't spend too much time fixing the previous paragraphs for now, 
+this should be done when the paper is close to completion.}
+
+\subsection{The occurrence of seeks}
+
+When accessing a multi-dimensional array, seeks occur in two situations:
+(1) when an array block is opened for reading or writing, and (2) when the
+reading or writing process moves within the block to write at different
+places. The latter is the case of interest here. 
+
+We assume that files are written in column-order (a.k.a ``F" ordering),
+where the fastest moving dimension in the file is the last dimension in the
+array and the slowest moving dimension in the file is the first dimension
+in the array. For example a 3D array with dimensions i, j and k would be
+written on disk by writing the complete columns in the k dimension first
+(see Figure \ref{fig:column_order}).
+
+\tristan{Here you should explain why accessing a subset of a block creates seeks.
+ And perhaps make a figure (if so, it should be a sub-figure in Fig 2.)}
+
+\subsection{Problem definition}
+
+We focus on 3D arrays for simplicity. Consider a 3D array of shape $R =
+(R_i, R_j, R_k)$, stored as input blocks of uniform shape $I =
+(I_i, I_j, I_k)$. Our goal is to resplit the input blocks into output
+blocks of uniform but different shape $O = (O_i, O_j, O_k)$.
+
+A resplit algorithm (Algorithm \ref{algo:generalresplit}) takes as input a
+list of input blocks \texttt{inBlocks} of shape $I$, a list of output
+blocks \texttt{outBlocks} of shape $O$, the amount of available memory
+\texttt{m}, and a list of buffers \texttt{buffersList} defining a partition
+of array $R$. The algorithm successively loads the image regions defined by
+the buffers, and writes them to the output blocks. 
+
+For simplicity, we require that all buffers in \texttt{buffersList} have
+the same shape. Our problem is to find the partition \texttt{bufferList}
+that minimizes the number of seeks done by Algorithm
+\ref{algo:generalresplit} given $I$ and $O$, subject to the amount $m$
+of available memory. 
+
+\tristan{This problem formulation doesn't quite work, since the keep
+algorithm doesn't seem to follow Algorithm 1, since Algorithm 1 writes all
+the buffers one by one and entirely. Therefore, the ``keep'' heuristics doesn't 
+provide a solution to this optimization problem. This should be discussed.}
+
+\begin{algorithm}[H]
+  \caption{General resplit algorithm \tristan{m is unused, the algorithm 
+  should be fixed to use it.}}
+  \label{algo:generalresplit}
+  \begin{algorithmic}
+    \STATE \textbf{Inputs:} {inFiles, outFiles, m, buffersList}
+    \FOR{$\textrm{buffer in buffersList}$}
+      \STATE $\textrm{read(inFiles, buffer)}$
+      \STATE $\textrm{write(outFiles, buffer)}$
+    \ENDFOR
+
+  \end{algorithmic}
+\end{algorithm}
+
+\writing{In Latex, make lines smaller than 80 chars so that they can 
+be read easily in various terminals.}
+
+The resplit process has two particular cases:
+\begin{itemize}
+  \item It becomes a split process if there is one input file and several output files,
+  \item It becomes a merge process if there are several input files and one output file.
+\end{itemize} 
+\tristan{Sure, but do we need to know that at this point? Maybe this should move.}
+
+\logic{Out of place:
+``We call $m'$ the amount of memory available at a given time
+during the execution of the algorithm ($m'=m$ at initialization)"
+}
+
+\subsection{Baseline solution}
+
+Let us consider a baseline solution where the buffers in
+\texttt{bufferList} have the same shape as the input files ($B=I$) and the
+order is the same order than the storage order i.e. the column order ($[k,
+j, i]$ order).
+% TODO : seeks analysis
+\tristan{So what can we say about this solution? }
+
+\subsection{A particular case: $I=kO$}
+
+If the input shape is a multiple of the output shape then the problem
+is easily solved by reading as many input blocks as can fit in $m$. In this case, the buffer
+shape $B$ is a multiple of the input shape $I$. This solution results in
+one seek to read each input block, and one seek to write each output block, which is
+the minimum number of seeks possible for a resplit. \writing{you don't need a newline between paragraphs.}
+
+If there is a mismatch between the shapes in any dimension however, we
+needs a strategy to manage this overlap while minimizing the number of
+seeks \tristan{you should explain why}.
+
+Also, the resplit process requires multiple buffers to be read. If there is
+no overlap between input and output files, then the order in which we load
+buffers is not important. In case of an overlap however, the order may have
+an important impact on the number of seeks produced. \tristan{This is unclear, are you talking about the keep strategy already?}
+
+
+
+\begin{figure}[h!]
+\centering
+\includegraphics[scale=0.4]{./figures/reconstructed_img_divided.png}
+\caption{Illustration of the reconstructed image divided into input files
+at the initialization of the resplit algorithm. \tristan{I'm not sure
+why/if this figure is required as it's not referred in the text (all
+figures should be referred in the text).}
+}
+\label{fig:reconstructed_img_divided}
+\end{figure}
+
+\begin{figure*}[h!]
+\centering
+\includegraphics[scale=0.3]{./figures/column_order.png}
+\caption{Illustration of the column-order storage of voxels in a file.
+}
+\label{fig:column_order}
+\end{figure*}
+
+%----------------------------------------
+\section{Nomenclature}
+\logic{Don't start the paper with this: it should be a table or a section in the methods. Putting it here for now.
+Use ``Notations'' instead of ``Nomenclature''.}
 %----------------------------------------
 \begin{itemize}
   \item $A_i$: Area of the $i^{th}$ component
@@ -70,98 +228,7 @@ multidimensional, array, split, merge, resplit, IO, processing, Dask, Python
 \end{itemize}
 
 %----------------------------------------
-\section*{Introduction}
-%----------------------------------------
-
-\subsection{Context}
-
-With the improvement of acquisition methods in several scientific domains like health sciences, geology and astrophysics, new big data challenges have emerged. It includes processing a big amount of data, as well as processing very big files like ultra high resolution images. An example of a ultra high resolution image in the neuroscience field is Big Brain, a model of the brain providing microscopic data (20 micrometers) for modeling and simulation \cite{Amunts1472}. Most image processing pipelines process only specific ROI (Region Of Interest) or process data by block. At the end of such pipelines, merging back those blocks into one reconstructed image may be required as well. The problem is that naive algorithms perform poorly due to the amount of seeks occuring on disk\cite{seqalgorithms}. Previous work in \cite{seqalgorithms} introduced two types of sequential algorithms to split and merge multidimensional arrays: the ``clustered" and ``multiple" strategies. To the best of our knowedge however, no algorithm has been proposed for the resplit task. Moreover, the split and merge tasks are special cases of the resplit task, which gives an opportunity to solve the three problems at once. It is easy to see that the ``clustered" and ``multiple" strategies are non optimal for the resplit task, that is why we searched for another strategy.
-
-\subsection{Problem definition}
-
-Consider a multidimensional array of shape $R = (R_i, R_j, R_k)$, stored in some input files with a given shape $I = (I_i, I_j, I_k)$, all input files having the same shape.
-Our goal is to optimize the process of sequentially resplitting the input files into output files with a different shape $O = (O_i, O_j, O_k)$, all output files having the same shape, too. \\
-
-The resplit process has two particular cases:
-\begin{itemize}
-  \item It becomes a split process if there is one input file and several output files,
-  \item It becomes a merge process if there are several input files and one output file.
-\end{itemize}
-
-For this I/O process to be fast, one needs to minimize the number of seeks that occur on disk while reading and writing.
-We consider that a seek occurs either when opening a file or seeking into a file. \\
-
-Let us consider a basic sequential resplit algorithm: One can repeatedly read the maximum amount of data possible from the input files into a buffer stored in main memory, and then write this buffer down into the output files requiring this data, until all output files have been completely written.
-This resplit algorithm is described in Algorithm \ref{algo:generalresplit}. \\
-
-The algorithm described in Algorithm \ref{algo:generalresplit} takes a list of input and output files $inFiles$ and $outFiles$ as parameters, as well as the amount of memory $m$ available in RAM for the buffer and the list of the buffers' coordinates. We call $m'$ the amount of memory available in the buffer at a given time during the execution of the algorithm ($m'=m$ at initialization). The list of buffers' coordinates contains the coordinates of each buffer to be loaded in the referential of the reconstructed image.
-The algorithm successively loads as much data as it can from the input files into the buffer and write it down to the output files that are supposed to contain this data.
-Although we could use a naive shape for the buffer, we can use the input and output files shapes to elaborate more efficient strategies as we will see in the next sections.
-The algorithm ends when all buffers have been read.
-Therefore, the buffers must cover the whole reconstructed image such that when the algorithm ends all the output files have been completely written.
-Moreover, we must also ensure that all the data read from input files are either stored in RAM or directly written, such that all the output files are completely written at the end of the algorithm. \\
-
-Given Algorithm \ref{algo:generalresplit}, the optimization problem that we want to solve can be stated as follows:
-Given the amount of main memory available $m$, as well as the shapes of the input and output files $I$ and $O$, how to select the best buffer shape $B$ which will minimize the number of seeks that take place during reading and writing? \\
-
-We add two restrictions on the buffers: We shall use only non-overlaping buffers, all buffers having the same size, and each buffer has to be written only once.
-
-\begin{algorithm}[H]
-  \caption{Basic resplit algorithm}
-  \label{algo:generalresplit}
-  \begin{algorithmic}
-    \STATE \textbf{Inputs:} {inFiles, outFiles, m, buffersList}
-    \FOR{$\textrm{buffer in buffersList}$}
-      \STATE $\textrm{read(inFiles, buffer)}$
-      \STATE $\textrm{write(outFiles, buffer)}$
-    \ENDFOR
-
-  \end{algorithmic}
-\end{algorithm}
-
-\subsection{Consistency with previous works}
-For the sake of consistency with previous works \cite{seqalgorithms}, we call the original array of shape $R$ stored in the input files the ``reconstructed image" (see Figure \ref{fig:reconstructed_img_divided}).
-Of course, the input files' positions in the reconstructed image have to be stored in some way.
-Also with a view to be consistent with previous works, we assume the files to be written in column-order.
-In column ordering (also called ``F" ordering) the fastest moving dimension is the last dimension of the array and the slowest moving dimension is the first dimension.
-For example a 3D array with dimensions i, j and k would be written on disk by writing the complete columns in the k dimension first (see Figure \ref{fig:column_order}).
-
-\begin{figure}[h!]
-\centering
-\includegraphics[scale=0.4]{./figures/reconstructed_img_divided.png}
-\caption{Illustration of the reconstructed image divided into input files at the initialization of the resplit algorithm.
-}
-\label{fig:reconstructed_img_divided}
-\end{figure}
-
-\begin{figure*}[h!]
-\centering
-\includegraphics[scale=0.3]{./figures/column_order.png}
-\caption{Illustration of the column-order storage of voxels in a file.
-}
-\label{fig:column_order}
-\end{figure*}
-
-\subsection{Naive algorithm}
-
-As a base case for our problem, let us define a naive algorithm which loads one input file at a time and write it down into the different output files that requires the data.
-The buffers have the same shape as the input files ($B=I$) and the order is the same order than the storage order i.e. the column order in this study ($[k, j, i]$ order).
-% TODO : seeks analysis
-
-\subsection{A particular case}
-
-If the input shape is a multiple of the output shape such that one input file covers several output files entirely without falls, then the problem is easily solved: one must read as much input files as one, i.e. the buffer shape $B$ is a multiple of the input shape $I$.
-The algorithm will produce one seek per input file and one seek to write each output file, which is the minimum number of seeks possible for a resplit.\\
-
-If there is a mismatch between the shapes in any dimension however, one needs a strategy to manage with this overlap while minimizing the number of seeks.
-We will introduce a strategy to keep falls temporarily into memory in the next section, this strategy's efficiency is completely dependent on the amount of main memory available. \\
-
-Also, the resplit process requires multiple buffers to be read.
-If there is no overlap between input and output files, then the order in which we load buffers is not important.
-In case of an overlap however, the order may have an important impact on the number of seeks produced.
-
-%----------------------------------------
-\section*{The ``keep" algorithm}
+\section{The ``keep" algorithm}
 %----------------------------------------
 The algorithm presented in this paper is called the ``keep" algorithm, as it relies on a so-called ``keep strategy" that is presented below.
 The ``keep" algorithm is an algorithm to find the best buffer shape for a resplit.
@@ -355,7 +422,7 @@ In particular, we remark that the falls tends to be smaller when the buffer shap
 We can stimulate this property by using small chunks such that we use buffer bigger input aggregates (see Stretching beyond the input aggregate shape), while keeping the overlaps small at the borders.
 
 %----------------------------------------
-\section*{A memory analysis of the keep strategy}
+\section{A memory analysis of the keep strategy}
 %----------------------------------------
 The keep algorithm assumes that $m$ is big enough to keep at least a column of length $\Lambda_k$. (Note: à modifier car bad assumption) % <- TODO: a revoir
 As it has been explained, in 3D the buffer is then stretched in the $j^{th}$ dimension and finally in the $i^{th}$ dimension as long as there is enough main memory available to use the keep strategy.
@@ -559,11 +626,11 @@ Finally, Algorithm \ref{algo:buffer_extension_3} describes how to extend the buf
 \end{algorithm}
 
 %----------------------------------------
-\section*{Implementation}
+\section{Implementation}
 %----------------------------------------
 
 %----------------------------------------
-\section*{Experiments}
+\section{Experiments}
 %----------------------------------------
 
 % \begin{itemize}
@@ -573,11 +640,11 @@ Finally, Algorithm \ref{algo:buffer_extension_3} describes how to extend the buf
 % \end{itemize}
 
 %----------------------------------------
-\section*{Results}
+\section{Results}
 %----------------------------------------
 
 %----------------------------------------
-\section*{Discussion}
+\section{Discussion}
 %----------------------------------------
 
 \subsection{Usage and support for MINC/Nifti file formats}
@@ -642,11 +709,11 @@ Finally, Algorithm \ref{algo:buffer_extension_3} describes how to extend the buf
 % Again, this is the same behavior than multiple reads.
 
 %----------------------------------------
-\section*{Conclusion}
+\section{Conclusion}
 %----------------------------------------
 
 %----------------------------------------
-\section*{Acknowledgments}
+\section{Acknowledgments}
 %----------------------------------------
 
 \bibliography{Bibliography}
