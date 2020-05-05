@@ -30,12 +30,10 @@
 % This document is a model and instructions for \LaTeX.
 % This and the IEEEtran.cls file define the components of your paper [title, text, heads, etc.]. *CRITICAL: Do Not Use Symbols, Special Characters, Footnotes,
 % or Math in Paper Title or Abstract.
-In this paper, we define a new algorithm to resplit a multidimensional
-array stored into a set of files, and we show that it can also be used to
-split and merge data with the same behavior than the ``multiple" strategy.
-We also give an implementation of this algorithm into a Python library
-called ``Dask IO", available as an optimization package for the Python big
-data library Dask.
+Scientific applications often model applications as multidimensional arrays that must be stored in chunks on local and distributed systems for later processing and analysis.
+Moreover, local processing of big multidimensional arrays is a challenge that often requires processing the data as chunks and not being able to load it entirely in main memory.
+In this paper, we define a new algorithm to efficiently resplit multidimensional arrays, that is, to rewrite arrays contained into some input files with a given shape into output files of a different shape, while minimizing the number of seeks, hence reducing the processing time.
+We provide an implementation of this algorithm into a Python library called ``Dask IO", available as an optimization package for the Python big data library Dask.
 \logic{Abstract misses an intro/context sentence and a summary of the results.
 I'd suggest to address this after the paper is complete.}
 \end{abstract}
@@ -44,61 +42,66 @@ I'd suggest to address this after the paper is complete.}
 multidimensional, array, split, merge, resplit, IO, processing, Dask, Python
 \end{IEEEkeywords}
 
-
-
 %----------------------------------------
 \section{Introduction}
 %----------------------------------------
+% big data challenges
+With the improvement of acquisition methods in several scientific domains such as
+health sciences, geology and astrophysics, new big data challenges have emerged.
+Such challenges includes processing big amounts of data and manipulating heavy
+files like ultra high resolution images. Big Brain, a brain model providing
+microscopic data (20 micrometers) for modeling and simulation~\cite{Amunts1472}
+is an example of ultra high resolution images in the neuroscience field.
 
-\writing{Don't use section* (unnumbered sections), we like section numbers!}
+% need for chunking data
+On the one hand, scientific applications often model problems as
+multidimensional arrays that must be stored in chunks for later processing and analysis.
+Chunking allows for efficient queries and great flexibility in adding new data, among other things.
+On the other hand, block algorithms are necesary when data cannot be entirely
+loaded in memory and to parallelize computations.
+% add bossDB, hdf5, open connectome project
+% The positioning of our work is that we propose an algorithmic solution to this problem rather than one based on file formats.
 
-With the improvement of acquisition methods in several scientific domains
-like \writing{use ``such as'' instead of ``like''} health sciences, geology and astrophysics, new big data challenges
-have emerged. It \writing{It's not clear what ``it'' refers to, mostly because challenges is plural.
- When you use pronouns, make sure they are not ambiguous.} includes processing a big amount of data, as well as
-processing very big files like ultra high resolution images. An example of
-a ultra high resolution image in the neuroscience field is Big Brain, a
-model of the brain providing microscopic data (20 micrometers) for modeling
-and simulation \cite{Amunts1472}. Most image processing pipelines process
-only specific ROI (Region Of Interest) or process data by block \logic{You should explain that block algorithms 
-are necessary when the entire image cannot be loaded in memory, and for parallelization. I'd start a new paragraph before 
-starting this explaination.}. At the end
-of such pipelines, merging back those blocks into one reconstructed image
-may be required as well. The problem is that naive algorithms \logic{Naive algorithms for what?} perform
-poorly due to the amount of seeks occurring on disk~\cite{seqalgorithms} \writing{Use unbreakable spaces (tildes) before each cite 
-command}.
+% problems of chunking data
+Multidimensional array chunking raises the need for tools to efficiently split,
+merge and ``resplit" or ``rechunk" data files. Previous work in ~\cite{seqalgorithms}
+show that naive algorithms to split an array into several files and merge back those
+files into one output file perform very poorly due to millions of seeks occuring on disk.
 
-Previous work in \cite{seqalgorithms} introduced two
-types of sequential
-algorithms to split and merge multidimensional arrays: the ``clustered" and
-``multiple" strategies. To the best of our knowedge however, no algorithm
-has been proposed for the resplit task. Moreover, the split and merge tasks
-are special cases of the resplit task, which gives an opportunity to solve
-the three problems at once. It is easy to see that the ``clustered" and
-``multiple" strategies are non optimal for the resplit task, that is why we
-searched for another strategy. \logic{You should also refer to 
-other works: hilbert curves, openconnetome / bossDB for instance, to show that the problem is of general interest.
-The positioning of our work is that we propose an algorithmic solution to this problem rather than one based on file formats.}
-
-\tristan{Don't spend too much time fixing the previous paragraphs for now, 
-this should be done when the paper is close to completion.}
+This paper makes the following contributions:
+\begin{itemize}
+  \item We define the resplit problem
+  \item We propose a first sequential algorithm to efficiently resplit multidimensional arrays
+  \item We give a public implementation of such algorithm in the Python library dask
+  \item We enable the use of the clustered strategy for splitting and merging multidimensional arrays in dask
+\end{itemize}
 
 \subsection{The occurrence of seeks}
-
 When accessing a multi-dimensional array, seeks occur in two situations:
 (1) when an array block is opened for reading or writing, and (2) when the
 reading or writing process moves within the block to write at different
-places. The latter is the case of interest here. 
+places. The latter is the case of interest here.
 
-We assume that files are written in column-order (a.k.a ``F" ordering),
+We assume that files are written in row-major order (a.k.a ``C" ordering),
 where the fastest moving dimension in the file is the last dimension in the
 array and the slowest moving dimension in the file is the first dimension
 in the array. For example a 3D array with dimensions i, j and k would be
 written on disk by writing the complete columns in the k dimension first
 (see Figure \ref{fig:column_order}).
 
-\tristan{Here you should explain why accessing a subset of a block creates seeks.
- And perhaps make a figure (if so, it should be a sub-figure in Fig 2.)}
+accessing a subset of a block creates seeks
+% should be a sub-figure in Fig 2.
+
+\subsection{The multiple and clustered strategies}
+
+As a consequence, two types of sequential algorithms to sequentially split and merge
+multidimensional arrays were introduced: the ``clustered" and the ``multiple" strategy.
+To the best of our knowedge however, no  algorithm has been proposed for the resplit task.
+Moreover, the split and merge tasks
+are special cases of the resplit task, which gives an opportunity to solve
+the three problems at once. It is easy to see that the ``clustered" and
+``multiple" strategies are non optimal for the resplit task, that is why we
+searched for another strategy.
 
 \subsection{Problem definition}
 
@@ -112,21 +115,21 @@ list of input blocks \texttt{inBlocks} of shape $I$, a list of output
 blocks \texttt{outBlocks} of shape $O$, the amount of available memory
 \texttt{m}, and a list of buffers \texttt{buffersList} defining a partition
 of array $R$. The algorithm successively loads the image regions defined by
-the buffers, and writes them to the output blocks. 
+the buffers, and writes them to the output blocks.
 
 For simplicity, we require that all buffers in \texttt{buffersList} have
 the same shape. Our problem is to find the partition \texttt{bufferList}
 that minimizes the number of seeks done by Algorithm
 \ref{algo:generalresplit} given $I$ and $O$, subject to the amount $m$
-of available memory. 
+of available memory.
 
 \tristan{This problem formulation doesn't quite work, since the keep
 algorithm doesn't seem to follow Algorithm 1, since Algorithm 1 writes all
-the buffers one by one and entirely. Therefore, the ``keep'' heuristics doesn't 
+the buffers one by one and entirely. Therefore, the ``keep'' heuristics doesn't
 provide a solution to this optimization problem. This should be discussed.}
 
 \begin{algorithm}[H]
-  \caption{General resplit algorithm \tristan{m is unused, the algorithm 
+  \caption{General resplit algorithm \tristan{m is unused, the algorithm
   should be fixed to use it.}}
   \label{algo:generalresplit}
   \begin{algorithmic}
@@ -139,14 +142,14 @@ provide a solution to this optimization problem. This should be discussed.}
   \end{algorithmic}
 \end{algorithm}
 
-\writing{In Latex, make lines smaller than 80 chars so that they can 
+\writing{In Latex, make lines smaller than 80 chars so that they can
 be read easily in various terminals.}
 
 The resplit process has two particular cases:
 \begin{itemize}
   \item It becomes a split process if there is one input file and several output files,
   \item It becomes a merge process if there are several input files and one output file.
-\end{itemize} 
+\end{itemize}
 \tristan{Sure, but do we need to know that at this point? Maybe this should move.}
 
 \logic{Out of place:
@@ -180,8 +183,6 @@ no overlap between input and output files, then the order in which we load
 buffers is not important. In case of an overlap however, the order may have
 an important impact on the number of seeks produced. \tristan{This is unclear, are you talking about the keep strategy already?}
 
-
-
 \begin{figure}[h!]
 \centering
 \includegraphics[scale=0.4]{./figures/reconstructed_img_divided.png}
@@ -202,9 +203,7 @@ figures should be referred in the text).}
 \end{figure*}
 
 %----------------------------------------
-\section{Nomenclature}
-\logic{Don't start the paper with this: it should be a table or a section in the methods. Putting it here for now.
-Use ``Notations'' instead of ``Nomenclature''.}
+\section{Notations}
 %----------------------------------------
 \begin{itemize}
   \item $A_i$: Area of the $i^{th}$ component
