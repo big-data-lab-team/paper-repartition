@@ -113,7 +113,6 @@ small I and O shapes for example where a smarter strategy would be appreciated.
 To the best of our knowedge however, no algorithm has been proposed for the resplit task.
 
 \subsection{Problem definition}
-
 We focus on 3D arrays for simplicity. Consider a 3D array of shape $R =
 (R_i, R_j, R_k)$, stored as input blocks of uniform shape $I =
 (I_i, I_j, I_k)$. Our goal is to resplit the input blocks into output
@@ -145,26 +144,27 @@ of available memory.
   \end{algorithmic}
 \end{algorithm}
 
-
 \subsection{Baseline solution}
+A naive, baseline algorithm for the resplit task is to load one input file at a
+time into memory and write it in the appropriate output files. We can compute
+the amount of seeks produced by this algorithm with the algorithm described in
+Algorithm \ref{badref}. As one can see from the algorithm, unless the dimensions
+of the input and output
+files matches a considerable amount of seeks will occur. Also, an overlap in the
+k dimension is more costly than one in the j dimension. Finally, if the output
+file shape is greater than the input file shape it also incurs the maximum amount
+of seeks.
 
-Let us consider a baseline solution where the buffers in
-\texttt{bufferList} have the same shape as the input files ($B=I$) and the
-order is the same order than the storage order i.e. the column order ($[k,
-j, i]$ order).
-
-
-\subsection{A particular case: $I=kO$}
-
-If the input shape is a multiple of the output shape then the problem
-is easily solved by reading as many input blocks as can fit in $m$. In this case, the buffer
-shape $B$ is a multiple of the input shape $I$. This solution results in
-one seek to read each input block, and one seek to write each output block, which is
-the minimum number of seeks possible for a resplit.
-
-If there is a mismatch between the shapes in any dimension however, we
-needs a strategy to manage this overlap while minimizing the number of
-seeks.
+\subsection{Considerations on shape mismatch}
+If Ix != Ox in a given dimension x, we call it a shape mismatch. As it has been
+shown in the paragraph on the baseline algorithm, if Ix < Ox and we read one
+file at a time, we are condamned to seek in the output files at write time. If,
+however, Ix > Ox, then we get remainders. Finally, if we just read what we need
+from the input files to write in output files contiguously, we seek while reading
+and writing. A solution to reduce the number of seeks seems to be to read more
+than Ox and to elaborate a strategy to keep the remainders in memory instead of
+writing it down directly until we get enough data to write it with a reduced
+amount of seeks. Such a strategy is presented in the section keep algorithm.
 
 \subsection{Contributions}
 This paper makes the following contributions:
@@ -182,6 +182,8 @@ This paper makes the following contributions:
 %----------------------------------------
 \section{A memory analysis of the keep strategy}
 %----------------------------------------
+This section covers how we estimate the amount of memory required by the keep
+strategy to know how much the buffer can be stretched in a given direction
 
 %----------------------------------------
 \section{Methods}
