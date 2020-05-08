@@ -1,0 +1,218 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{algorithmic, algorithm}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\newcommand{\logic}[1]{\color{red}\textbf{Logic/flow:}#1\color{black}}
+\newcommand{\writing}[1]{\color{green}\textbf{Writing:}#1\color{black}}
+\newcommand{\tristan}[1]{\color{orange}\textbf{From Tristan:}#1\color{black}}
+
+\begin{document}
+
+\title{ Dask IO for sequentially splitting, merging and resplitting multidimensional arrays }
+
+\author{\IEEEauthorblockN{Timoth\'ee Gu\'edon, Val\'erie Hayot-Sasson, Tristan Glatard \\
+  \IEEEauthorblockA{
+    Department of Computer Science and Software Engineering, Concordia University, Montreal, Canada
+  }}
+}
+
+\maketitle
+
+\begin{abstract}
+Todo.
+\end{abstract}
+
+\begin{IEEEkeywords}
+multidimensional, array, split, merge, resplit, IO, processing, Dask, Python
+\end{IEEEkeywords}
+
+%----------------------------------------
+\section{Introduction}
+%----------------------------------------
+% big data challenges
+With the improvement of acquisition methods in several scientific domains such as
+health sciences, geology and astrophysics, new big data challenges have emerged.
+Such challenges includes processing big amounts of data and manipulating heavy
+files like ultra high resolution images. Big Brain, a brain model providing
+microscopic data (20 micrometers) for modeling and simulation~\cite{Amunts1472}
+is an example of ultra high resolution images in the neuroscience field.
+
+\subsection{Multidimensional array chunking}
+% use of chunking
+On the one hand, scientific applications often model problems as
+multidimensional arrays that must be stored in chunks for later processing and analysis.
+Chunking allows for efficient queries and great flexibility in adding new data, among other things.
+On the other hand, block algorithms are necesary when data cannot be entirely
+loaded in memory and to parallelize computations.
+
+% need for tools to rechunk
+Multidimensional array chunking raises the need for tools to efficiently split,
+merge and ``resplit" or ``rechunk" data files. Previous work in ~\cite{seqalgorithms}
+show that naive algorithms to split an array into several files and merge back those
+files into one output file perform very poorly due to millions of seeks occuring on disk.
+
+\subsection{The occurrence of seeks}
+% explain storage order
+For this study we manipulate multidimensional arrays stored in hdf5 files,
+that is why we assume that files are written in row-major order (a.k.a ``C" ordering),
+where the fastest moving dimension in the file is the last dimension in the
+array and the slowest moving dimension in the file is the first dimension
+in the array. For example a 3D array with dimensions i, j and k would be
+written on disk by writing the complete columns in the k dimension first
+(see Figure \ref{fig:column_order}). As in previous work~\cite{seqalgorithms}, we
+assume that the storage layout can be arbitrary as long as it is known to the algorithm.
+
+% why subarray extraction incurs seeks
+Retrieving subarrays from an array stored on disk incurs seeks. When accessing a
+multi-dimensional array, seeks occur in two situations:
+(1) when an array block is opened for reading or writing, and (2) when the
+reading or writing process moves within the block to write at different
+places. While reading the data of interest, one needs to seek to the
+beginning of each contiguous piece of data
+constituting the subarray. For a 3D cuboid of shape C, stored in row-major order,
+each column of data in the k dimension is contiguously stored. They are therefore
+Cj * Ci data columns for which a seek is required on disk. Although the seek
+time depends on various parameters such as the distance in bytes between two
+data columns, we assume all seeks to incur the same time overhead for the sake
+of simplicity. We further assume that reducing the number of seeks is representative
+of reducing the processing speed.
+
+\subsection{The multiple and clustered strategies}
+Two strategies have been introduced in~\cite{seqalgorithms} for the split and
+merge tasks. To illustrate these strategies we shall apply it to the split task
+(R = I) as it is considered a dual operation of the merge task.
+The naive strategy to split an array is to repetedly loading one
+subarray of shape O and writing it down into an output file~\cite{seqalgorithms}.
+
+The clustered strategy consists in loading contiguous blocks of data of shape O
+from the input array in order to write it in one seek in each output file which
+data has been loaded. This strategy loads data blocks one by one, block columns
+by block columns or blocks slices by block slices. Using this strategy for
+resplitting would imply reading multiple input files that are contiguous in the
+reconstructed image or reading the data of contiguous output files by seeking into
+input files. In either case one can easily find bad cases in which the algorithm
+seeks in all dimensions.
+
+The multiple strategy aims at not doing any seek while reading and writing. For
+example, one would read the input file slice by slice and write this slices
+contiguously in the output files. The tradeoff lies in switching between files
+at each buffer loading. Using this strategy for the resplit task would imply
+reading contiguous columns or slices of data from the input files and writing it
+contiguously in the output files. This would result in even more switches
+between input and output files and one can easily find worst cases when using
+small I and O shapes for example where a smarter strategy would be appreciated.
+
+To the best of our knowedge however, no algorithm has been proposed for the resplit task.
+
+\subsection{Problem definition}
+
+We focus on 3D arrays for simplicity. Consider a 3D array of shape $R =
+(R_i, R_j, R_k)$, stored as input blocks of uniform shape $I =
+(I_i, I_j, I_k)$. Our goal is to resplit the input blocks into output
+blocks of uniform but different shape $O = (O_i, O_j, O_k)$.
+
+A resplit algorithm (Algorithm \ref{algo:generalresplit}) takes as input a
+list of input blocks \texttt{inBlocks} of shape $I$, a list of output
+blocks \texttt{outBlocks} of shape $O$, the amount of available memory
+\texttt{m}, and a list of buffers \texttt{buffersList} defining a partition
+of array $R$. The algorithm successively loads the image regions defined by
+the buffers, and writes them to the output blocks.
+
+For simplicity, we require that all buffers in \texttt{buffersList} have
+the same shape. Our problem is to find the partition \texttt{bufferList}
+that minimizes the number of seeks done by Algorithm
+\ref{algo:generalresplit} given $I$ and $O$, subject to the amount $m$
+of available memory.
+
+\begin{algorithm}[H]
+  \caption{General resplit algorithm}
+  \label{algo:generalresplit}
+  \begin{algorithmic}
+    \STATE \textbf{Inputs:} {inFiles, outFiles, buffersList}
+    \FOR{$\textrm{buffer in buffersList}$}
+      \STATE $\textrm{read(inFiles, buffer)}$
+      \STATE $\textrm{write(outFiles, buffer)}$
+    \ENDFOR
+
+  \end{algorithmic}
+\end{algorithm}
+
+
+\subsection{Baseline solution}
+
+Let us consider a baseline solution where the buffers in
+\texttt{bufferList} have the same shape as the input files ($B=I$) and the
+order is the same order than the storage order i.e. the column order ($[k,
+j, i]$ order).
+
+
+\subsection{A particular case: $I=kO$}
+
+If the input shape is a multiple of the output shape then the problem
+is easily solved by reading as many input blocks as can fit in $m$. In this case, the buffer
+shape $B$ is a multiple of the input shape $I$. This solution results in
+one seek to read each input block, and one seek to write each output block, which is
+the minimum number of seeks possible for a resplit.
+
+If there is a mismatch between the shapes in any dimension however, we
+needs a strategy to manage this overlap while minimizing the number of
+seeks.
+
+\subsection{Contributions}
+This paper makes the following contributions:
+\begin{itemize}
+  \item We define the resplit problem
+  \item We propose a first sequential algorithm to efficiently resplit multidimensional arrays
+  \item We give a public implementation of such algorithm in the Python library dask
+  \item We enable the use of the clustered strategy for splitting and merging multidimensional arrays in dask
+\end{itemize}
+
+%----------------------------------------
+\section{The ``keep" algorithm}
+%----------------------------------------
+
+%----------------------------------------
+\section{A memory analysis of the keep strategy}
+%----------------------------------------
+
+%----------------------------------------
+\section{Methods}
+%----------------------------------------
+
+%----------------------------------------
+\section{Implementation details}
+%----------------------------------------
+
+%----------------------------------------
+\section{Results}
+%----------------------------------------
+
+%----------------------------------------
+\section{Discussion}
+%----------------------------------------
+
+Future work :
+- the split and merge tasks
+are special cases of the resplit task, which gives an opportunity to solve
+the three problems at once.
+
+%----------------------------------------
+\section{Conclusion}
+%----------------------------------------
+
+%----------------------------------------
+\section{Acknowledgments}
+%----------------------------------------
+
+\bibliography{Bibliography}
+\bibliographystyle{ieeetr}
+
+\end{document}
