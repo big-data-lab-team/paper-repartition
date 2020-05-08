@@ -66,9 +66,9 @@ that is why we assume that files are written in row-major order (a.k.a ``C" orde
 where the fastest moving dimension in the file is the last dimension in the
 array and the slowest moving dimension in the file is the first dimension
 in the array. For example a 3D array with dimensions i, j and k would be
-written on disk by writing the complete columns in the k dimension first
-(see Figure \ref{fig:column_order}). As in previous work~\cite{seqalgorithms}, we
-assume that the storage layout can be arbitrary as long as it is known to the algorithm.
+written on disk by writing the complete columns in the k dimension first.
+As in previous work~\cite{seqalgorithms}, we assume that the storage layout can
+be arbitrary as long as it is known to the algorithm.
 
 % why subarray extraction incurs seeks
 Retrieving subarrays from an array stored on disk incurs seeks. When accessing a
@@ -135,10 +135,15 @@ of available memory.
   \caption{General resplit algorithm}
   \label{algo:generalresplit}
   \begin{algorithmic}
-    \STATE \textbf{Inputs:} {inFiles, outFiles, buffersList}
-    \FOR{$\textrm{buffer in buffersList}$}
-      \STATE $\textrm{read(inFiles, buffer)}$
-      \STATE $\textrm{write(outFiles, buffer)}$
+    \STATE \textbf{Inputs:} {inFiles, outFiles}
+    \STATE $B \leftarrow I$
+    \STATE initialize(cache)
+    \FOR{buffer in getBuffers($B$)}
+      \STATE $\textrm{bufferData} \leftarrow \textrm{read(inFiles, buffer)}$
+      \STATE insert(bufferData, cache)
+      \FOR{$i$, $data$ in cache}
+        \STATE write(outFiles[$i$], $data$)
+      \ENDFOR
     \ENDFOR
 
   \end{algorithmic}
@@ -183,7 +188,58 @@ This paper makes the following contributions:
 \section{A memory analysis of the keep strategy}
 %----------------------------------------
 This section covers how we estimate the amount of memory required by the keep
-strategy to know how much the buffer can be stretched in a given direction
+strategy to know how much the buffer can be stretched in a given direction while
+keeping the remainders in memory. In this analysis, we express the quantity of
+memory used by an array as the number of voxels it contains. It is equivalent
+to saying that the number of bytes per voxel is 1.
+
+The amount of memory required is the maximum memory consumption reached during
+the execution of the keep algorithm. To estimate this amount, we first need to
+define what a remainder volume is. A buffer of shape $\Lambda$ can be divided in
+8 parts or ``volumes". 7 out of those 8 volumes are remainder volumes because
+they represent the overlap between the input aggregate and the output files on
+its border. These 7 remainder volumes enclose an 8th part that is composed of
+input files that are either complete or which complementary part have already
+been loaded by a previous buffer. This means that any complementary part is either
+in memory (it has been kept in cache according to the keep strategy) or it has
+been written down previously. Therefore, this 8th volume cannot be kept by the
+keep strategy and is not considered a remainder. For each buffer, each of volume
+is indexed following the buffer order (see section on buffer order) G0 to G7, with
+G0 being the non-remainder volume. If the buffer is smallest than the input
+aggrgegate or if there is no shape mismatch in a given dimension, it may be that
+a volume size is set to 0.
+
+Having partitioned the buffers into such volumes, we can see that the maximum
+memory consumption is computed from two pieces of information: The maximum number
+of each volumes we must keep during the process and the maximum size of each
+volume. The maximum number of each volumes that we must keep during the process
+is (see computation details in Appendix~\ref{badref}):
+
+\begin{equation} \label{eq:1}
+\sigma = G_1 + n(G_2 + G_3) + N(G_4 + G_5 + G_6 + G_7)
+\end{equation}
+
+With $n$ the number of buffers in the first direction of the buffer order and
+$N$ is the number of buffers in a buffer slice, i.e. in the second direction of
+the buffer order. Given that at each step of the resplit algorithm one must
+load a buffer, we should also add the size of a buffer to the equation:
+
+\begin{equation} \label{eq:2}
+\Sigma = (G_1 + n(G_2 + G_3) + N(G_4 + G_5 + G_6 + G_7) + B_iB_jB_k)
+\end{equation}
+
+Finally, to find the maximum size of each volume one must know the maximum
+overlap length between the buffer and the output files on its border. One can
+either compute all possibilities and take the maximum in each dimension if it is
+not too costly or use the following upper bound: By definition of an input
+aggregate, the overlap between any buffer and its bordering output files it at
+maximum Ox in dimension x.
+
+Given equation~\ref{badref} and the maximum size of the volumes, we can now
+stretch the buffer shape one dimension at a time using simple equations to ensure
+that the maximum amount of memory consumed during the process wil stay below the
+amount of memory available. Such computations and the associated buffer stretching
+algorithm are given in Appendix~\ref{badref}.
 
 %----------------------------------------
 \section{Methods}
