@@ -260,7 +260,13 @@ We call this shape $\Lambda$.
 
 \subsection{Stretching the buffer in the storage order}
 To get a buffer close to $\Lambda$ we define an algorithm that stretches the
-buffer shape step by step. This step by step stretching
+buffer shape step by step. At each step, the algorithm estimates how much the
+buffer can be stretched in one direction while keeping the remainders into
+memory. Thhe problem of what dimension to increase first still stands. A
+strategic order seems to be to stretch the buffer in the direction which saves
+the maximum number of seeks first. Given the analysis of the baseline algorithm,
+such an order is the storage order as in the case of a row-major ordering such
+an order would keep remainders in the $k$ dimension first. 
 
 \subsection{Impact of the buffer order on performance}
 Using the keep strategy in case of overlaps, one may order the buffer loadings
