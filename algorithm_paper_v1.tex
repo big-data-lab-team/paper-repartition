@@ -61,7 +61,7 @@ show that naive algorithms to split an array into several files and merge back
 those files into one output file perform very poorly due to millions of seeks
 occuring on disk.
 
-\subsection{Dask and Dask IO}
+\subsection{Dask}
 
 
 \subsection{The occurrence of seeks}
@@ -114,7 +114,7 @@ The minimum number of seeks possible for the resplit task is $n_i + n_o$, with
 $n_i$ the number of input files and $n_o$ the number of output files. It means
 reading each input file and writing each output file in only one seek each.
 
-\begin{algorithm}[H]
+\begin{algorithm}
   \caption{General resplit algorithm}
   \label{algo:generalresplit}
   \begin{algorithmic}
@@ -266,7 +266,9 @@ memory. Thhe problem of what dimension to increase first still stands. A
 strategic order seems to be to stretch the buffer in the direction which saves
 the maximum number of seeks first. Given the analysis of the baseline algorithm,
 such an order is the storage order as in the case of a row-major ordering such
-an order would keep remainders in the $k$ dimension first. 
+an order would keep remainders in the $k$ dimension first. An analysis of the
+memory consumption of the keep strategy at each step together with the associated
+algorithm is given in the next section.
 
 \subsection{Impact of the buffer order on performance}
 Using the keep strategy in case of overlaps, one may order the buffer loadings
@@ -281,16 +283,15 @@ ordering could enable the storage of more overlaps in memory using the
 As we will see, the buffer ordering problem is complex and does not seem easily
 solvable. Thanksfully, the impact of the buffer ordering on performance can be
 mitigated. Indeed, the impact of the buffer ordering depends on the size of the
-falls, i.e. the overlaps between the buffer and the incomplete output files'
-shapes. One can reduce the falls' sizes by using smallest chunks: Even if the
-overlap between the input and output files is big with respect to their size,
-the area/volume of the falls will be kept small. In particular, we remark that
-the falls tends to be smaller when the buffer shape is bigger than the output
-file shape, as the overlaps are smallest and concentrated on the borders (see
-Figure \ref{fig:goodorderingbadordering}). We can stimulate this property by
-using small chunks such that we use buffer bigger input aggregates (see
-Stretching beyond the input aggregate shape), while keeping the overlaps small
-at the borders.
+remainders. One can reduce the remainders' sizes by using smallest chunks: Even
+if the overlap between the input and output files is big with respect to their
+size, the area/volume of the remainders will be kept small. In particular, we
+remark that the falls tends to be smaller when the buffer shape is bigger than
+the output file shape, as the overlaps are smallest and concentrated on the
+borders (see Figure \ref{fig:goodorderingbadordering}). We can stimulate this
+property by using small chunks such that we use buffer bigger input aggregates
+(see Stretching beyond the input aggregate shape), while keeping the overlaps
+small at the borders.
 
 %----------------------------------------
 \section{A memory analysis of the keep strategy}
@@ -353,6 +354,65 @@ algorithm are given in Appendix~\ref{bufferExtensionAlgorithm}.
 \section{Methods}
 %----------------------------------------
 
+Before diving into the implementation of the keep algorithm we first designed
+an experiment to prove that dask.array was subject to the seek problem. To that
+aim we created a random array from a uniform distribution and stored it as a
+hdf5 file for later processing. The array had a shape of x which represents 1/8
+of the Big Brain size. The experiment then consisted in splitting and merging
+the array with dask using two different chunk shapes: one of them doing more
+seeks than the other. We did this experiment on both HDD and SSD to see if the
+results were also visible when using an SSD which is suposedly less affected by
+seeks. The results of this experiment showed that dask was indeed subject to the
+seek problem. See the "Results" section for more details.
+
+In order to see if a strategy to reduce the number of seeks was effective, we
+implemented and tested the "clustered" strategy for splitting and merging
+multidimensional arrays. We chose this strategy first because it seemed simpler
+to implement and study~\cite{seqalgorithms} showed that such a strategy was
+working. It means that if it failed the problem would be more likely to come
+from the implementation or dask than from the algorithm itself. We also know
+from~\cite{seqalgorithms} that the difference between the naive and clustered
+strategies should be large enough to be visible in the processing time. The
+shapes used for the experiment are shown on the table x. The implementation
+details of the clustered strategy are discussed in the appropriate section and
+again, the results are presented in the "Results" section. The code of the
+experiment is available in a dedicated repository on Github.
+
+After these two preliminary experiment, we implemented a simplified version of
+the keep algorithm due to the difficulty to implemlent such an algorithm in a
+task graph (see section "Implementation details"). In order to evaluate the
+efficiency of the keep algorithm we compare it against vanilla dask on local
+computer. To be fair we used dask with one thread as required for our
+implementation but also with the classic multi-threaded  scheduler as it is the
+default when using dask.array. In order to compare both implementations to a
+naive resplit, we also added a plain Python implementation to the benchmark. For
+the experiments presented below we built a random 3D array of the size of Big
+Brain, drawn from a uniform distribution. Once again, the array is initially
+stored into an hdf5 file.
+
+We did three experiments on the keep algorithm. The first one consisted in
+comparing the different implementations in the case where the keep algorithm is
+supposed to be the most effective i.e. when the buffer is equal to the input
+aggregate $B_x=\Lambda_x$. In particular, three interesting cases are when
+$B=(1,1,\Lambda_k)$, $B=(1,\Lambda_j, \Lambda_k)$ and $B=\Lambda$. Those three
+cases represent ideal cases with different amount of data available. This
+experiment aimed at (1) showing if the keep algorithm worked, (2) seeing how much it
+can improve the processing speed and (3) how much gain it represents to be able to
+stretch the buffer in each dimension.
+
+In the second experiment, a more realistic case has been tested. In this case,
+$O~=I$ which is more likely to happen in real life. Although in a realistic
+scenario $O$ and $I$ would be relatively small, we also tested bigger shapes to
+see the impact on performance and if one implementation was more resilient than
+another.
+
+Finally, the particular case of an important shape mismatch was tested. The cases
+where $O>>I$ and $O<<I$ are equivalent, as in both cases the input aggegate
+will be quite big. This is supposed to be a bad case for the keep algorithm
+as extending the buffer to $\Lambda$ will be more complicated. For this
+experiment, we fixed $m$ and $I$ and then ran multiple times the algorithms
+while increasing $O$.  
+
 %----------------------------------------
 \section{Implementation details}
 %----------------------------------------
@@ -376,7 +436,6 @@ algorithm are given in Appendix~\ref{bufferExtensionAlgorithm}.
 \begin{itemize}
   \item explore tradeoff multiple and keep strategies: more or less buffers
 \end{itemize}
-
 
 %----------------------------------------
 \section{Conclusion}
