@@ -536,7 +536,19 @@ beneficial in the case where $B_x>I_x$. Indeed, in the other case, the buffer is
 loaded anyways.
 
 \subsection{ROI extraction problem}
-  
+The Region Of Interest (ROI) extraction problem is a related problem that still needs
+to be adressed. A solution using chunking as been introduced in []. The authors
+define an array partitioned into chunks of equal shapes and then define a
+query as an arbitrary subarray of the input, chunked, array. They define the
+optimal chunking problem as finding the optimal chunk such that the expected
+number of chunks retrieved to answer the query is minimal. In our opinion, the
+solution in [] is limited due to the need of historical or theoretical workload
+and the necessity to rechunk the input array into an "optimal" chunk shape. We
+would prefer letting the application choose the appropriate chunk shape
+regarding its needs and not needing to estimate the processing workload. We
+define the ROI extraction problem as follows: Finding an algorithm that takes
+as input an arbitrary chunk shape and extract the ROI data from the chunks with
+the less number of seeks as possible. 
 
 %----------------------------------------
 \section{Conclusion}
