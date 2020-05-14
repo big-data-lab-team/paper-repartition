@@ -313,6 +313,28 @@ property by using small chunks such that we use buffer bigger input aggregates
 (see Stretching beyond the input aggregate shape), while keeping the overlaps
 small at the borders.
 
+\begin{algorithm}
+  \caption{Pseudocode of the keep algorithm}
+  \label{algo:keepalgorithm}
+  \begin{algorithmic}
+    \STATE \textbf{Inputs:} inFiles, outFiles, $m$
+    \STATE volumesToKeep, buffersList $\leftarrow$ bufferExtension($I$, $O$, $m$)
+    \STATE cache.initialize()
+    \FOR{buffer in buffersList}
+      \STATE bufferData $\leftarrow$ read(inFiles, buffer)
+      \STATE write(bufferData, outFiles, volumesToKeep, cache)
+      \STATE cache.insert(bufferData, outFiles, volumesToKeep)
+      \FOR{$i$, data in cache}
+        \IF{outFiles[$i$] is complete}
+          \STATE write(outFiles[$i$], data)
+          \STATE cache.remove($i$)
+        \ENDIF
+      \ENDFOR
+    \ENDFOR
+
+  \end{algorithmic}
+\end{algorithm}
+
 %----------------------------------------
 \section{A memory analysis of the keep strategy}
 %----------------------------------------
@@ -571,7 +593,7 @@ algorithms. Lots of scientists use HPC (High Performance Computing) clusters
 regularly which brings considerations about how to use such distributed
 algorithms with Lustre for example, a commonly used filesystem for HPC. Dask
 also provides a distributed scheduler that seems to be quite efficient. It is
-now recommended for use, even on local computers (using one node).  
+now recommended for use, even on local computers (using one node).
 
 %----------------------------------------
 \section{Conclusion}
