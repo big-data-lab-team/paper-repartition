@@ -82,7 +82,7 @@ community that is likely to benefit from our work. Moreover, although dask has
 focused its recent work on distributed systems and machine learning, one of its
 first goal was to enable big data analytics from an average notebook. That is
 the reason why we decided to first focus or sequential algorithms for the
-local schedulers. 
+local schedulers.
 
 \subsection{The occurrence of seeks}
 % explain storage order
@@ -436,6 +436,39 @@ while increasing $O$.
 %----------------------------------------
 \section{Implementation details}
 %----------------------------------------
+
+\subsection{Clustered strategy}
+
+As explained in the introduction, daks represents computations by a task graph.
+Implementing the clustered strategy consisted in modifying that graph. To that
+aim, we implemented an optimization function to create "buffer" tasks in the
+graph.
+
+The optimization starts by converting the task graph into a mathematical
+directed graph for use by a BFS (Breadth First Search) algorithm. More
+precisely, we implement it as adjacency lists. The BFS algorithm allows us to
+find and store tasks by type for later processing. Assuming that the whole array
+is being processed, we find the appropriate buffering scheme from $I$, $O$ and
+$m$, according to the algorithm in~\cite{seqalgorithms}. The buffering scheme
+specifies if the algorithm loads buffers block by block, block columns by
+block columns or block slices by block slices.
+
+We then update the data loading tasks to force dask to load a whole buffer at
+a time instead of small chunks. Finally, we modify the dependent tasks to make
+them use our new buffer tasks. According to the clustered algorithm, all buffers
+do not necessarily have the same shape, that is why we could not use the
+\texttt{dask.array.rechunk} method.
+
+The default scheduler for dask.array is the multi-threaded scheduler. It means
+that at the beginning of the execution dask dispatches some tasks that have
+no dependencies into different threads. The problem is that the clustered
+strategy tries to use all the memory available for each buffer, and such buffer
+tasks are the one with no initial dependencies. Therefore, we needed to
+modify dask's scheduler to make it load one buffer only after the previous one
+and its dependent tasks have ended. This avoid running out of memory during the
+processing.
+
+\subsection{The keep algorithm}
 
 %----------------------------------------
 \section{Results}
