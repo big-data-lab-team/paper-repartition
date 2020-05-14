@@ -6,3 +6,5 @@ algorithm_paper.pdf
 *.blg
 *.fls
 *.bbl
+*.out
+algorithm_paper_v1.pdf
