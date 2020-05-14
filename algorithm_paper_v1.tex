@@ -63,6 +63,26 @@ occuring on disk.
 
 \subsection{Dask}
 
+Dask is a Python package enabling parallel and out-of-core computation. It is
+a specification that encodes computations into a task graph which is then
+dynamically executed by one of several schedulers offered by dask: the
+single-threaded scheduler, multi-threaded scheduler, multi-process and
+distributed schedulers. Custom schedulers can also be implemented. This
+specification can be used out-of-the-box or by the use of built-in collections
+or "APIs". For example, dask.array is a "parallel and out-of-core Numpy clone".
+\texttt{dask.dataframe} is a pandas clone, respectively. A dask graph can be
+implemented in plain Python as a dictionary, with any hashable as a key and
+Python objects as values. More precisely, a "Value" is any object different than
+a task and a "Task" is a tuple with a callable as first element.
+
+We focused ourselves on the dask.array collection that is designed for
+multi-dimensional array processing, using blocked algorithms. The advantage of
+implementing our work for use with dask is that dask has a big scientific
+community that is likely to benefit from our work. Moreover, although dask has
+focused its recent work on distributed systems and machine learning, one of its
+first goal was to enable big data analytics from an average notebook. That is
+the reason why we decided to first focus or sequential algorithms for the
+local schedulers. 
 
 \subsection{The occurrence of seeks}
 % explain storage order
@@ -411,7 +431,7 @@ where $O>>I$ and $O<<I$ are equivalent, as in both cases the input aggegate
 will be quite big. This is supposed to be a bad case for the keep algorithm
 as extending the buffer to $\Lambda$ will be more complicated. For this
 experiment, we fixed $m$ and $I$ and then ran multiple times the algorithms
-while increasing $O$.  
+while increasing $O$.
 
 %----------------------------------------
 \section{Implementation details}
