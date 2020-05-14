@@ -470,6 +470,33 @@ processing.
 
 \subsection{The keep algorithm}
 
+The buffer extension algorithm described in Appendix A has been direclty
+implemented in plain Python. Implementing the last part of the algorithm
+consisted in: (1) creating the buffer tasks, (2) dispatching the different data
+parts loaded by each buffer into the appropriate output files, (3) simulating
+the cache to keep remainders in memory between buffer loadings.
+
+This time, the buffer task creation was straightforward as it is assumed by the
+algorithm that the buffers constitute a partition of the whole array. For the
+second and third part, we used the \texttt{dask.array.store} method that
+requires input arrays as argument, together with the output files in which to
+store the data and the indices of each data part in the output files. To
+automatically compute such information, we proceeded as follows. We first
+compute, for each output file, the list of each constitutive subarrays, with
+subarrays defined by the intersection of input and output files and buffers.
+When each output file "knows" which part from which buffer are required, we
+merge some of them according to the keep strategy to enforce the fact that
+a given data part of a given output file has to be stored at once. By doing this
+we create dependencies in the task graph. Such dependency tells dask that it
+needs to load two buffers before writing a given subarray for example.
+
+\subsection{Dask IO}
+
+Both implementations are available in a same Python package called "dask IO". It
+contains tests with 99\% coverage and is available on PyPI (The Python Package
+Index). Dask IO provides a simple API to use the split, merge and resplit
+algorithms described in this study (figure x).
+
 %----------------------------------------
 \section{Results}
 %----------------------------------------
@@ -478,17 +505,27 @@ processing.
 \section{Discussion}
 %----------------------------------------
 
-\begin{itemize}
-  \item stretching beyond input aggregate
-  \item the split and merge tasks are special cases of the resplit task, which
-  gives an opportunity to solve the three problems at once. show that equivalent
-  to multiple reads/writes when used for split/merge
-\end{itemize}
+\subsection{The buffer ordering problem}
+The buffer ordering problem can be modeled as follows: We can reprensent the
+problem as a complete bidirectional graph in which each vertex is a buffer. At
+initialization, we must choose a first buffer as an entry point. Let us define
+a path in the graph as visitation order of all buffers in the graph. One buffer
+cannot appear twice in the list. Finally, let us define a cache that contains
+the data currently in main memory. We define the buffer ordering problem as the
+problem of finding the optimal path such that the amount of memory used by the
+cache is kept minimal during the process. For each buffer, we load some data
+into the cache and free some of it (writing into output files). The amount of
+data released is different depending of the buffers previously visited and each
+buffer can only be visited once which can be reprensented by removing all edges
+pointing to a visited vertex except the one coming from the previously visited
+vertex. One may solve this problem by using a greedy algorithm but it would
+incur more infering at runtime and a potentially complex algorithm to run.
+We decided to keep things simple using a naive buffer order, the storage order,
+as the goal of this study is primarily to assess if the keep algorithm works.
 
-\subsection{Future work}
-\begin{itemize}
-  \item explore tradeoff multiple and keep strategies: more or less buffers
-\end{itemize}
+\subsection{Breaking the buffers}
+
+
 
 %----------------------------------------
 \section{Conclusion}
