@@ -524,8 +524,19 @@ We decided to keep things simple using a naive buffer order, the storage order,
 as the goal of this study is primarily to assess if the keep algorithm works.
 
 \subsection{Breaking the buffers}
+To even reduce the maximum amount of memory used during the resplit process, we
+could read the input files one by one instead of enforcing dask to read a whole
+buffer at a time, provided that the input files' parts are read in the right
+order (following the buffer order). The idea of reading an entire buffer at a
+time came from the clustered and multiple strategies but we realized afterwards
+that this could be beneficial to break the buffers into input files' parts. We
+can see in Equation (2) that it would result in replacing $B_iB_jB_k$ by
+$I_iI_jI_k$ or less if part of a file is loaded. This idea would only be
+beneficial in the case where $B_x>I_x$. Indeed, in the other case, the buffer is
+loaded anyways.
 
-
+\subsection{ROI extraction problem}
+  
 
 %----------------------------------------
 \section{Conclusion}
