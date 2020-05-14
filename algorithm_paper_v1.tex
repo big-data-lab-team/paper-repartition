@@ -548,7 +548,30 @@ would prefer letting the application choose the appropriate chunk shape
 regarding its needs and not needing to estimate the processing workload. We
 define the ROI extraction problem as follows: Finding an algorithm that takes
 as input an arbitrary chunk shape and extract the ROI data from the chunks with
-the less number of seeks as possible. 
+the less number of seeks as possible.
+
+\subsection{Solving three problems at once}
+The split and merge tasks are special cases of the resplit task where $I=R$ and
+$O=R$ respectively. This observation leads us to think that maybe one could
+find one optimal algorithm for the split, merge and resplit tasks.
+
+If we were to use the keep algorithm with $I=R$, we would read the input data
+in slices, exactly like the multiple strategy. The only difference between the
+two strategies, however, is that if some remainders appear at the bottom of the
+buffer, the keep algorithm would keep it to try to read and write files in one
+seek. This is what we meant by "a smarter adaptation of the multiple strategy
+to the resplit task": We not only try to limit seeking into the files but we
+also try to limit switching between the files. It would be interesting to
+compare the two algorithms for the split/merge tasks to see if the keep
+implementation brings any kind of improvement.
+
+\subsection{Towards distributed systems}
+A future work would be to find distributed versions of the split/merge/resplit
+algorithms. Lots of scientists use HPC (High Performance Computing) clusters
+regularly which brings considerations about how to use such distributed
+algorithms with Lustre for example, a commonly used filesystem for HPC. Dask
+also provides a distributed scheduler that seems to be quite efficient. It is
+now recommended for use, even on local computers (using one node).  
 
 %----------------------------------------
 \section{Conclusion}
