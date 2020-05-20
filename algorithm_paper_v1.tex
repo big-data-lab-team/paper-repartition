@@ -14,10 +14,11 @@
 \newcommand{\logic}[1]{\color{red}\textbf{Logic/flow:}#1\color{black}}
 \newcommand{\writing}[1]{\color{green}\textbf{Writing:}#1\color{black}}
 \newcommand{\tristan}[1]{\color{orange}\textbf{From Tristan:}#1\color{black}}
+\newcommand{\timothee}[1]{\color{blue}\textbf{From Timothée:}#1\color{black}}
 
 \begin{document}
 
-\title{ Dask IO for sequentially splitting, merging and resplitting multidimensional arrays }
+\title{ Dask Rechunk for sequentially splitting, merging and resplitting multidimensional arrays }
 
 \author{\IEEEauthorblockN{Timoth\'ee Gu\'edon, Val\'erie Hayot-Sasson, Tristan Glatard \\
   \IEEEauthorblockA{
@@ -39,11 +40,14 @@ multidimensional, array, split, merge, resplit, IO, processing, Dask, Python
 \section{Introduction}
 %----------------------------------------
 % big data challenges
-With the improvement of acquisition methods in several scientific domains such as
-health sciences, geology and astrophysics \tristan{a reference would be welcome}, new big data challenges have emerged
-related to the processing of large amounts of data, including ultra-high resolution images. Big Brain, a brain model providing
-microscopic data (20 micrometers) for modeling and simulation~\cite{Amunts1472}
-is an example of ultra high resolution images in the neuroscience field.
+With the improvement of acquisition methods and the growth in the amount of data
+available in several scientific domains such as health
+sciences~\cite{bigdata_health}~\cite{Amunts1472}, geology~\cite{big_data_geology}
+and astrophysics~\cite{biguniverse}, new big data challenges have emerged related
+to the processing of large amounts of data, including ultra-high resolution
+images. Big Brain, a brain model providing microscopic data (20 micrometers) for
+modeling and simulation~\cite{Amunts1472} is an example of ultra high resolution
+images in the neuroscience field.
 
 \subsection{Multidimensional array chunking}
 % use of chunking
@@ -60,53 +64,8 @@ showed that naive algorithms to split an array into several files and merge back
 those files into one output file perform very poorly due to millions of seeks
 occurring on disk.
 
-\subsection{Dask}
-
-Dask is a popular Python package enabling parallel and out-of-core
-computation in the SciPy ecosystem. It represents computations as task
-graphs that are dynamically executed by one of several schedulers offered
-by Dask including the single-threaded, the multi-threaded, the
-multi-process, and the distributed schedulers. Custom schedulers can also
-be implemented. Dask graphs can be used out-of-the-box or through built-in
-APIs. For example, \texttt{dask.array} is a parallel and out-of-core Numpy
-clone \tristan{\'evite d'utiliser autant de guillemets}, and
-\texttt{dask.dataframe} is a Pandas clone. A Dask graph is implemented in
-plain Python as a dictionary with any hashable as keys and any object as
-values. More precisely, a "Value" is any object different than a task and a
-"Task" is a tuple with a callable as first element \tristan{All good but
-you should explain the goal of the paper before explaining Dask. This is
-too specific to read when we don't know where the paper is going}.
-
-We focus on the \texttt{dask.array} collection, a data structure designed for
-multi-dimensional array processing using blocked algorithms. Moreover, although Dask has
-focused its recent work on distributed systems and machine learning, one of its
-first goal was to enable big data analytics from an average notebook. That is
-the reason why we decided to first focus or sequential algorithms for the
-local schedulers \tristan{the last two sentences in this paragraph look out of place. I don't think you should justify 
-more on the use of Dask than ``it is popular''.}.
-
-\subsection{The occurrence of seeks}
-% explain storage order
-For this study we manipulate multidimensional arrays stored in HDF5
-\tristan{I think this is the correct capitalization for HDF5 but you should
-check and use it consistently (define a Latex command if it helps)} files,
-that is why \tristan{You should reverse the logic: you assume that files
-are written in row-major order, which is consistent with HDF5 in
-particular. Also, your work doesn't depend much on this assumption so I wouldn't put it so central in the paragraph. What is more important is that 
-the storage layout can be arbitrary because this is the main originality of your work compared to other ones, including the reading club paper, etc
-You should start this paragraph with this explanation, and then mention that for clarity we will assume row-major but without loss of generality.} we assume that files are written in row-major order (a.k.a
-``C" ordering),
-where the fastest moving dimension in the file is the last dimension in the
-array and the slowest moving dimension in the file is the first dimension
-in the array. For example a 3D array with dimensions $i$, $j$ and $k$ would be
-written on disk by writing the complete columns in the k dimension first.
-As in previous work~\cite{seqalgorithms}, we assume that the storage layout can
-be arbitrary as long as it is known to the algorithm.
-
 % why subarray extraction incurs seeks
-\tristan{This paragraph should come right after the one ending with ``incurs  millions of seeks''. Dask is less critical to the paper, 
-it should be mentioned in the intro but after the issue with seeks.}
-Retrieving sub-arrays from an array stored on disk incurs seeks in two situations: (1) when an array block
+Indeed, retrieving sub-arrays from an array stored on disk incurs seeks in two situations: (1) when an array block
 is opened for reading or writing, and (2) when the reading or writing process
 moves within the block to access a contiguous piece of data. For a 3D cuboid of shape $C = (C_i, C_j, C_k)$
  stored in row-major order,
@@ -114,8 +73,22 @@ each column of data in the k dimension is contiguously stored. They are therefor
 $C_j * C_i$ data columns that all require a seek. Although the seek
 time depends on various parameters such as the distance in bytes between two
 data columns, we assume that all seeks incur the same time overhead for the sake
-of simplicity. Therefore our problem will be to minimize the number of seeks 
+of simplicity. Therefore our problem will be to minimize the number of seeks
 required to access data.
+
+\subsection{The occurrence of seeks}
+% explain storage order
+\timothee{find references}
+As in previous work~\cite{seqalgorithms}, we assume that the storage layout can
+be arbitrary as long as it is known to the algorithm.
+For the sake of clarity but without loss of generality,
+ we assume in this study that files are written in row-major order (a.k.a
+``C" ordering), where the fastest moving dimension in the file is the last
+dimension in the array and the slowest moving dimension in the file is the first
+dimension in the array. For example a 3D array with dimensions $i$, $j$ and $k$
+would be written on disk by writing the complete columns in the k dimension first.
+We chose to use the HDF5 file format as it is a commonly use file format in the
+scientific community and it is written in \texttt{C-order} by default.
 
 \subsection{Problem definition}
 We focus on 3D arrays for simplicity. Consider a 3D array of shape $R =
@@ -128,12 +101,9 @@ list of input files \texttt{inFiles} of shape $I$, a list of output
 files \texttt{outFiles} of shape $O$ and the amount of memory
 \texttt{m} available for the resplit. Based on a given strategy and taking $m$ into account, the
 algorithm first defines an ordered list of buffers positions \texttt{buffersList}
-defining a partition of array $R$. The algorithm then successively loads the array
-regions defined by the buffers, and writes them into the output files. As an
-intermediary storage, we define a cache that distributes the buffer data to the
-appropriate output files \tristan{The last 2 sentences should be integrated because the first one gives the impresssion that the algo 
-reads a buffer then writes it, but in fact it reads a buffer, adds it to the cache, and then write the complete output files 
-available in the cache}.
+defining a partition of array $R$. The buffers are loaded sequentially, one after the other. For
+each buffer, the data that has been loaded is distributed in a cache to the appropriate output files.
+The algorithm then successively writes data parts from the cache to each output file, following a given policy.
 
 For simplicity, we require that all buffers in \texttt{buffersList} have
 the same shape $B$. Our problem is to find the partition \texttt{bufferList}
@@ -155,7 +125,7 @@ requires a seek.
     \FOR{buffer in buffersList}
       \STATE bufferData $\leftarrow$ read(inFiles, buffer)
       \STATE cache.insert(bufferData)
-      \FOR{$i$, data in cache} 
+      \FOR{$i$, data in cache}
         \STATE write(outFiles[$i$], data)
       \ENDFOR
     \ENDFOR
@@ -164,10 +134,12 @@ requires a seek.
 \end{algorithm}
 
 \subsection{The multiple and clustered strategies}
+In previous paragraphs, the resplit (or rechunk) task has been described as
+rewriting some data stored in input files of shape $I$ into output files of
+shape $O$. The split and merge tasks are special cases of the resplit task
+where $I=R$ and $O=R$ respectively.
 Two strategies have been introduced in~\cite{seqalgorithms} for the split and
-merge tasks \tristan{at this point we don't know what is a split or a merge task, 
-you should start this paragraph with a sentence explaining that they are a particular case of rechunk}.
- To illustrate these strategies we shall apply it \tristan{what is ``it'' here? } to the split task
+merge tasks. To illustrate these strategies we shall apply them to the split task
 $(R = I)$ as it is considered a dual operation of the merge task. The naive
 strategy to split an array is to repetedly load one subarray of shape $O$ and
 write it down into an output file~\cite{seqalgorithms}.
@@ -179,7 +151,7 @@ by block columns or blocks slices by block slices, depending on the amount of
 main memory available for the buffer. Using this strategy for resplitting would
 imply reading multiple input files that are contiguous in the reconstructed
 image or reading the data of contiguous output files by seeking into input files.
-In either case one can easily \tristan{``easy" isn't a good word in a paper: it's never as easy for the reader as you think.} find cases in which the algorithm seeks in all
+In either case one can find special cases in which the algorithm seeks in all
 dimensions.
 
 The multiple strategy aims at not doing any seek while reading and writing. For
@@ -192,25 +164,23 @@ between input and output files and one can easily find worst cases when using
 small $I$ and $O$ shapes for example where a smarter strategy would be appreciated.
 
 To the best of our knowedge however, no algorithm has been proposed for the
-resplit task. The algorithm presented in this study can be seen as a smarter \tristan{``smart" isn't a good word either, 
-you can use ``extension'' instead.}
+resplit task. The algorithm presented in this study can be seen as an
 adaptation of the multiple strategy to the resplit task.
 
 \subsection{Baseline solution}
 
 A naive, baseline algorithm for the resplit task is to load one input file at a
-time. It is equivalent to replace \texttt{getBuffersPositions} by $I$ \tristan{the function returns a list, it cannot return $I$} in
-Algorithm~\ref{algo:generalresplit}. We can compute the amount of seeks produced
+time. It is equivalent to computing the buffers positions in
+Algorithm~\ref{algo:generalresplit} using a buffer shape equal to $I$.
+We can compute the amount of seeks produced
 by this algorithm with the algorithm described in Algorithm~\ref{algo:baselinealgo}.
-As one can see from the algorithm \tristan{no one cannot see a number of seeks directly from the algorithm. You should give a numerical example 
-to illustrate that. Algorithm 2 is unclear: is it the implementation of getBuffersPositions for the baseline case? 
-if so, why are the inputs different? Inputs aren't well defined. Couldn't you give a formula for the number of seeks?}, unless the dimensions of the input and output
+As one can see from the algorithm, unless the dimensions of the input and output
 files matches, a considerable amount of seeks will occur. Also, an overlap in the
 $k$ dimension is more costly than one in the $j$ dimension. Finally, if
 $O_x>I_x$ in a given dimension $x$, it also incurs the maximum amount of seeks.
 
 \begin{algorithm}
-  \caption{Baseline algorithm for the resplit task}
+  \caption{Algorithm to compute the number of seeks of the baseline solution}
   \label{algo:baselinealgo}
   \begin{algorithmic}
     \STATE \textbf{Inputs:} $all_i$, $all_j$, $all_k$
@@ -242,13 +212,31 @@ $O_x>I_x$ in a given dimension $x$, it also incurs the maximum amount of seeks.
   \end{algorithmic}
 \end{algorithm}
 
+\subsection{Dask}
+
+Dask is a popular Python package enabling parallel and out-of-core
+computation in the SciPy ecosystem. It represents computations as task
+graphs that are dynamically executed by one of several schedulers offered
+by Dask including the single-threaded, the multi-threaded, the
+multi-process, and the distributed schedulers. Custom schedulers can also
+be implemented. Dask graphs can be used out-of-the-box or through built-in
+APIs. For example, \texttt{dask.array} is a parallel and out-of-core Numpy
+clone, and
+\texttt{dask.dataframe} is a Pandas clone. A Dask graph is implemented in
+plain Python as a dictionary with any hashable as keys and any object as
+values. More precisely, a "Value" is any object different than a task and a
+"Task" is a tuple with a callable as first element.
+
+We focus on the \texttt{dask.array} collection, a data structure designed for
+multi-dimensional array processing using blocked algorithms.
+
 \subsection{Contributions}
 This paper makes the following contributions:
 \begin{itemize}
   \item Definition of the resplit problem for high-resolution multidimensional arrays
   \item A sequential algorithm to efficiently resplit multidimensional arrays
-  \item A public implementation of this algorithm in Dask, in a library called Dask IO \tristan{I feel like the name of the library is too generic for what it currently does. Something like Dask Rechunk would be better}.
-  \item A public implementation in Dask of the ``clustered" split and merge strategy described in~\cite{seqalgorithms}, in Dask IO too.
+  \item A public implementation of this algorithm in Dask, in a library called Dask Rechunk.
+  \item A public implementation in Dask of the ``clustered" split and merge strategy described in~\cite{seqalgorithms}, in Dask Rechunk too.
 \end{itemize}
 
 %----------------------------------------
@@ -413,7 +401,7 @@ algorithm are given in Appendix~\ref{bufferExtensionAlgorithm}.
 Before diving into the implementation of the keep algorithm we first designed
 an experiment to prove that dask.array was subject to the seek problem. To that
 aim we created a random array from a uniform distribution and stored it as a
-hdf5 file for later processing. The array had a shape of x which represents 1/8
+HDF5 file for later processing. The array had a shape of x which represents 1/8
 of the Big Brain size. The experiment then consisted in splitting and merging
 the array with dask using two different chunk shapes: one of them doing more
 seeks than the other. We did this experiment on both HDD and SSD to see if the
@@ -444,7 +432,7 @@ default when using dask.array. In order to compare both implementations to a
 naive resplit, we also added a plain Python implementation to the benchmark. For
 the experiments presented below we built a random 3D array of the size of Big
 Brain, drawn from a uniform distribution. Once again, the array is initially
-stored into an hdf5 file.
+stored into an HDF5 file.
 
 We did three experiments on the keep algorithm. The first one consisted in
 comparing the different implementations in the case where the keep algorithm is
@@ -526,11 +514,11 @@ a given data part of a given output file has to be stored at once. By doing this
 we create dependencies in the task graph. Such dependency tells dask that it
 needs to load two buffers before writing a given subarray for example.
 
-\subsection{Dask IO}
+\subsection{Dask Rechunk}
 
-Both implementations are available in a same Python package called "dask IO". It
+Both implementations are available in a same Python package called "Dask Rechunk". It
 contains tests with 99\% coverage and is available on PyPI (The Python Package
-Index). Dask IO provides a simple API to use the split, merge and resplit
+Index). Dask Rechunk provides a simple API to use the split, merge and resplit
 algorithms described in this study (figure x).
 
 %----------------------------------------
@@ -587,9 +575,9 @@ as input an arbitrary chunk shape and extract the ROI data from the chunks with
 the less number of seeks as possible.
 
 \subsection{Solving three problems at once}
-The split and merge tasks are special cases of the resplit task where $I=R$ and
-$O=R$ respectively. This observation leads us to think that maybe one could
-find one optimal algorithm for the split, merge and resplit tasks.
+As stated in the introduction, the split and merge tasks are special cases of
+the resplit task. This observation leads us to think that maybe one could find
+one optimal algorithm for the split, merge and resplit tasks.
 
 If we were to use the keep algorithm with $I=R$, we would read the input data
 in slices, exactly like the multiple strategy. The only difference between the
