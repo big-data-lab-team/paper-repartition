@@ -45,23 +45,23 @@ available in several scientific domains such as health
 sciences~\cite{bigdata_health}~\cite{Amunts1472}, geology~\cite{big_data_geology}
 and astrophysics~\cite{biguniverse}, new big data challenges have emerged related
 to the processing of large amounts of data, including ultra-high resolution
-images. Big Brain, a brain model providing microscopic data (20 micrometers) for
+images. Big Brain, a human brain model providing microscopic data (20 micrometers) for
 modeling and simulation~\cite{Amunts1472} is an example of ultra high resolution
 images in the neuroscience field.
 
 \subsection{Multidimensional array chunking}
 % use of chunking
 Scientific data is often represented as multidimensional arrays stored in
-chunks for later processing and analysis. Among other advantages, chunking
-allows for efficient queries, great flexibility in adding new
+chunks to facilitate processing and storage. Among other advantages, chunking
+allows for efficient queries, flexibility in adding new
 data~\cite{optimal_chuking}, parallel processing, and out-of-core
 computations through block algorithms.
 
 % need for tools to rechunk
 Chunking multidimensional array requires tools to efficiently split,
 merge, and ``resplit" or ``rechunk" data files. Previous work in~\cite{seqalgorithms}
-showed that naive algorithms to split an array into several files and merge back
-those files into one output file perform very poorly due to millions of seeks
+showed that naive algorithms to split an array into several chunks or merge 
+array chunks into one output file perform very poorly due to millions of seeks
 occurring on disk.
 
 % why subarray extraction incurs seeks
@@ -69,8 +69,8 @@ Indeed, retrieving sub-arrays from an array stored on disk incurs seeks in two s
 is opened for reading or writing, and (2) when the reading or writing process
 moves within the block to access a contiguous piece of data. For a 3D cuboid of shape $C = (C_i, C_j, C_k)$
  stored in row-major order,
-each column of data in the k dimension is contiguously stored. They are therefore
-$C_j * C_i$ data columns that all require a seek. Although the seek
+each column of data in the k dimension is contiguously stored. There are therefore
+$C_j \times C_i$ data columns that all require a seek. Although the seek
 time depends on various parameters such as the distance in bytes between two
 data columns, we assume that all seeks incur the same time overhead for the sake
 of simplicity. Therefore our problem will be to minimize the number of seeks
@@ -79,16 +79,19 @@ required to access data.
 \subsection{The occurrence of seeks}
 % explain storage order
 \timothee{find references}
-As in previous work~\cite{seqalgorithms}, we assume that the storage layout can
-be arbitrary as long as it is known to the algorithm.
-For the sake of clarity but without loss of generality,
+We assume that the data ordering in files is arbitrary but known.
+For the sake of clarity and without loss of generality,
  we assume in this study that files are written in row-major order (a.k.a
 ``C" ordering), where the fastest moving dimension in the file is the last
-dimension in the array and the slowest moving dimension in the file is the first
+dimension in the array, and the slowest moving dimension in the file is the first
 dimension in the array. For example a 3D array with dimensions $i$, $j$ and $k$
 would be written on disk by writing the complete columns in the k dimension first.
-We chose to use the HDF5 file format as it is a commonly use file format in the
+Our experiments use the HDF5 file format as it is commonly used in the
 scientific community and it is written in \texttt{C-order} by default.
+
+\tristan{Up to here, the intro is now well readable but it still needs some 
+editing. The paper should also be positioned w.r.t space filling curves and other 
+data ordering techniques on disk (see references from BigData 2017 paper).}
 
 \subsection{Problem definition}
 We focus on 3D arrays for simplicity. Consider a 3D array of shape $R =
@@ -97,18 +100,24 @@ We focus on 3D arrays for simplicity. Consider a 3D array of shape $R =
 blocks of uniform but different shape $O = (O_i, O_j, O_k)$.
 
 A resplit algorithm (Algorithm \ref{algo:generalresplit}) takes as input a
-list of input files \texttt{inFiles} of shape $I$, a list of output
-files \texttt{outFiles} of shape $O$ and the amount of memory
-\texttt{m} available for the resplit. Based on a given strategy and taking $m$ into account, the
-algorithm first defines an ordered list of buffers positions \texttt{buffersList}
-defining a partition of array $R$. The buffers are loaded sequentially, one after the other. For
-each buffer, the data that has been loaded is distributed in a cache to the appropriate output files.
-The algorithm then successively writes data parts from the cache to each output file, following a given policy.
+list of input files \texttt{inFiles} of shape $I$, a list of output files
+\texttt{outFiles} of shape $O$ and the amount of memory \texttt{m}
+available for the resplit. Based on a given strategy and taking $m$ into
+account, the algorithm first defines an ordered list of buffers positions
+\texttt{buffersList} defining a partition of array $R$. The buffers are
+loaded sequentially, and their data is stored in a cache. After each buffer
+load, the complete output files stored in cache are retrieved and written
+to output files. Output files may be covered by one or more buffers. \tristan{To increase clarity, 
+you should number lines in Algo 1 and refer to line numbers in the above paragraph.}
 
 For simplicity, we require that all buffers in \texttt{buffersList} have
 the same shape $B$. Our problem is to find the partition \texttt{bufferList}
 that minimizes the number of seeks done by Algorithm~\ref{algo:generalresplit}
 given $I$ and $O$, subject to the amount $m$ of available memory.
+
+\tristan{you should name the problem here (``rechunk problem''), and perhaps write it as an optimization problem.}
+\tristan{explain that seeks are done by the read function, + 1 in the write. Explain that the size of cache has to be bounded by m.}
+\tristan{mention that a solution of this problem implements getBufferPositions}
 
 A lower bound on the number of seeks for the resplit task is $n_i + n_o$,
 with $n_i$ the number of input files and $n_o$ the number of output files.
@@ -116,7 +125,7 @@ Indeed, input and output files all have to be accessed at least once, which
 requires a seek.
 
 \begin{algorithm}
-  \caption{General resplit algorithm \tristan{The condition in the second for loop should be made more accurate}}
+  \caption{General resplit \tristan{Use resplit or rechunk consistently} algorithm}
   \label{algo:generalresplit}
   \begin{algorithmic}
     \STATE \textbf{Inputs:} inFiles, outFiles, $m$
@@ -125,7 +134,7 @@ requires a seek.
     \FOR{buffer in buffersList}
       \STATE bufferData $\leftarrow$ read(inFiles, buffer)
       \STATE cache.insert(bufferData)
-      \FOR{$i$, data in cache}
+      \FOR{($i$, data) in getCompleteFiles(cache)}
         \STATE write(outFiles[$i$], data)
       \ENDFOR
     \ENDFOR
@@ -134,17 +143,15 @@ requires a seek.
 \end{algorithm}
 
 \subsection{The multiple and clustered strategies}
-In previous paragraphs, the resplit (or rechunk) task has been described as
-rewriting some data stored in input files of shape $I$ into output files of
-shape $O$. The split and merge tasks are special cases of the resplit task
-where $I=R$ and $O=R$ respectively.
-Two strategies have been introduced in~\cite{seqalgorithms} for the split and
-merge tasks. To illustrate these strategies we shall apply them to the split task
-$(R = I)$ as it is considered a dual operation of the merge task. The naive
-strategy to split an array is to repetedly load one subarray of shape $O$ and
-write it down into an output file~\cite{seqalgorithms}.
+Special cases of the rechunk problem occur when $I=R$ (``split'' problem)
+or $O=R$ (``merge'' problem). Two strategies have been introduced
+in~\cite{seqalgorithms} to address these problems. Focusing on the split
+problem $(I=R)$, the naive algorithm defines the buffer positions to be
+\tristan{write them formally}, such that subarrays of shape $O$ are
+iteratively loaded from $R$ and written to an output
+file~\cite{seqalgorithms}.
 
-The clustered strategy consists in loading contiguous blocks of data of shape $O$ \tristan{it would be useful to express this using the notations of Algo 1 (what is in the cache, what does getBuffersPositions do, etc).}
+The clustered strategy loads contiguous blocks of data of shape $O$ \tristan{it would be useful to express this using the notations of Algo 1 (what is in the cache, what does getBuffersPositions do, etc).}
 from the input array in order to write it in one seek in each output file which
 data has been loaded. This strategy loads data blocks one by one, block columns
 by block columns or blocks slices by block slices, depending on the amount of
@@ -167,18 +174,21 @@ To the best of our knowedge however, no algorithm has been proposed for the
 resplit task. The algorithm presented in this study can be seen as an
 adaptation of the multiple strategy to the resplit task.
 
+\tristan{The previous paragraph should use the notations in Algo 1.}
+
 \subsection{Baseline solution}
 
-A naive, baseline algorithm for the resplit task is to load one input file at a
+A baseline algorithm for the resplit task is to load one input file at a
 time. It is equivalent to computing the buffers positions in
-Algorithm~\ref{algo:generalresplit} using a buffer shape equal to $I$.
+Algorithm~\ref{algo:generalresplit} using a buffer shape equal to $I$ \tristan{ok but in which order?}.
 We can compute the amount of seeks produced
 by this algorithm with the algorithm described in Algorithm~\ref{algo:baselinealgo}.
 As one can see from the algorithm, unless the dimensions of the input and output
-files matches, a considerable amount of seeks will occur. Also, an overlap in the
+files match, a considerable amount of seeks will occur. Also, an overlap in the
 $k$ dimension is more costly than one in the $j$ dimension. Finally, if
 $O_x>I_x$ in a given dimension $x$, it also incurs the maximum amount of seeks.
 
+\tristan{Algo 2 is difficult to read, a formula would be better.}
 \begin{algorithm}
   \caption{Algorithm to compute the number of seeks of the baseline solution}
   \label{algo:baselinealgo}
@@ -233,10 +243,10 @@ multi-dimensional array processing using blocked algorithms.
 \subsection{Contributions}
 This paper makes the following contributions:
 \begin{itemize}
-  \item Definition of the resplit problem for high-resolution multidimensional arrays
+  \item Definition of the resplit problem for multidimensional arrays
   \item A sequential algorithm to efficiently resplit multidimensional arrays
-  \item A public implementation of this algorithm in Dask, in a library called Dask Rechunk.
-  \item A public implementation in Dask of the ``clustered" split and merge strategy described in~\cite{seqalgorithms}, in Dask Rechunk too.
+  \item An open implementation of this algorithm in Dask, in a library called Dask Rechunk.
+  \item An open implementation in Dask of the ``clustered" split and merge strategy described in~\cite{seqalgorithms}, in Dask Rechunk too.
 \end{itemize}
 
 %----------------------------------------
@@ -244,29 +254,35 @@ This paper makes the following contributions:
 %----------------------------------------
 
 \subsection{Considerations on shape mismatch}
-If $I_x \neq O_x$ in a given dimension $x$, we call it a shape mismatch. As it
-has been shown in the paragraph on the baseline algorithm, if $I_x < O_x$ and
-we read one file at a time, we are condamned to seek in the output files at
-write time. If, however, $I_x > O_x$, then we get remainders. Finally, if we
+We call shape mismatch a rechunk problem where $I_x \neq O_x$ in a given dimension $x$. As it
+has been shown in the paragraph on the baseline algorithm \tristan{ambiguous and heavy: use either ``as mentioned previously'' or ``as mentioned in section x.y.z''}, if $I_x < O_x$ and
+we read one file at a time \tristan{unclear: express using the notations of Algo 1}, we are bound to seek in the output files at
+write time. If, however, $I_x > O_x$, then we get remainders \tristan{remainders weren't defined}. Finally, if we
 just read what we need from the input files to write in output files
 contiguously, we seek while reading and writing. A solution to reduce the
 number of seeks seems to be to read more than $O_x$ and to elaborate a strategy
-to keep the remainders in memory instead of writing it down directly until we
+to keep the remainders in memory instead of writing it down directly \tristan{this is what the cache does in Algo 1} until we
 get enough data to write it with a reduced amount of seeks. Such a strategy is
 presented in this section.
+
+\tristan{The previous paragraph is unclear because Algo 1 already uses a cache. I think the point we want to make is that 
+naive algorithms would empty the cache at each iteration, while a ``keep'' strategy doesnt.}
 
 \subsection{The keep strategy}
 The keep strategy uses a cache to keep remainders in memory.
 The strategy requires an algorithm to find the best buffer shape in order to
 always try to have remainders, i.e. $B_x>O_x$. As we are constrained by the
 amount of memory available, it may be that we cannot keep some of the remainders.
-In this case those remainders are directly writen down into the appropriate
+In this case those remainders are directly written down into the appropriate
 output files to avoid re-reading input files several times and ensure that all
 the data has been written at the end of the algorithm. Being able to keep all
 remainders into memory to write an output file only when all the data has been
 loaded in memory means doing the minimum number of seeks possible during a
 resplit task ($n_i + n_o$). In the following paragraphs we explain how to find
 the best buffer shape for to the keep strategy.
+
+\tristan{This is also a bit redundant with the formulation in Algorithm 1. 
+I think there should rather be an addition to Algo 1 to flush the cache to disk when it is too big.}
 
 \subsection{Input aggregates}
 As explained, our goal is to find a buffer shape such that $B_x>O_x$ in any
@@ -337,6 +353,8 @@ small at the borders.
   \end{algorithmic}
 \end{algorithm}
 
+\tristan{Algo 3 is now quite redundant with Algo 1, here you should write only the getBufferPositions function.}
+
 %----------------------------------------
 \section{A memory analysis of the keep strategy}
 %----------------------------------------
@@ -397,7 +415,7 @@ algorithm are given in Appendix~\ref{bufferExtensionAlgorithm}.
 %----------------------------------------
 \section{Methods}
 %----------------------------------------
-
+\tristan{This can't be called methods, the algo definition is already methods.}
 Before diving into the implementation of the keep algorithm we first designed
 an experiment to prove that dask.array was subject to the seek problem. To that
 aim we created a random array from a uniform distribution and stored it as a
