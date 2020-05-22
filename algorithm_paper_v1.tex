@@ -60,7 +60,7 @@ computations through block algorithms.
 % need for tools to rechunk
 Chunking multidimensional array requires tools to efficiently split,
 merge, and ``resplit" or ``rechunk" data files. Previous work in~\cite{seqalgorithms}
-showed that naive algorithms to split an array into several chunks or merge 
+showed that naive algorithms to split an array into several chunks or merge
 array chunks into one output file perform very poorly due to millions of seeks
 occurring on disk.
 
@@ -89,8 +89,8 @@ would be written on disk by writing the complete columns in the k dimension firs
 Our experiments use the HDF5 file format as it is commonly used in the
 scientific community and it is written in \texttt{C-order} by default.
 
-\tristan{Up to here, the intro is now well readable but it still needs some 
-editing. The paper should also be positioned w.r.t space filling curves and other 
+\tristan{Up to here, the intro is now well readable but it still needs some
+editing. The paper should also be positioned w.r.t space filling curves and other
 data ordering techniques on disk (see references from BigData 2017 paper).}
 
 \subsection{Problem definition}
@@ -107,7 +107,7 @@ account, the algorithm first defines an ordered list of buffers positions
 \texttt{buffersList} defining a partition of array $R$. The buffers are
 loaded sequentially, and their data is stored in a cache. After each buffer
 load, the complete output files stored in cache are retrieved and written
-to output files. Output files may be covered by one or more buffers. \tristan{To increase clarity, 
+to output files. Output files may be covered by one or more buffers. \tristan{To increase clarity,
 you should number lines in Algo 1 and refer to line numbers in the above paragraph.}
 
 For simplicity, we require that all buffers in \texttt{buffersList} have
@@ -178,49 +178,42 @@ adaptation of the multiple strategy to the resplit task.
 
 \subsection{Baseline solution}
 
-A baseline algorithm for the resplit task is to load one input file at a
-time. It is equivalent to computing the buffers positions in
-Algorithm~\ref{algo:generalresplit} using a buffer shape equal to $I$ \tristan{ok but in which order?}.
-We can compute the amount of seeks produced
-by this algorithm with the algorithm described in Algorithm~\ref{algo:baselinealgo}.
-As one can see from the algorithm, unless the dimensions of the input and output
-files match, a considerable amount of seeks will occur. Also, an overlap in the
-$k$ dimension is more costly than one in the $j$ dimension. Finally, if
-$O_x>I_x$ in a given dimension $x$, it also incurs the maximum amount of seeks.
+A baseline/naive algorithm for the resplit task would be to load one input file
+at a time. It is equivalent to computing the buffers' positions in
+Algorithm~\ref{algo:generalresplit} using a buffer shape equal to $I$.
+We assume that one input file can stand in memory ($m \geq I_iI_jI_k$). Each
+buffer is loaded only once and the data loaded into the cache is directly
+written down into the appropriate output files. The buffer order has no
+implication on the number of seeks, so let us set the buffer order arbitrarily
+to the storage order ($i \rightarrow j \rightarrow k$ in row-major for example).
 
-\tristan{Algo 2 is difficult to read, a formula would be better.}
-\begin{algorithm}
-  \caption{Algorithm to compute the number of seeks of the baseline solution}
-  \label{algo:baselinealgo}
-  \begin{algorithmic}
-    \STATE \textbf{Inputs:} $all_i$, $all_j$, $all_k$
-    \STATE $nb_{seeks} \leftarrow 0$
-    \FOR{$i$ in (len($all_i$)-1)}
-      \FOR{$j$ in (len($all_j$)-1)}
-        \FOR{$k$ in (len($all_k$)-1)}
-          \STATE $L_i = all_i[i+1] - all_i[i]$
-          \STATE $L_j = all_j[j+1] - all_j[j]$
-          \STATE $L_k = all_k[k+1] - all_k[k]$
-          \IF{$I_k \geq  O_k$}
-            \IF{$L_k = O_k$}
-              \IF{$L_j = O_j$}
-                \STATE $n = 1$
-              \ELSE
-                \STATE $n = L_i$
-              \ENDIF
-            \ELSE
-              \STATE $n = L_i*L_j$
-            \ENDIF
-          \ELSE
-            \STATE $n = L_i*L_j$
-          \ENDIF
-          \STATE $nb_{seeks} += n$
-        \ENDFOR
-      \ENDFOR
-    \ENDFOR
-    \STATE return $nb_{seeks}$
-  \end{algorithmic}
-\end{algorithm}
+We can compute the amount of seeks $s$ produced by such an algorithm with
+Equation~\ref{eq:1}. The equation is composed of three terms, each term represents
+the amount of seeks in on of three distinct cases (1) $I_k \neq O_k$, (2)
+$I_k = O_k$ and $I_j \neq O_j$ and (3) $I_k = O_k$, $I_j = O_j$ but $I_i \neq O_i$.
+These cases are described using $\alpha$, defined as: \\
+$\alpha_x = \begin{cases}
+   1 & if I_x \neq O_x \\
+   0 & else
+\end{cases}$
+\begin{itemize}
+  \item $d_x$ is the number of shape mismatches between the output and output files
+  in direction $x$. For example in direction $k$ we count one shape mismatch for
+  each upper border of an input file in direction $k$ that does not match with
+  an output file border in direction $k$, and vice-versa.
+  \item $R_x$ is the length of the reconstructed image in dimension $x$
+  \item $n_x$ is the number of input files in dimension $x$.
+\end{itemize}
+
+\begin{multline} \label{eq:1}
+s = [(d_k+1)R_iR_j]^{\alpha_k} \\ + [(d_j+1)R_in_k]^{(1-\alpha_k)\alpha_j} + [(d_i+1)n_jn_k]^{(1-\alpha_k)(1-\alpha_j)}
+\end{multline}
+
+As one can see from Equation~\ref{eq:1}, unless the dimensions of the input and
+output files match, a considerable amount of seeks will occur. Also, a shape mismatch
+in the $k$ dimension is more costly than a shape mismatch in the $j$ dimension,
+which is itself more costly than a mismatch in dimension $i$ (assuming that the
+files are stored in C-order).
 
 \subsection{Dask}
 
@@ -265,7 +258,7 @@ to keep the remainders in memory instead of writing it down directly \tristan{th
 get enough data to write it with a reduced amount of seeks. Such a strategy is
 presented in this section.
 
-\tristan{The previous paragraph is unclear because Algo 1 already uses a cache. I think the point we want to make is that 
+\tristan{The previous paragraph is unclear because Algo 1 already uses a cache. I think the point we want to make is that
 naive algorithms would empty the cache at each iteration, while a ``keep'' strategy doesnt.}
 
 \subsection{The keep strategy}
@@ -281,7 +274,7 @@ loaded in memory means doing the minimum number of seeks possible during a
 resplit task ($n_i + n_o$). In the following paragraphs we explain how to find
 the best buffer shape for to the keep strategy.
 
-\tristan{This is also a bit redundant with the formulation in Algorithm 1. 
+\tristan{This is also a bit redundant with the formulation in Algorithm 1.
 I think there should rather be an addition to Algo 1 to flush the cache to disk when it is too big.}
 
 \subsection{Input aggregates}
@@ -386,7 +379,7 @@ of each volumes we must keep during the process and the maximum size of each
 volume. The maximum number of each volumes that we must keep during the process
 is (see computation details in Appendix~\ref{bufferExtensionAlgorithm}):
 
-\begin{equation} \label{eq:1}
+\begin{equation} \label{eq:2}
 \sigma = G_1 + n(G_2 + G_3) + N(G_4 + G_5 + G_6 + G_7)
 \end{equation}
 
@@ -395,7 +388,7 @@ $N$ is the number of buffers in a buffer slice, i.e. in the second direction of
 the buffer order. Given that at each step of the resplit algorithm one must
 load a buffer, we should also add the size of a buffer to the equation:
 
-\begin{equation} \label{eq:2}
+\begin{equation} \label{eq:3}
 \Sigma = (G_1 + n(G_2 + G_3) + N(G_4 + G_5 + G_6 + G_7) + B_iB_jB_k)
 \end{equation}
 
