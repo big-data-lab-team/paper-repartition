@@ -796,6 +796,61 @@ The algorithm stops here, as if $B_i=\Lambda_i$, then the buffer has been
 successfully stretched to the input aggregate shape, $\Lambda$.
 
 \subsection{The buffer extension algorithm}
+Algorithm~\ref{algo:bufferextensionalgorihm} summarizes the computations into an
+pseudocode for the buffer extension algorithm.
 
+\begin{algorithm}
+  \caption{Pseudocode of the buffer extension algorithm}
+  \label{algo:bufferextensionalgorihm}
+  \begin{algorithmic}
+    \STATE \textbf{Inputs:} $\Omega_{max}$, $\Lambda$, $m$
+    \STATE $\Omega \leftarrow \Omega_{max}$
+    \STATE $\Theta = (\Lambda_i - \Omega_i, \Lambda_j - \Omega_j, \Lambda_k - \Omega_k)$
+    \STATE $B \leftarrow (1,1,\Lambda_k)$
+
+    \STATE $\phi = \lfloor \frac{m}{\Omega_k + \Lambda_k} \rfloor$
+    \STATE $B_j = \begin{cases}
+      \Theta_j & \textrm{if }\phi \geq \Theta_j \\
+      1 & \textrm{if }\phi = 0 \\
+      \phi & \textrm{else}
+    \end{cases}$
+
+    \IF{$B_j \neq \Theta_j$}
+      \RETURN $B$
+    \ENDIF
+
+    \STATE $\phi = \lfloor \frac{m-\Theta_j(\Omega_k\Lambda_k)}{\Lambda_k(n+1)} \rfloor$
+    \STATE $B_j = \begin{cases}
+      \Lambda_j & \textrm{if }\phi \geq \Lambda_j \\
+      B_j & \textrm{if }(B_j+\phi) = 0 \\
+      B_j + \phi & \textrm{else}
+    \end{cases}$
+
+    \IF{$B_j \neq \Lambda_j$}
+      \RETURN $B$
+    \ENDIF
+
+    \STATE $\phi = \lfloor \frac{m}{\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k} \rfloor$
+    \STATE $B_i = \begin{cases}
+      \Theta_i & \textrm{if }\phi \geq \Theta_i \\
+      1 & \textrm{if }\phi = 0 \\
+      \phi & \textrm{else}
+    \end{cases}$
+
+    \IF{$B_i \neq \Theta_i$}
+      \RETURN $B$
+    \ENDIF
+
+    \STATE $\phi = \lfloor \frac{m-\Theta_i(\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k)}{(N+1)\Lambda_j\Lambda_k} \rfloor$
+    \STATE $B_i = \begin{cases}
+      \Lambda_i & \textrm{if }(B_i+\phi) \geq \Lambda_i \\
+      B_i & \textrm{if }\phi = 0 \\
+      B_i+\phi & \textrm{else}
+    \end{cases}$
+
+    \RETURN $B$
+
+  \end{algorithmic}
+\end{algorithm}
 
 \end{document}
