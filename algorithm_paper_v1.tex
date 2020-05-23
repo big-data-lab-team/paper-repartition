@@ -380,7 +380,7 @@ volume. The maximum number of each volumes that we must keep during the process
 is (see computation details in Appendix~\ref{bufferExtensionAlgorithm}):
 
 \begin{equation} \label{eq:2}
-\sigma = G_1 + n(G_2 + G_3) + N(G_4 + G_5 + G_6 + G_7)
+\sigma = F_1 + n(F_2 + F_3) + N(F_4 + F_5 + F_6 + F_7)
 \end{equation}
 
 With $n$ the number of buffers in the first direction of the buffer order and
@@ -389,7 +389,7 @@ the buffer order. Given that at each step of the resplit algorithm one must
 load a buffer, we should also add the size of a buffer to the equation:
 
 \begin{equation} \label{eq:3}
-\Sigma = (G_1 + n(G_2 + G_3) + N(G_4 + G_5 + G_6 + G_7) + B_iB_jB_k)
+\Sigma = (F_1 + n(F_2 + F_3) + N(F_4 + F_5 + F_6 + F_7) + B_iB_jB_k)
 \end{equation}
 
 Finally, to find the maximum size of each volume one must know the maximum
@@ -519,7 +519,7 @@ store the data and the indices of each data part in the output files. To
 automatically compute such information, we proceeded as follows. We first
 compute, for each output file, the list of each constitutive subarrays, with
 subarrays defined by the intersection of input and output files and buffers.
-When each output file "knows" which part from which buffer are required, we
+When each output file ``knows" which part from which buffer are required, we
 merge some of them according to the keep strategy to enforce the fact that
 a given data part of a given output file has to be stored at once. By doing this
 we create dependencies in the task graph. Such dependency tells dask that it
@@ -527,7 +527,7 @@ needs to load two buffers before writing a given subarray for example.
 
 \subsection{Dask Rechunk}
 
-Both implementations are available in a same Python package called "Dask Rechunk". It
+Both implementations are available in a same Python package called \texttt{Dask Rechunk}. It
 contains tests with 99\% coverage and is available on PyPI (The Python Package
 Index). Dask Rechunk provides a simple API to use the split, merge and resplit
 algorithms described in this study (figure x).
@@ -578,7 +578,7 @@ query as an arbitrary subarray of the input, chunked, array. They define the
 optimal chunking problem as finding the optimal chunk such that the expected
 number of chunks retrieved to answer the query is minimal. In our opinion, the
 solution in [] is limited due to the need of historical or theoretical workload
-and the necessity to rechunk the input array into an "optimal" chunk shape. We
+and the necessity to rechunk the input array into an ``optimal" chunk shape. We
 would prefer letting the application choose the appropriate chunk shape
 regarding its needs and not needing to estimate the processing workload. We
 define the ROI extraction problem as follows: Finding an algorithm that takes
@@ -625,27 +625,58 @@ now recommended for use, even on local computers (using one node).
 \label{bufferExtensionAlgorithm}
 The buffer extension algorithm aims at extending the buffer shape from
 (1,1,$\Lambda_k$) to the input aggregate shape $\Lambda$. Note that we assume
-that $m$ is large enough to store a buffer of shape (1,1,$\Lambda_k$). If it
-was not the case the keep algorithm would not give significant improvement in the
-number of seeks produced by the resplit task.
+that $m$ is large enough to store a buffer of shape (1,1,$\Lambda_k$). It means
+that we can read one complete data column from an input file and keep the
+remainder in memory for the next buffer. If it was not the case the keep
+algorithm would not give a significant improvement in the number of seeks
+produced by the resplit task, compared to the baseline algorithm. In all the
+computations below, we measure the amount of data as a number of voxels. With
+$\alpha$ the number of bytes per voxel in the storage device, $m$ is defined as
+$m/\alpha$ in the following computations.
 
-Before diving into the computations, we need to define some nomenclature.
+In the buffer extension algorithm, the buffer is stretched in one dimension at a
+time. As explained in section ``A memory analysis of the keep strategy", each
+buffer can be divided into 8 volumes, 7 of which are \texttt{remainder} volumes.
+When stretching the buffer, we compute the maximum length of the buffer possible
+in the dimension considered, while ensuring that the remainder volumes can be
+kept into memory according to the \texttt{keep} algorithm. To that aim, we need
+a formula that computes the maximum amount of times that we have to keep each
+remainder volume, together with the maximum size of those volumes. For example, if
+we consider stretching the buffer in the $j$ dimension, we want to know how big
+$B_j$ can be such that the remainders are kept in memory by the \texttt{keep}
+algorithm for later use, given the maximum amount of memory available, $m$.
+
+We define $\Sigma$ as the maximum amount of data reached during the execution
+of the keep algorithm in terms of the number of volumes to be kept. From the
+previous sections we assume that the buffer order is the storage order. In this
+order, the $F_1$ volume stored from a given buffer loading is necessary recycled
+in the next one. Therefore there can be only one $F_1$ volume in cache at a
+given time. For any buffer, $F_2$ and $F_3$ are kept in memory until the next
+buffer in the $j$ dimension recyles them. Therefore they can be present in cache
+$n$ times at a maximum, with $n$ the number of buffers in a buffer column (the
+number of buffers in dimension $k$). Volumes 4 to 7 can only be recycled by the
+next buffer in the $i$ dimension. Therefore, the algorithm must read an entire
+buffer slice before being able to use them from the cache. They are kept a
+maximum of $N$ times, with $N$ the number of buffers in a slice of the
+reconstructed image. Last but not least, a buffer must be loaded at each step of
+the keep algorithm. This gives us the following formula for $\Sigma$:
+
+$$\Sigma = (F_1 + n(F_2 + F_3) + N(F_4 + F_5 + F_6 + F_7) + B_iB_jB_k)\alpha$$
+
+In order to compute the volumes' sizes, we need to define some nomenclature.
 Given a buffer shape $B$ and the output file shape $O$, we define $C_d(x)$ as
 the overlap length between the buffer and an overlaping output file in direction
-$d$ for the $x{th}$ buffer. As explained in section
-``A memory analysis of the keep strategy", we need to compute the sizes of
-the different volumes constituting any buffer in order to compute their
-maximum size. To that aim, let us define $\Omega$ and $\Theta$: $\Omega_d(x)$
-is the equivalent of $C_d(x)$ if the buffer is of shape $\Lambda$. Finally, we
-define $\Theta_k(x)$ as the difference between $B_d$ and $\Omega_b$, with
-$B=\Lambda$.
+$d$ for the $x{th}$ buffer. Let us define $\Omega$ and $\Theta$, that are used
+to define upper bounds in the volumes sizes formulas. $\Omega_d(x)$ is the
+equivalent of $C_d(x)$ if the buffer was of shape $\Lambda$, and $\Theta_k(x)$
+is the difference between $B_d$ and $\Omega_b$, with $B=\Lambda$.
+These metrics are computed as follows:
 
-$$C_k(x) = (x+1)B_k mod(O_k)$$
-$$\Omega_k(x) = (x+1)\Lambda_k mod(O_k)$$
-$$\Theta_k(x) = \Lambda_k - \Omega_k(x)$$
+$$C_d(x) = (x+1)B_d mod(O_d)$$
+$$\Omega_d(x) = (x+1)\Lambda_d mod(O_d)$$
+$$\Theta_d(x) = \Lambda_d - \Omega_d(x)$$
 
-$\Omega$ and $\Theta$ allows to express the sizes in voxels of the different
-volumes constituting the a buffer of shape $\Lambda$:
+For the $x^{th}$ buffer, the volumes' sizes are:
 $F_1 = \Omega_k min(B_j, \Theta_j) min(B_i, \Theta_i)$ \\
 $F_2 = \Theta_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i)$ \\
 $F_3 = \Omega_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i)$ \\
@@ -654,16 +685,18 @@ $F_5 = \Omega_k \Theta_j max(0, min(B_i-\Theta_i, \Omega_i))$ \\
 $F_6 = \Theta_k \Omega_j max(0, min(B_i-\Theta_i, \Omega_i))$ \\
 $F_7 = \Omega_k \Omega_j max(0, min(B_i-\Theta_i, \Omega_i))$ \\
 
-$$\Sigma = (F_1 + n(F_2 + F_3) + N(F_4 + F_5 + F_6 + F_7) + B_iB_jB_k)\alpha$$
+We are only interested in the maximum amount of memory that will be reached by
+the algorithm. To that aim, we will not evaluate the above formula for each $x$
+but we will replace each $\Omega_d(x)$ by its maximum in $\Sigma$. By definition
+of $\Omega_d(x)$, an upper bound is $O_d$ but one can find the exact maximum
+value by computing $\Omega_d(x)$ for all $x$, for each dimension $d$.
 
-We are only interested in the maximum amount of memory we would have to keep.
-To that aim, we will not evaluate the above volume formulas for each $x$ but we
-will replace $\Omega_k(x)$ by its maximum in the formulas instead. By definition
-of $\Omega_k(x)$ an upper bound is $O_k$ but one can find the exact maximum
-value by computing $\Omega_k(x)$ for all $x$, for each dimension $k$.
+In the following paragraphs, we are finding formulas to extend the buffer one
+dimension at a time, for use in the buffer stretching algorithm.
 
 \subsection{Keeping F1}
-We are extending in the $j$ direction until thetaj and then in the next subsection we will extend until lambdaj
+We first extend the buffer in the $j$ dimension.
+
 \noindent $\Sigma = (F_1 + B_iB_jB_k)\alpha$ \\
 $F_1 = \Omega_k B_j B_i = \Omega_k B_j$ \\
 $\Sigma < m \Leftrightarrow (\Omega_k B_j + B_j \Lambda_k)\alpha < m$ \\
