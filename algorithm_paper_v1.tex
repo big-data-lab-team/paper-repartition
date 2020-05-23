@@ -623,6 +623,51 @@ now recommended for use, even on local computers (using one node).
 
 \section{Buffer extension algorithm}
 \label{bufferExtensionAlgorithm}
-TODO
+The buffer extension algorithm aims at extending the buffer shape from
+(1,1,$\Lambda_k$) to the input aggregate shape $\Lambda$. Note that we assume
+that $m$ is large enough to store a buffer of shape (1,1,$\Lambda_k$). If it
+was not the case the keep algorithm would not give significant improvement in the
+number of seeks produced by the resplit task.
+
+Before diving into the computations, we need to define some nomenclature.
+Given a buffer shape $B$ and the output file shape $O$, we define $C_d(x)$ as
+the overlap length between the buffer and an overlaping output file in direction
+$d$ for the $x{th}$ buffer. As explained in section
+``A memory analysis of the keep strategy", we need to compute the sizes of
+the different volumes constituting any buffer in order to compute their
+maximum size. To that aim, let us define $\Omega$ and $\Theta$: $\Omega_d(x)$
+is the equivalent of $C_d(x)$ if the buffer is of shape $\Lambda$. Finally, we
+define $\Theta_k(x)$ as the difference between $B_d$ and $\Omega_b$, with
+$B=\Lambda$.
+
+$$C_k(x) = (x+1)B_k mod(O_k)$$
+$$\Omega_k(x) = (x+1)\Lambda_k mod(O_k)$$
+$$\Theta_k(x) = \Lambda_k - \Omega_k(x)$$
+
+$\Omega$ and $\Theta$ allows to express the sizes in voxels of the different
+volumes constituting the a buffer of shape $\Lambda$:
+$F_1 = \Omega_k min(B_j, \Theta_j) min(B_i, \Theta_i)$ \\
+$F_2 = \Theta_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i)$ \\
+$F_3 = \Omega_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i)$ \\
+$F_4 = \Theta_k \Theta_j max(0, min(B_i-\Theta_i, \Omega_i))$ \\
+$F_5 = \Omega_k \Theta_j max(0, min(B_i-\Theta_i, \Omega_i))$ \\
+$F_6 = \Theta_k \Omega_j max(0, min(B_i-\Theta_i, \Omega_i))$ \\
+$F_7 = \Omega_k \Omega_j max(0, min(B_i-\Theta_i, \Omega_i))$ \\
+
+$$\Sigma = (F_1 + n(F_2 + F_3) + N(F_4 + F_5 + F_6 + F_7) + B_iB_jB_k)\alpha$$
+
+We are only interested in the maximum amount of memory we would have to keep.
+To that aim, we will not evaluate the above volume formulas for each $x$ but we
+will replace $\Omega_k(x)$ by its maximum in the formulas instead. By definition
+of $\Omega_k(x)$ an upper bound is $O_k$ but one can find the exact maximum
+value by computing $\Omega_k(x)$ for all $x$, for each dimension $k$.
+
+\subsection{Keeping F1}
+We are extending in the $j$ direction until thetaj and then in the next subsection we will extend until lambdaj
+\noindent $\Sigma = (F_1 + B_iB_jB_k)\alpha$ \\
+$F_1 = \Omega_k B_j B_i = \Omega_k B_j$ \\
+$\Sigma < m \Leftrightarrow (\Omega_k B_j + B_j \Lambda_k)\alpha < m$ \\
+$\Leftrightarrow B_j (\Omega_k + \Lambda_k) \alpha < m $ \\
+$\Leftrightarrow B_j < \phi$, $\phi = \lfloor \frac{m}{(\Omega_k + \Lambda_k)\alpha} \rfloor$
 
 \end{document}
