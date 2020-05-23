@@ -661,7 +661,7 @@ maximum of $N$ times, with $N$ the number of buffers in a slice of the
 reconstructed image. Last but not least, a buffer must be loaded at each step of
 the keep algorithm. This gives us the following formula for $\Sigma$:
 
-$$\Sigma = (F_1 + n(F_2 + F_3) + N(F_4 + F_5 + F_6 + F_7) + B_iB_jB_k)\alpha$$
+$$\Sigma = F_1 + n(F_2 + F_3) + N(F_4 + F_5 + F_6 + F_7) + B_iB_jB_k$$
 
 In order to compute the volumes' sizes, we need to define some nomenclature.
 Given a buffer shape $B$ and the output file shape $O$, we define $C_d(x)$ as
@@ -677,13 +677,16 @@ $$\Omega_d(x) = (x+1)\Lambda_d mod(O_d)$$
 $$\Theta_d(x) = \Lambda_d - \Omega_d(x)$$
 
 For the $x^{th}$ buffer, the volumes' sizes are:
-$F_1 = \Omega_k min(B_j, \Theta_j) min(B_i, \Theta_i)$ \\
-$F_2 = \Theta_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i)$ \\
-$F_3 = \Omega_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i)$ \\
-$F_4 = \Theta_k \Theta_j max(0, min(B_i-\Theta_i, \Omega_i))$ \\
-$F_5 = \Omega_k \Theta_j max(0, min(B_i-\Theta_i, \Omega_i))$ \\
-$F_6 = \Theta_k \Omega_j max(0, min(B_i-\Theta_i, \Omega_i))$ \\
-$F_7 = \Omega_k \Omega_j max(0, min(B_i-\Theta_i, \Omega_i))$ \\
+
+$\begin{cases}
+F_1 = \Omega_k min(B_j, \Theta_j) min(B_i, \Theta_i) \\
+F_2 = \Theta_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i) \\
+F_3 = \Omega_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i) \\
+F_4 = \Theta_k \Theta_j max(0, min(B_i-\Theta_i, \Omega_i)) \\
+F_5 = \Omega_k \Theta_j max(0, min(B_i-\Theta_i, \Omega_i)) \\
+F_6 = \Theta_k \Omega_j max(0, min(B_i-\Theta_i, \Omega_i)) \\
+F_7 = \Omega_k \Omega_j max(0, min(B_i-\Theta_i, \Omega_i))
+\end{cases}$
 
 We are only interested in the maximum amount of memory that will be reached by
 the algorithm. To that aim, we will not evaluate the above formula for each $x$
@@ -694,13 +697,105 @@ value by computing $\Omega_d(x)$ for all $x$, for each dimension $d$.
 In the following paragraphs, we are finding formulas to extend the buffer one
 dimension at a time, for use in the buffer stretching algorithm.
 
-\subsection{Keeping F1}
-We first extend the buffer in the $j$ dimension.
+\subsection{Formulas of the buffer extension}
+\subsubsection{Keeping F1}
 
-\noindent $\Sigma = (F_1 + B_iB_jB_k)\alpha$ \\
-$F_1 = \Omega_k B_j B_i = \Omega_k B_j$ \\
-$\Sigma < m \Leftrightarrow (\Omega_k B_j + B_j \Lambda_k)\alpha < m$ \\
-$\Leftrightarrow B_j (\Omega_k + \Lambda_k) \alpha < m $ \\
-$\Leftrightarrow B_j < \phi$, $\phi = \lfloor \frac{m}{(\Omega_k + \Lambda_k)\alpha} \rfloor$
+We first extend the buffer in the $j$ dimension to keep $F_1$.
+
+\noindent $$F_1 = \Omega_k B_j B_i = \Omega_k B_j$$
+$$\Sigma = F_1 + B_iB_jB_k$$
+$$\Sigma = B_j (\Omega_k + \Lambda_k)$$
+$$\Sigma \leq m \Leftrightarrow B_j (\Omega_k + \Lambda_k) \leq m$$
+$$\Sigma \leq m \Leftrightarrow B_j \leq \frac{m}{\Omega_k + \Lambda_k}$$
+
+We define $\phi$, the maximum value for $B_j$:
+$$\phi = \lfloor \frac{m}{\Omega_k + \Lambda_k} \rfloor$$
+
+When extending the buffer in the $j$ dimension, $B_i$ stays at 1, so by
+definition of $F_1$ the maximum value that $F_1$ can take is $\Omega_k\Theta_j$.
+$$B_j = \begin{cases}
+  \Theta_j & \textrm{if }\phi \geq \Theta_j \\
+  1 & \textrm{if }\phi = 0 \\
+  \phi & \textrm{else}
+\end{cases}$$
+
+If $B_j=\Theta_j$, then we can continue stretching $B$ in the $j$ direction to
+try to keep $F_2$ and $F_3$ areas.
+
+\subsubsection{Keeping F2 and F3}
+
+Let us define $\delta_j$, the amount we will try to add to $B_j$, such that:
+$$B_j - \Theta_j = \delta_j$$
+$$B_j = \delta_j + \Theta_j$$
+
+From the previous subsection, $F_1$ is of size:
+$$F_1 = \Omega_k \Theta_j B_i = \Omega_k \Theta_j$$
+$F_2$ and $F_3$ are defined in terms of $\delta_i$:
+$$F_2 = \Theta_k \delta_j B_i = \Theta_k \delta_j$$
+$$F_3 = \Omega_k \delta_j B_i = \Omega_k \delta_j$$
+
+We get:
+$$\Sigma = F_1 + n(F_2+F_3)$$
+$$\Sigma = \delta_j\Lambda_k(n+1) + \Theta_j(\Omega_k\Lambda_k)$$
+$$\Sigma \leq m \leftrightarrow \frac{m-\Theta_j(\Omega_k\Lambda_k)}{\Lambda_k(n+1)}$$
+$$\phi = \lfloor \frac{m-\Theta_j(\Omega_k\Lambda_k)}{\Lambda_k(n+1)} \rfloor$$
+$$B_j = \begin{cases}
+  \Lambda_j & \textrm{if }\phi \geq \Lambda_j \\
+  B_j = \Theta_j & \textrm{if }(B_j+\phi) = 0 \\
+  B_j + \phi & \textrm{else}
+\end{cases}$$
+
+Again, if $B_j=\Lambda_j$, we continue to stretch the buffer, this time in the
+$i$ dimension as $B$ equals $\Lambda$ in the $k$ and $j$ direction.
+
+\subsubsection{Increasing F1, F2 and F3 in the ith dimension}
+$$F_1 = \Omega_k\Theta_jB_i$$
+$$F_2 = \Theta_k\Omega_jB_i$$
+$$F_3 = \Omega_k\Omega_jB_i$$
+$$\Sigma = B_i(\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k)$$
+$$\Sigma \leq m \leftrightarrow B_i \leq \frac{m}{\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k}$$
+$$\phi = \lfloor \frac{m}{\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k} \rfloor$$
+
+$$B_i = \begin{cases}
+  \Theta_i & \textrm{if }\phi \geq \Theta_i \\
+  1 & \textrm{if }\phi = 0 \\
+  \phi & \textrm{else}
+\end{cases}$$
+
+If $B_i=\Theta_i$, we continue to stretch the buffer.
+
+\subsubsection{Keeping F4, F5, F6, F7}
+
+$$\begin{cases}
+  F_1 = \Omega_k\Theta_j\Theta_i \\
+  F_2 = \Theta_k\Omega_j\Theta_i \\
+  F_3 = \Omega_k\Omega_j\Theta_i \\
+  F_4 = \Theta_k\Theta_j\delta_i \\
+  F_5 = \Omega_k\Theta_j\delta_i \\
+  F_6 = \Theta_k\Omega_j\delta_i \\
+  F_7 = \Omega_k\Omega_j\delta_i \\
+  B_i = \Theta_i + \delta_i \\
+  B_j = \Lambda_j\\
+  B_k = \Lambda_k\\
+\end{cases}$$
+
+$$\Sigma = F_1 + n(F_2 + F_3) + N(F_4 + F_5 + F_6 + F_7) + B_iB_jB_k$$
+$$\Sigma = F_1 + n(F_2 + F_3) + N(F_4 + F_5 + F_6 + F_7) + (\Theta_i + \delta_i)\Lambda_j\Lambda_k$$
+$$\Sigma = \Theta_i(\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k) + (N+1)\delta_i\Lambda_j\Lambda_k$$
+
+$$\Sigma \leq m \leftrightarrow \delta_i \leq \frac{m-\Theta_i(\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k)}{(N+1)\Lambda_j\Lambda_k}$$
+$$\phi = \lfloor \frac{m-\Theta_i(\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k)}{(N+1)\Lambda_j\Lambda_k} \rfloor$$
+
+$$B_i = \begin{cases}
+  \Lambda_i & \textrm{if }(B_i+\phi) \geq \Lambda_i \\
+  B_i = \Theta_i & \textrm{if }\phi = 0 \\
+  B_i+\phi & \textrm{else}
+\end{cases}$$
+
+The algorithm stops here, as if $B_i=\Lambda_i$, then the buffer has been
+successfully stretched to the input aggregate shape, $\Lambda$.
+
+\subsection{The buffer extension algorithm}
+
 
 \end{document}
