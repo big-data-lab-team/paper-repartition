@@ -100,10 +100,10 @@ scientific community and it is written in \texttt{C-order} by default.
 \subsection{Problem definition}
 We focus on 3D arrays for simplicity. Consider a 3D array of shape $R =
 (R_i, R_j, R_k)$, stored as input blocks of uniform shape $I =
-(I_i, I_j, I_k)$. Our goal is to rechunk the input blocks into output
-blocks of uniform but different shape $O = (O_i, O_j, O_k)$.
+(I_i, I_j, I_k)$. Our goal is to rechunk input blocks into output blocks of
+uniform but different shape $O = (O_i, O_j, O_k)$.
 
-A rechunk algorithm (Algorithm \ref{algo:generalrechunk}) takes as input a
+A rechunk algorithm (Algorithm~\ref{algo:generalrechunk}) takes as input a
 list of input files \texttt{inFiles} of shape $I$, a list of output files
 \texttt{outFiles} of shape $O$ and the amount of memory \texttt{m}
 available for the rechunk. Based on a given strategy and taking $m$ into
@@ -118,18 +118,18 @@ the data from the cache (lines 7 and 8). An example of a writing policy could be
 the data from that output file has been successfully loaded".
 
 For simplicity, we require that all buffers in \texttt{buffersList} have
-the same shape $B$. Our problem is to find the partition \texttt{bufferList}
-that minimizes the number of seeks done by Algorithm~\ref{algo:generalrechunk}
-given $I$ and $O$, subject to the amount $m$ of available memory.
+the same shape $B$. We define the ``rechunk problem" the problem of finding the
+best writing policy, together with its associated buffer shape, to minimize the
+number of seeks produced by rechunking the input array from a given chunk shape
+$I$ to another chunk shape $O$, constrained by a fixed amount of memory $m$
+available for the buffer. In this study we attempt to answer to this problem by
+giving an implementation to the \texttt{getBufferPositions}-\texttt{getDataToWrite}
+pair of functions.
 
-\tristan{you should name the problem here (``rechunk problem''), and perhaps write it as an optimization problem.}
-\tristan{explain that seeks are done by the read function, + 1 in the write. Explain that the size of cache has to be bounded by m.}
-\tristan{mention that a solution of this problem implements getBufferPositions}
-
-A lower bound on the number of seeks for the rechunk task is $n_i + n_o$,
-with $n_i$ the number of input files and $n_o$ the number of output files.
-Indeed, input and output files all have to be accessed at least once, which
-requires a seek.
+A lower bound on the number of seeks for the rechunk task is
+$n_i + n_o$, with $n_i$ the number of input files and $n_o$ the number of output
+files. Indeed, input and output files all have to be accessed at least once,
+which requires a seek.
 
 \begin{algorithm}
   \caption{General rechunk algorithm}
@@ -141,8 +141,8 @@ requires a seek.
     \FOR{buffer in buffersList}
       \STATE bufferData $\leftarrow$ read(inFiles, buffer)
       \STATE cache.insert(bufferData)
-      \FOR{(outFileIndex, data) in getDataToWrite(cache, policy)}
-        \STATE write(outFiles[outFileIndex], data)
+      \FOR{(fileIndex, data) in getDataToWrite(cache, policy)}
+        \STATE write(outFiles[fileIndex], data)
       \ENDFOR
     \ENDFOR
 
