@@ -18,7 +18,7 @@
 
 \begin{document}
 
-\title{ Dask Rechunk for sequentially splitting, merging and resplitting multidimensional arrays }
+\title{ Dask Rechunk for sequentially splitting, merging and rechunking multidimensional arrays }
 
 \author{\IEEEauthorblockN{Timoth\'ee Gu\'edon, Val\'erie Hayot-Sasson, Tristan Glatard \\
   \IEEEauthorblockA{
@@ -56,10 +56,12 @@ chunks to facilitate processing and storage. Among other advantages, chunking
 allows for efficient queries, flexibility in adding new
 data~\cite{optimal_chuking}, parallel processing, and out-of-core
 computations through block algorithms~\cite{matthew_rocklin-proc-scipy-2015}.
+Moreover, as explained in~\cite{matthew_rocklin-proc-scipy-2015}, block
+algorithms are ``necessary when data cannot be entirely loaded in memory".
 
 % need for tools to rechunk
 Chunking multidimensional array requires tools to efficiently split,
-merge, and ``resplit" or ``rechunk" data files. Previous work in~\cite{seqalgorithms}
+merge, and ``rechunk" or ``rechunk" data files. Previous work in~\cite{seqalgorithms}
 showed that naive algorithms to split an array into several chunks or merge
 array chunks into one output file perform very poorly due to millions of seeks
 occurring on disk.
@@ -95,53 +97,52 @@ would be written on disk by writing the complete columns in the k dimension firs
 Our experiments use the HDF5~\cite{hdf5} file format as it is commonly used in the
 scientific community and it is written in \texttt{C-order} by default.
 
-\tristan{Up to here, the intro is now well readable but it still needs some
-editing. The paper should also be positioned w.r.t space filling curves and other
-data ordering techniques on disk (see references from BigData 2017 paper).}
-
 \subsection{Problem definition}
 We focus on 3D arrays for simplicity. Consider a 3D array of shape $R =
 (R_i, R_j, R_k)$, stored as input blocks of uniform shape $I =
-(I_i, I_j, I_k)$. Our goal is to resplit the input blocks into output
+(I_i, I_j, I_k)$. Our goal is to rechunk the input blocks into output
 blocks of uniform but different shape $O = (O_i, O_j, O_k)$.
 
-A resplit algorithm (Algorithm \ref{algo:generalresplit}) takes as input a
+A rechunk algorithm (Algorithm \ref{algo:generalrechunk}) takes as input a
 list of input files \texttt{inFiles} of shape $I$, a list of output files
 \texttt{outFiles} of shape $O$ and the amount of memory \texttt{m}
-available for the resplit. Based on a given strategy and taking $m$ into
+available for the rechunk. Based on a given strategy and taking $m$ into
 account, the algorithm first defines an ordered list of buffers positions
-\texttt{buffersList} defining a partition of array $R$. The buffers are
-loaded sequentially, and their data is stored in a cache. After each buffer
-load, the complete output files stored in cache are retrieved and written
-to output files. Output files may be covered by one or more buffers. \tristan{To increase clarity,
-you should number lines in Algo 1 and refer to line numbers in the above paragraph.}
+\texttt{buffersList} (line 2) together with a \texttt{writing policy}. The
+\texttt{buffersList} defines a partition of array $R$ and output files
+may be covered by one or more buffers. The buffers are loaded sequentially
+(line 4), and their data is stored in a cache (line 6). After each buffer load,
+the \texttt{writing policy} is used by the algorithm to know when to write down
+the data from the cache (lines 7 and 8). An example of a writing policy could be:
+``write the data from the cache into the appropriate output file only when all
+the data from that output file has been successfully loaded".
 
 For simplicity, we require that all buffers in \texttt{buffersList} have
 the same shape $B$. Our problem is to find the partition \texttt{bufferList}
-that minimizes the number of seeks done by Algorithm~\ref{algo:generalresplit}
+that minimizes the number of seeks done by Algorithm~\ref{algo:generalrechunk}
 given $I$ and $O$, subject to the amount $m$ of available memory.
 
 \tristan{you should name the problem here (``rechunk problem''), and perhaps write it as an optimization problem.}
 \tristan{explain that seeks are done by the read function, + 1 in the write. Explain that the size of cache has to be bounded by m.}
 \tristan{mention that a solution of this problem implements getBufferPositions}
 
-A lower bound on the number of seeks for the resplit task is $n_i + n_o$,
+A lower bound on the number of seeks for the rechunk task is $n_i + n_o$,
 with $n_i$ the number of input files and $n_o$ the number of output files.
 Indeed, input and output files all have to be accessed at least once, which
 requires a seek.
 
 \begin{algorithm}
-  \caption{General resplit \tristan{Use resplit or rechunk consistently} algorithm}
-  \label{algo:generalresplit}
-  \begin{algorithmic}
+  \caption{General rechunk algorithm}
+  \label{algo:generalrechunk}
+  \begin{algorithmic}[1]
     \STATE \textbf{Inputs:} inFiles, outFiles, $m$
-    \STATE buffersList $\leftarrow$ getBufferPositions($I$,$O$,$m$)
+    \STATE buffersList, policy $\leftarrow$ getBufferPositions($I$,$O$,$m$)
     \STATE initialize(cache)
     \FOR{buffer in buffersList}
       \STATE bufferData $\leftarrow$ read(inFiles, buffer)
       \STATE cache.insert(bufferData)
-      \FOR{($i$, data) in getCompleteFiles(cache)}
-        \STATE write(outFiles[$i$], data)
+      \FOR{(outFileIndex, data) in getDataToWrite(cache, policy)}
+        \STATE write(outFiles[outFileIndex], data)
       \ENDFOR
     \ENDFOR
 
@@ -161,7 +162,7 @@ The clustered strategy loads contiguous blocks of data of shape $O$ \tristan{it 
 from the input array in order to write it in one seek in each output file which
 data has been loaded. This strategy loads data blocks one by one, block columns
 by block columns or blocks slices by block slices, depending on the amount of
-main memory available for the buffer. Using this strategy for resplitting would
+main memory available for the buffer. Using this strategy for rechunkting would
 imply reading multiple input files that are contiguous in the reconstructed
 image or reading the data of contiguous output files by seeking into input files.
 In either case one can find special cases in which the algorithm seeks in all
@@ -170,23 +171,23 @@ dimensions.
 The multiple strategy aims at not doing any seek while reading and writing. For
 example, one would read the input file slice by slice and write these slices
 contiguously in the output files \tristan{it would be useful to express this using the notations of Algo 1.}. The tradeoff lies in switching between files
-at each buffer loading. Using this strategy for the resplit task would imply
+at each buffer loading. Using this strategy for the rechunk task would imply
 reading contiguous columns or slices of data from the input files and writing it
 contiguously in the output files. This would result in even more switches
 between input and output files and one can easily find worst cases when using
 small $I$ and $O$ shapes for example where a smarter strategy would be appreciated.
 
 To the best of our knowedge however, no algorithm has been proposed for the
-resplit task. The algorithm presented in this study can be seen as an
-adaptation of the multiple strategy to the resplit task.
+rechunk task. The algorithm presented in this study can be seen as an
+adaptation of the multiple strategy to the rechunk task.
 
 \tristan{The previous paragraph should use the notations in Algo 1.}
 
 \subsection{Baseline solution}
 
-A baseline/naive algorithm for the resplit task would be to load one input file
+A baseline/naive algorithm for the rechunk task would be to load one input file
 at a time. It is equivalent to computing the buffers' positions in
-Algorithm~\ref{algo:generalresplit} using a buffer shape equal to $I$.
+Algorithm~\ref{algo:generalrechunk} using a buffer shape equal to $I$.
 We assume that one input file can stand in memory ($m \geq I_iI_jI_k$). Each
 buffer is loaded only once and the data loaded into the cache is directly
 written down into the appropriate output files. The buffer order has no
@@ -242,8 +243,8 @@ multi-dimensional array processing using blocked algorithms.
 \subsection{Contributions}
 This paper makes the following contributions:
 \begin{itemize}
-  \item Definition of the resplit problem for multidimensional arrays
-  \item A sequential algorithm to efficiently resplit multidimensional arrays
+  \item Definition of the rechunk problem for multidimensional arrays
+  \item A sequential algorithm to efficiently rechunk multidimensional arrays
   \item An open implementation of this algorithm in Dask, in a library called Dask Rechunk.
   \item An open implementation in Dask of the ``clustered" split and merge strategy described in~\cite{seqalgorithms}, in Dask Rechunk too.
 \end{itemize}
@@ -277,7 +278,7 @@ output files to avoid re-reading input files several times and ensure that all
 the data has been written at the end of the algorithm. Being able to keep all
 remainders into memory to write an output file only when all the data has been
 loaded in memory means doing the minimum number of seeks possible during a
-resplit task ($n_i + n_o$). In the following paragraphs we explain how to find
+rechunk task ($n_i + n_o$). In the following paragraphs we explain how to find
 the best buffer shape for to the keep strategy.
 
 \tristan{This is also a bit redundant with the formulation in Algorithm 1.
@@ -333,7 +334,7 @@ small at the borders.
 \begin{algorithm}
   \caption{Pseudocode of the keep algorithm}
   \label{algo:keepalgorithm}
-  \begin{algorithmic}
+  \begin{algorithmic}[1]
     \STATE \textbf{Inputs:} inFiles, outFiles, $m$
     \STATE volumesToKeep, buffersList $\leftarrow$ bufferExtension($I$, $O$, $m$)
     \STATE cache.initialize()
@@ -391,7 +392,7 @@ is (see computation details in Appendix~\ref{bufferExtensionAlgorithm}):
 
 With $n$ the number of buffers in the first direction of the buffer order and
 $N$ is the number of buffers in a buffer slice, i.e. in the second direction of
-the buffer order. Given that at each step of the resplit algorithm one must
+the buffer order. Given that at each step of the rechunk algorithm one must
 load a buffer, we should also add the size of a buffer to the equation:
 
 \begin{equation} \label{eq:3}
@@ -446,7 +447,7 @@ efficiency of the keep algorithm we compare it against vanilla dask on local
 computer. To be fair we used dask with one thread as required for our
 implementation but also with the classic multi-threaded  scheduler as it is the
 default when using dask.array. In order to compare both implementations to a
-naive resplit, we also added a plain Python implementation to the benchmark. For
+naive rechunk, we also added a plain Python implementation to the benchmark. For
 the experiments presented below we built a random 3D array of the size of Big
 Brain, drawn from a uniform distribution. Once again, the array is initially
 stored into an HDF5 file.
@@ -535,7 +536,7 @@ needs to load two buffers before writing a given subarray for example.
 
 Both implementations are available in a same Python package called \texttt{Dask Rechunk}. It
 contains tests with 99\% coverage and is available on PyPI (The Python Package
-Index). Dask Rechunk provides a simple API to use the split, merge and resplit
+Index). Dask Rechunk provides a simple API to use the split, merge and rechunk
 algorithms described in this study (figure x).
 
 %----------------------------------------
@@ -565,7 +566,7 @@ We decided to keep things simple using a naive buffer order, the storage order,
 as the goal of this study is primarily to assess if the keep algorithm works.
 
 \subsection{Breaking the buffers}
-To even reduce the maximum amount of memory used during the resplit process, we
+To even reduce the maximum amount of memory used during the rechunk process, we
 could read the input files one by one instead of enforcing dask to read a whole
 buffer at a time, provided that the input files' parts are read in the right
 order (following the buffer order). The idea of reading an entire buffer at a
@@ -593,21 +594,21 @@ the less number of seeks as possible.
 
 \subsection{Solving three problems at once}
 As stated in the introduction, the split and merge tasks are special cases of
-the resplit task. This observation leads us to think that maybe one could find
-one optimal algorithm for the split, merge and resplit tasks.
+the rechunk task. This observation leads us to think that maybe one could find
+one optimal algorithm for the split, merge and rechunk tasks.
 
 If we were to use the keep algorithm with $I=R$, we would read the input data
 in slices, exactly like the multiple strategy. The only difference between the
 two strategies, however, is that if some remainders appear at the bottom of the
 buffer, the keep algorithm would keep it to try to read and write files in one
 seek. This is what we meant by "a smarter adaptation of the multiple strategy
-to the resplit task": We not only try to limit seeking into the files but we
+to the rechunk task": We not only try to limit seeking into the files but we
 also try to limit switching between the files. It would be interesting to
 compare the two algorithms for the split/merge tasks to see if the keep
 implementation brings any kind of improvement.
 
 \subsection{Towards distributed systems}
-A future work would be to find distributed versions of the split/merge/resplit
+A future work would be to find distributed versions of the split/merge/rechunk
 algorithms. Lots of scientists use HPC (High Performance Computing) clusters
 regularly which brings considerations about how to use such distributed
 algorithms with Lustre for example, a commonly used filesystem for HPC. Dask
@@ -635,7 +636,7 @@ that $m$ is large enough to store a buffer of shape (1,1,$\Lambda_k$). It means
 that we can read one complete data column from an input file and keep the
 remainder in memory for the next buffer. If it was not the case the keep
 algorithm would not give a significant improvement in the number of seeks
-produced by the resplit task, compared to the baseline algorithm. In all the
+produced by the rechunk task, compared to the baseline algorithm. In all the
 computations below, we measure the amount of data as a number of voxels. With
 $\alpha$ the number of bytes per voxel in the storage device, $m$ is defined as
 $m/\alpha$ in the following computations.
@@ -808,7 +809,7 @@ pseudocode for the buffer extension algorithm.
 \begin{algorithm}
   \caption{Pseudocode of the buffer extension algorithm}
   \label{algo:bufferextensionalgorihm}
-  \begin{algorithmic}
+  \begin{algorithmic}[1]
     \STATE \textbf{Inputs:} $\Omega_{max}$, $\Lambda$, $m$
     \STATE $\Omega \leftarrow \Omega_{max}$
     \STATE $\Theta = (\Lambda_i - \Omega_i, \Lambda_j - \Omega_j, \Lambda_k - \Omega_k)$
