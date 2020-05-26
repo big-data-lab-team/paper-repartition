@@ -55,7 +55,7 @@ Scientific data is often represented as multidimensional arrays stored in
 chunks to facilitate processing and storage. Among other advantages, chunking
 allows for efficient queries, flexibility in adding new
 data~\cite{optimal_chuking}, parallel processing, and out-of-core
-computations through block algorithms.
+computations through block algorithms~\cite{matthew_rocklin-proc-scipy-2015}.
 
 % need for tools to rechunk
 Chunking multidimensional array requires tools to efficiently split,
@@ -76,17 +76,23 @@ data columns, we assume that all seeks incur the same time overhead for the sake
 of simplicity. Therefore our problem will be to minimize the number of seeks
 required to access data.
 
-\subsection{The occurrence of seeks}
+\subsection{Data storage on disk}
 % explain storage order
-\timothee{find references}
-We assume that the data ordering in files is arbitrary but known.
+Previous work focused on optimizing the data storage by looking for an optimal
+chunk shape that would reduce the expected number of chunks to be retrieved by
+any query~\cite{optimal_chuking} or by optimizing the ordering of the chunks
+using space filling curves for example~\cite{optimal_chuking, openconnectomecluster}.
+As in~\cite{seqalgorithms}, our approach is to try letting the choice of the
+data storage to the application as much as possible. We therefore assume that
+the chunk shape and the data ordering in files are arbitrary but known.
+
 For the sake of clarity and without loss of generality,
  we assume in this study that files are written in row-major order (a.k.a
 ``C" ordering), where the fastest moving dimension in the file is the last
 dimension in the array, and the slowest moving dimension in the file is the first
 dimension in the array. For example a 3D array with dimensions $i$, $j$ and $k$
 would be written on disk by writing the complete columns in the k dimension first.
-Our experiments use the HDF5 file format as it is commonly used in the
+Our experiments use the HDF5~\cite{hdf5} file format as it is commonly used in the
 scientific community and it is written in \texttt{C-order} by default.
 
 \tristan{Up to here, the intro is now well readable but it still needs some

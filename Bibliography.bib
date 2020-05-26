@@ -19,6 +19,16 @@ publisher = {Taylor & Francis},
 doi = {10.1080/20964471.2018.1564478},
 }
 
+@inproceedings{hdf5,
+author = {Folk, Mike and Heber, Gerd and Koziol, Quincey and Pourmal, Elena and Robinson, Dana},
+year = {2011},
+month = {03},
+pages = {36-47},
+title = {An overview of the HDF5 technology suite and its applications},
+journal = {ACM International Conference Proceeding Series},
+doi = {10.1145/1966895.1966900}
+}
+
 @article{bigdata_health,
 title = "An optimal big data workflow for biomedical image analysis",
 journal = "Informatics in Medicine Unlocked",
@@ -53,44 +63,6 @@ doi={10.1109/BigData.2017.8257953},
 ISSN={null},
 month={Dec},}
 
-@article{shorestpathsurvey,
-author = {Madkour, Amgad and Aref, Walid and Rehman, Faizan and Rahman, Abdur and Basalamah, Saleh},
-year = {2017},
-month = {05},
-pages = {},
-title = {A Survey of Shortest-Path Algorithms}
-}
-
-@article{demetrescu,
-title = "Fully dynamic all pairs shortest paths with real edge weights",
-journal = "Journal of Computer and System Sciences",
-volume = "72",
-number = "5",
-pages = "813 - 837",
-year = "2006",
-note = "Special Issue on FOCS 2001",
-issn = "0022-0000",
-doi = "https://doi.org/10.1016/j.jcss.2005.05.005",
-url = "http://www.sciencedirect.com/science/article/pii/S0022000006000067",
-author = "Camil Demetrescu and Giuseppe F. Italiano",
-keywords = "Dynamic graph algorithms, Shortest paths",
-abstract = "We present the first fully dynamic algorithm for maintaining all pairs shortest paths in directed graphs with real-valued edge weights. Given a dynamic directed graph G such that each edge can assume at most S different real values, we show how to support updates in O(n2.5Slog3n) amortized time and queries in optimal worst-case time. This algorithm is deterministic: no previous fully dynamic algorithm was known before for this problem. In the special case where edge weights can only be increased, we give a randomized algorithm with one-sided error that supports updates faster in O(S⋅nlog3n) amortized time. We also show how to obtain query/update trade-offs for this problem, by introducing two new families of randomized algorithms. Algorithms in the first family achieve an update bound of O˜(S⋅k⋅n2)1 and a query bound of O˜(n/k), and improve over the previous best known update bounds for k in the range (n/S)1/3⩽k<(n/S)1/2. Algorithms in the second family achieve an update bound of O˜(S⋅k⋅n2) and a query bound of O˜(n2/k2), and are competitive with the previous best known update bounds (first family included) for k in the range (n/S)1/6⩽k<(n/S)1/3."
-}
-
-@InProceedings{thorup,
-author="Thorup, Mikkel",
-editor="Hagerup, Torben
-and Katajainen, Jyrki",
-title="Fully-Dynamic All-Pairs Shortest Paths: Faster and Allowing Negative Cycles",
-booktitle="Algorithm Theory - SWAT 2004",
-year="2004",
-publisher="Springer Berlin Heidelberg",
-address="Berlin, Heidelberg",
-pages="384--396",
-abstract="We present a solution to the fully-dynamic all pairs shortest path problem for a directed graph with arbitrary weights allowing negative cycles. We support each vertex update in {\$}O(n^2({\{}{\backslash}rm log{\}} n + {\{}{\backslash}rm log^2{\}}({\backslash}overline{\{}m{\}}/n))){\$}amortized time. Here, n is the number vertices, m the number of edges and {\$}{\backslash}overline{\{}m{\}} = n + m{\$}. A vertex update inserts or deletes a vertex with all incident edges, and we update a complete distance matrix accordingly. The algorithm runs on a comparison-addition based pointer-machine.",
-isbn="978-3-540-27810-8"
-}
-
 @article {Amunts1472,
 	author = {Amunts, Katrin and Lepage, Claude and Borgeat, Louis and Mohlberg, Hartmut and Dickscheid, Timo and Rousseau, Marc-{\'E}tienne and Bludau, Sebastian and Bazin, Pierre-Louis and Lewis, Lindsay B. and Oros-Peusquens, Ana-Maria and Shah, Nadim J. and Lippert, Thomas and Zilles, Karl and Evans, Alan C.},
 	title = {BigBrain: An Ultrahigh-Resolution 3D Human Brain Model},
@@ -105,6 +77,23 @@ isbn="978-3-540-27810-8"
 	URL = {https://science.sciencemag.org/content/340/6139/1472},
 	eprint = {https://science.sciencemag.org/content/340/6139/1472.full.pdf},
 	journal = {Science}
+}
+
+@inproceedings{openconnectomecluster,
+author = {Burns, Randal and Lillaney, Kunal and Berger, Daniel R. and Grosenick, Logan and Deisseroth, Karl and Reid, R. Clay and Roncal, William Gray and Manavalan, Priya and Bock, Davi D. and Kasthuri, Narayanan and Kazhdan, Michael and Smith, Stephen J. and Kleissas, Dean and Perlman, Eric and Chung, Kwanghun and Weiler, Nicholas C. and Lichtman, Jeff and Szalay, Alexander S. and Vogelstein, Joshua T. and Vogelstein, R. Jacob},
+title = {The Open Connectome Project Data Cluster: Scalable Analysis and Vision for High-Throughput Neuroscience},
+year = {2013},
+isbn = {9781450319218},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/2484838.2484870},
+doi = {10.1145/2484838.2484870},
+booktitle = {Proceedings of the 25th International Conference on Scientific and Statistical Database Management},
+articleno = {27},
+numpages = {11},
+keywords = {connectomics, data-intensive computing},
+location = {Baltimore, Maryland, USA},
+series = {SSDBM}
 }
 
 @inproceedings{optimal_chuking,
@@ -122,4 +111,13 @@ numpages = {8},
 keywords = {multi-dimensional arrays, data warehousing, chunking},
 location = {Lisbon, Portugal},
 series = {DOLAP ’07}
+}
+
+@InProceedings{ matthew_rocklin-proc-scipy-2015,
+  author    = { Matthew Rocklin },
+  title     = { Dask: Parallel Computation with Blocked algorithms and Task Scheduling },
+  booktitle = { Proceedings of the 14th Python in Science Conference },
+  pages     = { 130 - 136 },
+  year      = { 2015 },
+  editor    = { Kathryn Huff and James Bergstra }
 }
