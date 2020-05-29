@@ -124,7 +124,10 @@ number of seeks produced by rechunking the input array from a given chunk shape
 $I$ to another chunk shape $O$, constrained by a fixed amount of memory $m$
 available for the buffer. In this study we attempt to answer to this problem by
 giving an implementation to the \texttt{getBufferPositions}-\texttt{getDataToWrite}
-pair of functions.
+pair of functions. As you can see in Algorithm~\ref{algo:generalrechunk} there
+are no safeguards preventing a bad writing policy to keep too much data in the
+cache or a bad buffer shape to load too much data at a time; these issues have
+to be addressed by \texttt{getBufferPositions}, too.
 
 A lower bound on the number of seeks for the rechunk task is
 $n_i + n_o$, with $n_i$ the number of input files and $n_o$ the number of output
