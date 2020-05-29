@@ -57,11 +57,11 @@ allows for efficient queries, flexibility in adding new
 data~\cite{optimal_chuking}, parallel processing, and out-of-core
 computations through block algorithms~\cite{matthew_rocklin-proc-scipy-2015}.
 Moreover, as explained in~\cite{matthew_rocklin-proc-scipy-2015}, block
-algorithms are ``necessary when data cannot be entirely loaded in memory".
+algorithms are ``necessary when data cannot be entirely loaded in memory". \tristan{last sentence is redundant with last part of previous one.}
 
 % need for tools to rechunk
 Chunking multidimensional array requires tools to efficiently split,
-merge, and ``rechunk" or ``rechunk" data files. Previous work in~\cite{seqalgorithms}
+merge, and ``resplit" or ``rechunk" data files. Previous work in~\cite{seqalgorithms}
 showed that naive algorithms to split an array into several chunks or merge
 array chunks into one output file perform very poorly due to millions of seeks
 occurring on disk.
@@ -84,8 +84,8 @@ Previous work focused on optimizing the data storage by looking for an optimal
 chunk shape that would reduce the expected number of chunks to be retrieved by
 any query~\cite{optimal_chuking} or by optimizing the ordering of the chunks
 using space filling curves for example~\cite{optimal_chuking, openconnectomecluster}.
-As in~\cite{seqalgorithms}, our approach is to try letting the choice of the
-data storage to the application as much as possible. We therefore assume that
+Instead, our approach is to leave the choice of the
+data storage to the application as much as possible, as in~\cite{seqalgorithms}. We therefore assume that
 the chunk shape and the data ordering in files are arbitrary but known.
 
 For the sake of clarity and without loss of generality,
@@ -95,7 +95,7 @@ dimension in the array, and the slowest moving dimension in the file is the firs
 dimension in the array. For example a 3D array with dimensions $i$, $j$ and $k$
 would be written on disk by writing the complete columns in the k dimension first.
 Our experiments use the HDF5~\cite{hdf5} file format as it is commonly used in the
-scientific community and it is written in \texttt{C-order} by default.
+scientific community and it is written in \texttt{C-order} by default. \tristan{Eventually this paragraph should be moved to the first place where we need this.}
 
 \subsection{Problem definition}
 We focus on 3D arrays for simplicity. Consider a 3D array of shape $R =
@@ -200,16 +200,16 @@ the amount of seeks in on of three distinct cases (1) $I_k \neq O_k$, (2)
 $I_k = O_k$ and $I_j \neq O_j$ and (3) $I_k = O_k$, $I_j = O_j$ but $I_i \neq O_i$.
 These cases are described using $\alpha$, defined as: \\
 $\alpha_x = \begin{cases}
-   1 & if I_x \neq O_x \\
-   0 & else
+   1 & \mathrm{if} I_x \neq O_x \\
+   0 & \mathrm{otherwise}
 \end{cases}$
 \begin{itemize}
   \item $d_x$ is the number of shape mismatches between the output and output files
   in direction $x$. For example in direction $k$ we count one shape mismatch for
   each upper border of an input file in direction $k$ that does not match with
-  an output file border in direction $k$, and vice-versa.
-  \item $R_x$ is the length of the reconstructed image in dimension $x$
-  \item $n_x$ is the number of input files in dimension $x$.
+  an output file border in direction $k$, and vice-versa. \tristan{This is unclear: is it a number of blocks? A number of columns?}
+  \item $R_x$ is the length of the reconstructed image in dimension $x$ \tristan{this was already defined}
+  \item $n_x$ is the number of input files in dimension $x$. \tristan{is it Rx/Ix? if yes, you should say so.}
 \end{itemize}
 
 \begin{multline} \label{eq:1}
@@ -217,7 +217,7 @@ s = [(d_k+1)R_iR_j]^{\alpha_k} \\ + [(d_j+1)R_in_k]^{(1-\alpha_k)\alpha_j} + [(d
 \end{multline}
 
 As one can see from Equation~\ref{eq:1}, unless the dimensions of the input and
-output files match, a considerable amount of seeks will occur. Also, a shape mismatch
+output files match, a considerable amount of seeks \tristan{be more quantitative} will occur. Also, a shape mismatch
 in the $k$ dimension is more costly than a shape mismatch in the $j$ dimension,
 which is itself more costly than a mismatch in dimension $i$ (assuming that the
 files are stored in C-order).
@@ -365,8 +365,8 @@ memory used by an array as the number of voxels it contains. It is equivalent
 to saying that the number of bytes per voxel is 1.
 
 The amount of memory required is the maximum memory consumption reached during
-the execution of the keep algorithm. To estimate this amount, we first need to
-define what a remainder volume is. A buffer of shape $\Lambda$ can be divided in
+the execution of the keep algorithm. \write{To estimate this amount, we first need to
+define what a remainder volume is}. A buffer of shape $\Lambda$ can be divided in
 8 parts or ``volumes". 7 out of those 8 volumes are remainder volumes because
 they represent the overlap between the input aggregate and the output files on
 its border. These 7 remainder volumes enclose an 8th part that is composed of
@@ -411,6 +411,8 @@ stretch the buffer shape one dimension at a time using simple equations to ensur
 that the maximum amount of memory consumed during the process wil stay below the
 amount of memory available. Such computations and the associated buffer stretching
 algorithm are given in Appendix~\ref{bufferExtensionAlgorithm}.
+
+\tristan{A figure is necessary to understand this section}
 
 %----------------------------------------
 \section{Methods}
@@ -513,7 +515,8 @@ processing.
 \subsection{The keep algorithm}
 
 The buffer extension algorithm described in Appendix A has been direclty
-implemented in plain Python. Implementing the last part of the algorithm
+implemented in plain Python \tristan{You cannot rely on an Appendix to present the algorithm. The bulk of it must be presented here, in a
+concise way}. Implementing the last part of the algorithm
 consisted in: (1) creating the buffer tasks, (2) dispatching the different data
 parts loaded by each buffer into the appropriate output files, (3) simulating
 the cache to keep remainders in memory between buffer loadings.
