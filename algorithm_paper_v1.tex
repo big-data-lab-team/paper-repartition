@@ -57,7 +57,9 @@ allows for efficient queries, flexibility in adding new
 data~\cite{optimal_chuking}, parallel processing, and out-of-core
 computations through block algorithms~\cite{matthew_rocklin-proc-scipy-2015}.
 Moreover, as explained in~\cite{matthew_rocklin-proc-scipy-2015}, block
-algorithms are ``necessary when data cannot be entirely loaded in memory". \tristan{last sentence is redundant with last part of previous one.}
+algorithms are ``necessary when data cannot be entirely loaded in memory".
+\tristan{last sentence is redundant with last part of previous one.}
+\timothee{to be discussed}
 
 % need for tools to rechunk
 Chunking multidimensional array requires tools to efficiently split,
@@ -95,7 +97,8 @@ dimension in the array, and the slowest moving dimension in the file is the firs
 dimension in the array. For example a 3D array with dimensions $i$, $j$ and $k$
 would be written on disk by writing the complete columns in the k dimension first.
 Our experiments use the HDF5~\cite{hdf5} file format as it is commonly used in the
-scientific community and it is written in \texttt{C-order} by default. \tristan{Eventually this paragraph should be moved to the first place where we need this.}
+scientific community and it is written in \texttt{C-order} by default.
+\tristan{Eventually this paragraph should be moved to the first place where we need this.}
 
 \subsection{Problem definition}
 We focus on 3D arrays for simplicity. Consider a 3D array of shape $R =
@@ -155,30 +158,40 @@ which requires a seek.
 \subsection{The multiple and clustered strategies}
 Special cases of the rechunk problem occur when $I=R$ (``split'' problem)
 or $O=R$ (``merge'' problem). Two strategies have been introduced
-in~\cite{seqalgorithms} to address these problems. Focusing on the split
-problem $(I=R)$, the naive algorithm defines the buffer positions to be
-\tristan{write them formally}, such that subarrays of shape $O$ are
-iteratively loaded from $R$ and written to an output
-file~\cite{seqalgorithms}.
+in~\cite{seqalgorithms} to address these problems: the ``multiple" and the
+``clustered" strategies. As explained in the problem definition, the rechunk
+problem can be adressed in terms of Algorithm~\ref{algo:generalrechunk}
+by finding the \texttt{getBufferPositions} function.
+The strategies defined in ~\cite{seqalgorithms} for splitting and merging arrays
+do not use any cache management as every buffer loaded is directly written down
+in the destination output files. It is equivalent to defining the writing policy
+as ``write all the cache into the appropriate output files". The only difference
+between the strategies now lies in the buffer shape definition.
 
-The clustered strategy loads contiguous blocks of data of shape $O$ \tristan{it would be useful to express this using the notations of Algo 1 (what is in the cache, what does getBuffersPositions do, etc).}
-from the input array in order to write it in one seek in each output file which
-data has been loaded. This strategy loads data blocks one by one, block columns
-by block columns or blocks slices by block slices, depending on the amount of
-main memory available for the buffer. Using this strategy for rechunkting would
-imply reading multiple input files that are contiguous in the reconstructed
-image or reading the data of contiguous output files by seeking into input files.
-In either case one can find special cases in which the algorithm seeks in all
-dimensions.
+Focusing on the split problem $(I=R)$, a naive strategy defines the buffers as
+having the same shape $O$ as the output files. The buffers are iteratively
+loaded from $R$ and completely written into the appropriate output
+file~\cite{seqalgorithms}. The clustered strategy however, reduces the number of
+seeks done when reading the data by loading as much contiguous blocks of data
+of shape $O$ from the input array as allowed by the available main memory (RAM).
+This strategy loads data blocks one by one, block columns by block columns or
+blocks slices by block slices, depending on the amount of main memory available
+for the buffer. Using this strategy for rechunking would imply reading multiple
+input files that are contiguous in the reconstructed image or reading the data
+of contiguous output files by seeking into input files. In either case one can
+find special cases in which the algorithm seeks in all dimensions.
 
-The multiple strategy aims at not doing any seek while reading and writing. For
-example, one would read the input file slice by slice and write these slices
-contiguously in the output files \tristan{it would be useful to express this using the notations of Algo 1.}. The tradeoff lies in switching between files
+The multiple strategy aims at not doing any seek while reading and writing.
+Both the input file and the output files must be read/written contiguously. In
+terms of Algorithm~\ref{algo:generalrechunk}, this means defining buffers as
+contiguous parts of the input array. It is equivalent to extending the buffer
+in the inverse of the storage order: $k \rightarrow j \rightarrow i$ in the case
+of the row-major order. The tradeoff lies in switching between files
 at each buffer loading. Using this strategy for the rechunk task would imply
 reading contiguous columns or slices of data from the input files and writing it
 contiguously in the output files. This would result in even more switches
-between input and output files and one can easily find worst cases when using
-small $I$ and $O$ shapes for example where a smarter strategy would be appreciated.
+between input and output files and one can find worst cases when using small
+$I$ and $O$ shapes for example where a smarter strategy would be appreciated.
 
 To the best of our knowedge however, no algorithm has been proposed for the
 rechunk task. The algorithm presented in this study can be seen as an
@@ -368,7 +381,7 @@ memory used by an array as the number of voxels it contains. It is equivalent
 to saying that the number of bytes per voxel is 1.
 
 The amount of memory required is the maximum memory consumption reached during
-the execution of the keep algorithm. \write{To estimate this amount, we first need to
+the execution of the keep algorithm. \tristan{To estimate this amount, we first need to
 define what a remainder volume is}. A buffer of shape $\Lambda$ can be divided in
 8 parts or ``volumes". 7 out of those 8 volumes are remainder volumes because
 they represent the overlap between the input aggregate and the output files on
