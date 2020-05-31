@@ -197,40 +197,67 @@ To the best of our knowedge however, no algorithm has been proposed for the
 rechunk task. The algorithm presented in this study can be seen as an
 adaptation of the multiple strategy to the rechunk task.
 
-\tristan{The previous paragraph should use the notations in Algo 1.}
-
 \subsection{Baseline solution}
 
 A baseline/naive algorithm for the rechunk task would be to load one input file
 at a time. It is equivalent to computing the buffers' positions in
 Algorithm~\ref{algo:generalrechunk} using a buffer shape equal to $I$.
-We assume that one input file can stand in memory ($m \geq I_iI_jI_k$). Each
+It is assumed that one input file can stand in memory ($m \geq I_iI_jI_k$). Each
 buffer is loaded only once and the data loaded into the cache is directly
 written down into the appropriate output files. The buffer order has no
 implication on the number of seeks, so let us set the buffer order arbitrarily
 to the storage order ($i \rightarrow j \rightarrow k$ in row-major for example).
 
-We can compute the amount of seeks $s$ produced by such an algorithm with
-Equation~\ref{eq:1}. The equation is composed of three terms, each term represents
-the amount of seeks in on of three distinct cases (1) $I_k \neq O_k$, (2)
-$I_k = O_k$ and $I_j \neq O_j$ and (3) $I_k = O_k$, $I_j = O_j$ but $I_i \neq O_i$.
-These cases are described using $\alpha$, defined as: \\
-$\alpha_x = \begin{cases}
-   1 & \mathrm{if} I_x \neq O_x \\
-   0 & \mathrm{otherwise}
-\end{cases}$
+One could compute the amount of seeks $s$ produced by such an algorithm as the
+sum of the number of seeks done by processing each buffer (of shape $I$). The
+number of output files to open and the number of seeks in each output file varies
+according to the buffer's position however, we therefore analyze the number of
+seeks globally. $s$ is the sum of:
 \begin{itemize}
-  \item $d_x$ is the number of shape mismatches between the output and output files
-  in direction $x$. For example in direction $k$ we count one shape mismatch for
-  each upper border of an input file in direction $k$ that does not match with
-  an output file border in direction $k$, and vice-versa. \tristan{This is unclear: is it a number of blocks? A number of columns?}
-  \item $R_x$ is the length of the reconstructed image in dimension $x$ \tristan{this was already defined}
-  \item $n_x$ is the number of input files in dimension $x$. \tristan{is it Rx/Ix? if yes, you should say so.}
+  \item the number of buffers that must be read: the number of input files
+  \item the number of output files' opening
+  \item the number of seeks done by writing into the output files
 \end{itemize}
 
+To compute the two last quantities, let us define $p_x$ the partition of $R_x$
+by both the input and output files' borders. We then define $d_x$ the number of
+distinct values in $p_x$:
+$$d_x=length(set(p_x))$$
+One can see $d_x$ as the number of times that the original image is being sliced
+in dimension $x$ by either an output or an input file (see Figure x) or as the
+number of shape mismatches between input and output files in dimension $x$.
+
+Let us consider a given buffer (of shape $I$). In case of a mismatch in dimension
+$k$ the buffer is divided in two parts in dimension $k$ which results in $2*I_i*I_j$
+seeks: two by input data column or one by output data column, with two output
+data column per input data column. Any mismatch in dimension $i$ or $j$ would
+cut the buffer at the end of an output data column, and is therefore included in
+the number of seeks due to the mismatch in $k$. The same observation can be made
+between dimension $j$ and $i$: the seeks occuring from a mismatch in $i$ are
+included in the seeks occuring by a mismatch in $j$. Therefore, the number of
+seeks at write time is computed in one of three distinct cases:
+(1) $I_k \neq O_k$, (2) $I_k = O_k$ and $I_j \neq O_j$ and (3) $I_k = O_k$,
+$I_j = O_j$ but $I_i \neq O_i$. Equation~\ref{eq:1} gives the amount of seeks
+done by writing data in output files for the whole baseline algorithm.
+The case is indicated using $\alpha$, defined as: \\
+$\alpha_x = \begin{cases}
+   1 & \mathrm{if} I_x \neq O_x \leftrightarrow d_x > 0 \\
+   0 & \mathrm{otherwise}
+\end{cases}$
+
 \begin{multline} \label{eq:1}
-s = [(d_k+1)R_iR_j]^{\alpha_k} \\ + [(d_j+1)R_in_k]^{(1-\alpha_k)\alpha_j} + [(d_i+1)n_jn_k]^{(1-\alpha_k)(1-\alpha_j)}
+s_{write} = [(d_k+1)R_iR_j]\alpha_k + [(d_j+1)R_i\frac{R_k}{I_k}](1-\alpha_k)\alpha_j \\ + [(d_i+1)\frac{R_j}{I_j}\frac{R_k}{I_k}](1-\alpha_k)(1-\alpha_j)\alpha_i
 \end{multline}
+
+The seeks for opening output files are included in Equation~\ref{eq:1}.
+In case of no shape mismatch, no seek occur when writing the data into the output
+files apart from opening the output files. The number times that an output file
+has to be opened would be computed as $(d_i-1)*(d_j-1)*(d_k-1)$. However, not
+shape mismatch imply no rechunk problem so we do not include this value in $s$.
+
+Finally, an equation for $s$ is: $s = s_{write} + s_{read}$,
+with $s_{read} = \frac{R_i}{I_i} \frac{R_j}{I_j} \frac{R_k}{I_k}$, the number of
+input files a.k.a. buffers to read.
 
 As one can see from Equation~\ref{eq:1}, unless the dimensions of the input and
 output files match, a considerable amount of seeks \tristan{be more quantitative} will occur. Also, a shape mismatch
