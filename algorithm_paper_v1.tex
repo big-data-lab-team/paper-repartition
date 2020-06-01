@@ -340,7 +340,7 @@ in output files. Such a strategy is presented in this section.
 
 \subsection{The keep strategy}
 In the cache (Algorithm~\ref{algo:generalrechunk}), the data that is not
-contigous in its output file of destination is called \texttt{extra data}.
+contiguous in its output file of destination is called \texttt{extra data}.
 The keep strategy first consists in finding a buffer shape covering at least
 one output file completely, i.e. $B_x>O_x$ for all dimensions $x$. If $m$ is too
 small for such a buffer shape, then the keep strategy tries to find a buffer
@@ -348,8 +348,11 @@ shape as closed as possible from the optimal buffer shape. Using such an optimal
 buffer shape and being able to keep all the extra data into memory during the
 whole rechunk process would incur the minimum number of seeks possible: $n_i + n_o$.
 Indeed, it is equivalent to writing an output file only when all its data is in
-cache. In the following paragraphs we explain how to find the optimal buffer
-shape for the keep strategy.
+cache.
+The implementation of the keep strategy is equivalent to implementing
+\texttt{getBufferPositions} in Algorithm~\ref{algo:generalrechunk} to find a
+buffer shape closed to the optimal buffer shape, and defining the write policy
+as ``write all the data that is not extra data".
 
 \subsection{Input aggregates}
 Our goal is to find the optimal buffer shape such that $B_x>O_x$ in any dimension $x$.
@@ -362,63 +365,34 @@ rechunked. The best buffer shape for the keep strategy is therefore the shape of
 an input aggregate. We call this shape $\Lambda$.
 
 \subsection{Stretching the buffer in the inverse storage order}
-To get a buffer close to $\Lambda$ we define an algorithm that stretches the
+To get a buffer shape close to $\Lambda$ we define an algorithm
+\texttt{getBufferShape} in \texttt{getBufferPositions} that stretches the
 buffer shape step by step. At each step, the algorithm estimates how much the
 buffer can be stretched in one direction while keeping the remainders into
 memory. The problem of what dimension to increase first still stands. A
 strategic order seems to be to stretch the buffer in the direction which saves
 the maximum number of seeks first. Given the analysis of the baseline algorithm,
-such an order is the storage order because in the case of a row-major ordering such
-an order would keep extra data in the $k$ dimension first. An analysis of the
-memory consumption of the keep strategy at each step together with the associated
-algorithm is given in the next section.
+such an order is the inverse of the storage order i.e.
+$k \rightarrow j \rightarrow i$ in the row-major order
+$i \rightarrow j \rightarrow k$.
 
 \subsection{Impact of the buffer order on performance}
-Using the keep strategy in case of overlaps, one may order the buffer loadings
-to further reduce the number of seeks. By optimizing the buffer ordering one can
-reduce the maximum quantity used to store the extra data in memory. For example,
-if an overlap occurs only in the $k$ axis, loading the next buffers in this
-direction will enable recycling the extra data kept in memory, resulting in a
-smallest memory consumption over time. The memory saved thanks to a smart
+Using the keep strategy, one may order the buffer loadings to reduce the maximum
+quantity of extra data stored in memory, hence, reducing the amount of seeks.
+For example, if an overlap occurs only in the $k$ axis, loading the next buffers
+in this direction will enable recycling the extra data kept in memory, resulting
+in a smallest memory consumption over time. The memory saved thanks to a smart
 ordering could enable the storage of more overlaps in memory using the
 ``keep strategy", further reducing the overall number of seeks.
 
-As we will see, the buffer ordering problem is complex and does not seem easily
-solvable. Thanksfully, the impact of the buffer ordering on performance can be
+As explained in the discussion, the buffer ordering problem is complex and does
+not seem easily solvable.
+This study uses a naive order which is again the inverse of the storage order.
+Thanksfully, the impact of the buffer ordering on performance can be
 mitigated. Indeed, the impact of the buffer ordering depends on the size of the
-remainders. One can reduce the remainders' sizes by using smallest chunks: Even
+mismatches. One can reduce the amount of extra data by using smallest chunks: Even
 if the overlap between the input and output files is big with respect to their
-size, the area/volume of the remainders will be kept small. In particular, we
-remark that the falls tends to be smaller when the buffer shape is bigger than
-the output file shape, as the overlaps are smallest and concentrated on the
-borders (see Figure \ref{fig:goodorderingbadordering}). We can stimulate this
-property by using small chunks such that we use buffer bigger input aggregates
-(see Stretching beyond the input aggregate shape), while keeping the overlaps
-small at the borders.
-
-\begin{algorithm}
-  \caption{Pseudocode of the keep algorithm}
-  \label{algo:keepalgorithm}
-  \begin{algorithmic}[1]
-    \STATE \textbf{Inputs:} inFiles, outFiles, $m$
-    \STATE volumesToKeep, buffersList $\leftarrow$ bufferExtension($I$, $O$, $m$)
-    \STATE cache.initialize()
-    \FOR{buffer in buffersList}
-      \STATE bufferData $\leftarrow$ read(inFiles, buffer)
-      \STATE write(bufferData, outFiles, volumesToKeep, cache)
-      \STATE cache.insert(bufferData, outFiles, volumesToKeep)
-      \FOR{$i$, data in cache}
-        \IF{outFiles[$i$] is complete}
-          \STATE write(outFiles[$i$], data)
-          \STATE cache.remove($i$)
-        \ENDIF
-      \ENDFOR
-    \ENDFOR
-
-  \end{algorithmic}
-\end{algorithm}
-
-\tristan{Algo 3 is now quite redundant with Algo 1, here you should write only the getBufferPositions function.}
+size, the area/volume of the overlap will be kept small. 
 
 %----------------------------------------
 \section{A memory analysis of the keep strategy}
