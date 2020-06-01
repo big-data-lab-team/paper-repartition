@@ -6,6 +6,7 @@
 \usepackage{graphicx}
 \usepackage{textcomp}
 \usepackage{xcolor}
+\usepackage{subfig}
 \usepackage{algorithmic, algorithm}
 \usepackage{hyperref} % makes cross-refs (biblio, figures, algos, ...) clickable
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
@@ -523,16 +524,21 @@ that the maximum amount of memory consumed during the process will stay below th
 amount of memory available. Such computations are given in
 Appendix~\ref{bufferExtensionAlgorithm}.
 Algorithm~\ref{algo:bufferextensionalgorihm} summarizes the computations into a
-pseudocode for the buffer extension algorithm.
+pseudocode for the buffer extension algorithm which returns two pieces of
+information: the best buffer shape affordable given $m$ and the indices of the
+remainder volumes that can be kept in cache. The maximum value that the buffer
+can take at any step of the algorithm is represented by $\phi$ (lines 6, 11,
+16, 21).
 
-Now that the best buffer shape can be computed, we can express the \texttt{getBufferPositions}
-function (Algorithm~\ref{algo:generalrechunk}) in Algorithm~\ref{algo:getbuffersposition}.
+Now that the best buffer shape can be computed, we can express the
+\texttt{getBufferPositions} function (Algorithm~\ref{algo:generalrechunk}) in
+Algorithm~\ref{algo:getbuffersposition}.
 
 \begin{algorithm}
-  \caption{Pseudocode of the \texttt{getBufferPositions} function}
+  \caption{Pseudocode of the \texttt{getBufferPositions} function for the keep strategy}
   \label{algo:getbuffersposition}
   \begin{algorithmic}[1]
-  \STATE $\Omega_{max}$ $\leftarrow$
+  \STATE \textbf{Inputs:} $\Omega_{max}$, $\Lambda$, $m$
   \STATE $B$, volumesToKeep $\leftarrow$ BufferExtAlg($\Omega_{max}$, $\Lambda$, $m$)
   \STATE policy $\leftarrow$ getPolicy(volumesToKeep)
   \STATE buffersList $\leftarrow$ getBuffersCoordinates($B$)
@@ -544,13 +550,15 @@ function (Algorithm~\ref{algo:generalrechunk}) in Algorithm~\ref{algo:getbuffers
   \caption{Pseudocode of the buffer extension algorithm}
   \label{algo:bufferextensionalgorihm}
   \begin{algorithmic}[1]
-    \STATE \textbf{Inputs:} $\Omega_{max}$, $\Lambda$, $m$
-    \STATE \textbf{Outputs:} the buffer shape $B$, the index list of the remainder volumes to keep
+    \STATE \textbf{Inputs:} $\Omega_{max}$: tuple of the maximum overlap length
+    of any buffer in all dimensions, $\Lambda$: input aggregate shape,
+    $m$: amount of available memory for the buffer
+    \STATE \textbf{Outputs:} $B$: buffer shape, the index list of the remainder volumes to keep
     \STATE $\Omega \leftarrow \Omega_{max}$
     \STATE $\Theta = (\Lambda_i - \Omega_i, \Lambda_j - \Omega_j, \Lambda_k - \Omega_k)$
     \STATE $B \leftarrow (1,1,\Lambda_k)$
 
-    \STATE $\phi = \lfloor \frac{m}{\Omega_k + \Lambda_k} \rfloor$
+    \STATE $\phi = \lfloor \frac{m}{\Omega_k + \Lambda_k} \rfloor$ // keeping $F_1$
     \STATE $B_j = \begin{cases}
       \Theta_j & \textrm{if }\phi \geq \Theta_j \\
       1 & \textrm{if }\phi = 0 \\
@@ -558,10 +566,10 @@ function (Algorithm~\ref{algo:generalrechunk}) in Algorithm~\ref{algo:getbuffers
     \end{cases}$
 
     \IF{$B_j \neq \Theta_j$}
-      \RETURN $B$, [1]
+      \RETURN $B$, [1] // if cannot store $F_1$ entirely, stop the algorithm
     \ENDIF
 
-    \STATE $\phi = \lfloor \frac{m-\Theta_j(\Omega_k\Lambda_k)}{\Lambda_k(n+1)} \rfloor$
+    \STATE $\phi = \lfloor \frac{m-\Theta_j(\Omega_k\Lambda_k)}{\Lambda_k(n+1)} \rfloor$  // keeping $F_1$, $F_2$ and $F_3$
     \STATE $B_j = \begin{cases}
       \Lambda_j & \textrm{if }\phi \geq \Lambda_j \\
       B_j & \textrm{if }(B_j+\phi) = 0 \\
@@ -572,7 +580,7 @@ function (Algorithm~\ref{algo:generalrechunk}) in Algorithm~\ref{algo:getbuffers
       \RETURN $B$, [1,2,3]
     \ENDIF
 
-    \STATE $\phi = \lfloor \frac{m}{\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k} \rfloor$
+    \STATE $\phi = \lfloor \frac{m}{\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k} \rfloor$ // extending $F_1$, $F_2$ and $F_3$ in dimension $i$
     \STATE $B_i = \begin{cases}
       \Theta_i & \textrm{if }\phi \geq \Theta_i \\
       1 & \textrm{if }\phi = 0 \\
@@ -583,7 +591,7 @@ function (Algorithm~\ref{algo:generalrechunk}) in Algorithm~\ref{algo:getbuffers
       \RETURN $B$, [1,2,3]
     \ENDIF
 
-    \STATE $\phi = \lfloor \frac{m-\Theta_i(\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k)}{(N+1)\Lambda_j\Lambda_k} \rfloor$
+    \STATE $\phi = \lfloor \frac{m-\Theta_i(\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k)}{(N+1)\Lambda_j\Lambda_k} \rfloor$ // keeping $F_1$ to $F_7$
     \STATE $B_i = \begin{cases}
       \Lambda_i & \textrm{if }(B_i+\phi) \geq \Lambda_i \\
       B_i & \textrm{if }\phi = 0 \\
@@ -603,8 +611,20 @@ function (Algorithm~\ref{algo:generalrechunk}) in Algorithm~\ref{algo:getbuffers
 
 As explained in the introduction, daks represents computations by a task graph.
 Implementing the clustered strategy consisted in modifying that graph. To that
-aim, we implemented an optimization function to create "buffer" tasks in the
-graph.
+aim, we implemented an optimization function to create ``buffer" tasks in the
+graph~\ref{fig:bufferization}.
+
+\begin{figure*}
+  \centering
+
+  \subfloat[\texttt{dask} graph for splitting a multidimensional array.]{{\includegraphics[width=8cm]{./figures/new/before_store.png} }}
+  \qquad
+  \subfloat[Same \texttt{dask} graph after creating a buffer task (\texttt{merged part}).]{{\includegraphics[width=8cm]{./figures/new/after_store.png} }}
+
+  \caption{Optimization of a \texttt{dask} graph of a split using the clustered strategy.}
+  \label{fig:bufferization}
+
+\end{figure*}
 
 The optimization starts by converting the task graph into a mathematical
 directed graph for use by a BFS (Breadth First Search) algorithm. More
