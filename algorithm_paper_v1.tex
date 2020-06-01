@@ -51,7 +51,6 @@ images in the neuroscience field.
 
 \subsection{Data storage on disk}
 % explain storage order
-\timothee{dans intro mettre juste ordre des octets et juste dire hdf5 utilise, nifti utilise}
 Previous work focused on optimizing the data storage by looking for an optimal
 chunk shape that would reduce the expected number of chunks to be retrieved by
 any query~\cite{optimal_chuking} or by optimizing the ordering of the chunks
@@ -89,42 +88,57 @@ array chunks into one output file perform very poorly due to millions of seeks
 occurring on disk.
 
 % why subarray extraction incurs seeks
-Indeed, retrieving sub-arrays from an array stored on disk incurs seeks in two situations: (1) when an array block
-is opened for reading or writing, and (2) when the reading or writing process
-moves within the block to access a contiguous piece of data. For a 3D cuboid of shape $C = (C_i, C_j, C_k)$
- stored in row-major order,
-each column of data in the k dimension is contiguously stored. There are therefore
-$C_j \times C_i$ data columns that all require a seek. Although the seek
-time depends on various parameters such as the distance in bytes between two
-data columns, we assume that all seeks incur the same time overhead for the sake
-of simplicity. Therefore our problem will be to minimize the number of seeks
-required to access data.
+Indeed, retrieving sub-arrays from an array stored on disk incurs seeks in two
+situations: (1) when an array block is opened for reading or writing, and (2)
+when the reading or writing process moves within the block to access a
+contiguous piece of data. For a 3D cuboid of shape $C = (C_i, C_j, C_k)$ stored
+in row-major order, each column of data in the k dimension is contiguously
+stored. There are therefore $C_j \times C_i$ data columns that all require a
+seek. Although the seek time depends on various parameters such as the distance
+in bytes between two data columns, we assume that all seeks incur the same time
+overhead for the sake of simplicity. Therefore our problem will be to minimize
+the number of seeks required to access data.
+
+Not only extracting a subarray from a chunk incurs seeks on disk, but also
+accessing any piece of data from a chunk results in loading the whole chunk in
+memory. Chunking must therefore be used with care as it can be detrimental for
+performance. The Python library \texttt{h5py} (for manipulating HDF5 files in
+Python) recommends a chunk size ``between 10 KiB and 1 MiB" or more for larger
+datasets~\cite{collette_2014}. The \texttt{dask} Python package presented
+hereafter also mentions the issues relative to chunking and suggests a chunk
+size greater than 100 MB, although remainding that the chunk shape selection is
+highly dependent on the application~\cite{rocklin_bourbeau_2019}.
 
 \subsection{Dask}
-\timothee{mieux expliquer d'où ça vient, parler de array chunking, faire le lien avec scipy bien pour faire la  science api dask array}
-Dask is a popular Python package enabling parallel and out-of-core
-computation in the SciPy ecosystem. It represents computations as task
-graphs that are dynamically executed by one of several schedulers offered
-by Dask including the single-threaded, the multi-threaded, the
-multi-process, and the distributed schedulers. Custom schedulers can also
-be implemented. Dask graphs can be used out-of-the-box or through built-in
-APIs. For example, \texttt{dask.array} is a parallel and out-of-core Numpy
-clone, and
-\texttt{dask.dataframe} is a Pandas clone. A Dask graph is implemented in
-plain Python as a dictionary with any hashable as keys and any object as
-values. More precisely, a "Value" is any object different than a task and a
-"Task" is a tuple with a callable as first element.
-
+\texttt{dask} is a popular Python package, part of the SciPy ecosystem, enabling parallel
+and out-of-core computations~\cite{matthew_rocklin-proc-scipy-2015}. It has an
+important scientific community which is likely to have the problem we try to
+solve in this paper, i.e. rechunking multidimensional array files. That is why
+we decided to implement our work as an optimization package for \texttt{dask}.
 We focus on the \texttt{dask.array} collection, a data structure designed for
-multi-dimensional array processing using blocked algorithms.
+multi-dimensional array processing using blocked algorithms, hence leveraging
+chunking.
+
+\texttt{dask} represents computations as task graphs that are dynamically executed by one
+of several schedulers including the single-threaded, the multi-threaded, the
+multi-process, and the distributed schedulers. Custom schedulers can also be
+implemented. \texttt{dask} graphs can be used out-of-the-box or through
+built-in APIs. A \texttt{dask} graph is implemented in plain Python as a
+dictionary with any hashable as keys and any object as values. More precisely,
+a ``Value" is any object different than a task and a ``Task" is a tuple with a
+callable as first element. Examples of APIs/collections include
+\texttt{dask.array}, a parallel and out-of-core
+Numpy clone, and \texttt{dask.dataframe}, a Pandas clone.
 
 \subsection{Contributions}
 This paper makes the following contributions:
 \begin{itemize}
   \item Definition of the rechunk problem for multidimensional arrays
   \item A sequential algorithm to efficiently rechunk multidimensional arrays
-  \item An open implementation of this algorithm in Dask, in a library called Dask Rechunk.
-  \item An open implementation in Dask of the ``clustered" split and merge strategy described in~\cite{seqalgorithms}, in Dask Rechunk too.
+  \item An open implementation of this algorithm in \texttt{dask},
+  in a library called \texttt{dask rechunk}.
+  \item An open implementation in \texttt{dask} of the ``clustered" split and
+  merge strategy described in~\cite{seqalgorithms}, in \texttt{dask rechunk} too.
 \end{itemize}
 
 \section{Problem definition}
@@ -132,7 +146,9 @@ This paper makes the following contributions:
 We focus on 3D arrays for simplicity. Consider a 3D array of shape $R =
 (R_i, R_j, R_k)$, stored as input blocks of uniform shape $I =
 (I_i, I_j, I_k)$. Our goal is to rechunk input blocks into output blocks of
-uniform but different shape $O = (O_i, O_j, O_k)$.
+uniform but different shape $O = (O_i, O_j, O_k)$. ``Rechunking" is used in
+the literature and in \texttt{dask} with the meaning of logically changing the
+chunk shape. In our context however, we are talking of rechuking files.
 
 A rechunk algorithm (Algorithm~\ref{algo:generalrechunk}) takes as input a
 list of input files \texttt{inFiles} of shape $I$, a list of output files
@@ -599,26 +615,25 @@ $m$, according to the algorithm in~\cite{seqalgorithms}. The buffering scheme
 specifies if the algorithm loads buffers block by block, block columns by
 block columns or block slices by block slices.
 
-We then update the data loading tasks to force dask to load a whole buffer at
+We then update the data loading tasks to force \texttt{dask} to load a whole buffer at
 a time instead of small chunks. Finally, we modify the dependent tasks to make
 them use our new buffer tasks. According to the clustered algorithm, all buffers
 do not necessarily have the same shape, that is why we could not use the
 \texttt{dask.array.rechunk} method.
 
-The default scheduler for dask.array is the multi-threaded scheduler. It means
-that at the beginning of the execution dask dispatches some tasks that have
+The default scheduler for \texttt{dask.array} is the multi-threaded scheduler. It means
+that at the beginning of the execution \texttt{dask} dispatches some tasks that have
 no dependencies into different threads. The problem is that the clustered
 strategy tries to use all the memory available for each buffer, and such buffer
 tasks are the one with no initial dependencies. Therefore, we needed to
-modify dask's scheduler to make it load one buffer only after the previous one
+modify \texttt{dask}'s scheduler to make it load one buffer only after the previous one
 and its dependent tasks have ended. This avoid running out of memory during the
 processing.
 
 \subsection{The keep algorithm}
 
-The buffer extension algorithm described in Appendix A has been direclty
-implemented in plain Python \tristan{You cannot rely on an Appendix to present the algorithm. The bulk of it must be presented here, in a
-concise way}. Implementing the last part of the algorithm
+The buffer extension algorithm described before has been direclty
+implemented in plain Python. Implementing the last part of the algorithm
 consisted in: (1) creating the buffer tasks, (2) dispatching the different data
 parts loaded by each buffer into the appropriate output files, (3) simulating
 the cache to keep remainders in memory between buffer loadings.
@@ -634,33 +649,32 @@ subarrays defined by the intersection of input and output files and buffers.
 When each output file ``knows" which part from which buffer are required, we
 merge some of them according to the keep strategy to enforce the fact that
 a given data part of a given output file has to be stored at once. By doing this
-we create dependencies in the task graph. Such dependency tells dask that it
+we create dependencies in the task graph. Such dependency tells \texttt{dask} that it
 needs to load two buffers before writing a given subarray for example.
 
-\subsection{Dask Rechunk}
+\subsection{Dask rechunk}
 
-Both implementations are available in a same Python package called \texttt{Dask Rechunk}. It
+Both implementations are available in a same Python package called \texttt{dask rechunk}. It
 contains tests with 99\% coverage and is available on PyPI (The Python Package
-Index). Dask Rechunk provides a simple API to use the split, merge and rechunk
+Index). \texttt{dask rechunk} provides a simple API to use the split, merge and rechunk
 algorithms described in this study (figure x).
 
 %----------------------------------------
 \section{Experiments}
 %----------------------------------------
-\timothee{mettre hdf5 dedans}
 Before diving into the implementation of the keep algorithm we first designed
-an experiment to prove that dask.array was subject to the seek problem. To that
+an experiment to prove that \texttt{dask.array} was subject to the seek problem. To that
 aim we created a random array from a uniform distribution and stored it as a
 HDF5 file for later processing. The array had a shape of x which represents 1/8
 of the Big Brain size. The experiment then consisted in splitting and merging
-the array with dask using two different chunk shapes: one of them doing more
+the array with \texttt{dask} using two different chunk shapes: one of them doing more
 seeks than the other. We did this experiment on both HDD and SSD to see if the
 results were also visible when using an SSD which is suposedly less affected by
-seeks. The results of this experiment showed that dask was indeed subject to the
-seek problem. See the "Results" section for more details.
+seeks. The results of this experiment showed that \texttt{dask} was indeed subject to the
+seek problem. See the ``Results" section for more details.
 
 In order to see if a strategy to reduce the number of seeks was effective, we
-implemented and tested the "clustered" strategy for splitting and merging
+implemented and tested the ``clustered" strategy for splitting and merging
 multidimensional arrays. We chose this strategy first because it seemed simpler
 to implement and study~\cite{seqalgorithms} showed that such a strategy was
 working. It means that if it failed the problem would be more likely to come
@@ -669,16 +683,16 @@ from~\cite{seqalgorithms} that the difference between the naive and clustered
 strategies should be large enough to be visible in the processing time. The
 shapes used for the experiment are shown on the table x. The implementation
 details of the clustered strategy are discussed in the appropriate section and
-again, the results are presented in the "Results" section. The code of the
+again, the results are presented in the ``Resuts" section. The code of the
 experiment is available in a dedicated repository on Github.
 
 After these two preliminary experiment, we implemented a simplified version of
 the keep algorithm due to the difficulty to implemlent such an algorithm in a
-task graph (see section "Implementation details"). In order to evaluate the
-efficiency of the keep algorithm we compare it against vanilla dask on local
+task graph (see section ``Implementation"). In order to evaluate the
+efficiency of the keep algorithm we compare it against vanilla \texttt{dask} on local
 computer. To be fair we used dask with one thread as required for our
 implementation but also with the classic multi-threaded  scheduler as it is the
-default when using dask.array. In order to compare both implementations to a
+default when using \texttt{dask.array}. In order to compare both implementations to a
 naive rechunk, we also added a plain Python implementation to the benchmark. For
 the experiments presented below we built a random 3D array of the size of Big
 Brain, drawn from a uniform distribution. Once again, the array is initially
@@ -735,7 +749,7 @@ as the goal of this study is primarily to assess if the keep algorithm works.
 
 \subsection{Breaking the buffers}
 To even reduce the maximum amount of memory used during the rechunk process, we
-could read the input files one by one instead of enforcing dask to read a whole
+could read the input files one by one instead of enforcing \texttt{dask} to read a whole
 buffer at a time, provided that the input files' parts are read in the right
 order (following the buffer order). The idea of reading an entire buffer at a
 time came from the clustered and multiple strategies but we realized afterwards
@@ -779,7 +793,7 @@ implementation brings any kind of improvement.
 A future work would be to find distributed versions of the split/merge/rechunk
 algorithms. Lots of scientists use HPC (High Performance Computing) clusters
 regularly which brings considerations about how to use such distributed
-algorithms with Lustre for example, a commonly used filesystem for HPC. Dask
+algorithms with Lustre for example, a commonly used filesystem for HPC. \texttt{dask}
 also provides a distributed scheduler that seems to be quite efficient. It is
 now recommended for use, even on local computers (using one node).
 
