@@ -507,11 +507,27 @@ Appendix~\ref{bufferExtensionAlgorithm}.
 Algorithm~\ref{algo:bufferextensionalgorihm} summarizes the computations into a
 pseudocode for the buffer extension algorithm.
 
+Now that the best buffer shape can be computed, we can express the \texttt{getBufferPositions}
+function (Algorithm~\ref{algo:generalrechunk}) in Algorithm~\ref{algo:getbuffersposition}.
+
+\begin{algorithm}
+  \caption{Pseudocode of the \texttt{getBufferPositions} function}
+  \label{algo:getbuffersposition}
+  \begin{algorithmic}[1]
+  \STATE $\Omega_{max}$ $\leftarrow$
+  \STATE $B$, volumesToKeep $\leftarrow$ BufferExtAlg($\Omega_{max}$, $\Lambda$, $m$)
+  \STATE policy $\leftarrow$ getPolicy(volumesToKeep)
+  \STATE buffersList $\leftarrow$ getBuffersCoordinates($B$)
+  \RETURN buffersList, policy
+  \end{algorithmic}
+\end{algorithm}
+
 \begin{algorithm}
   \caption{Pseudocode of the buffer extension algorithm}
   \label{algo:bufferextensionalgorihm}
   \begin{algorithmic}[1]
     \STATE \textbf{Inputs:} $\Omega_{max}$, $\Lambda$, $m$
+    \STATE \textbf{Outputs:} the buffer shape $B$, the index list of the remainder volumes to keep
     \STATE $\Omega \leftarrow \Omega_{max}$
     \STATE $\Theta = (\Lambda_i - \Omega_i, \Lambda_j - \Omega_j, \Lambda_k - \Omega_k)$
     \STATE $B \leftarrow (1,1,\Lambda_k)$
@@ -524,7 +540,7 @@ pseudocode for the buffer extension algorithm.
     \end{cases}$
 
     \IF{$B_j \neq \Theta_j$}
-      \RETURN $B$
+      \RETURN $B$, [1]
     \ENDIF
 
     \STATE $\phi = \lfloor \frac{m-\Theta_j(\Omega_k\Lambda_k)}{\Lambda_k(n+1)} \rfloor$
@@ -535,7 +551,7 @@ pseudocode for the buffer extension algorithm.
     \end{cases}$
 
     \IF{$B_j \neq \Lambda_j$}
-      \RETURN $B$
+      \RETURN $B$, [1,2,3]
     \ENDIF
 
     \STATE $\phi = \lfloor \frac{m}{\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k} \rfloor$
@@ -546,7 +562,7 @@ pseudocode for the buffer extension algorithm.
     \end{cases}$
 
     \IF{$B_i \neq \Theta_i$}
-      \RETURN $B$
+      \RETURN $B$, [1,2,3]
     \ENDIF
 
     \STATE $\phi = \lfloor \frac{m-\Theta_i(\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k)}{(N+1)\Lambda_j\Lambda_k} \rfloor$
@@ -556,7 +572,7 @@ pseudocode for the buffer extension algorithm.
       B_i+\phi & \textrm{else}
     \end{cases}$
 
-    \RETURN $B$
+    \RETURN $B$, [1,2,3,4,5,6,7]
 
   \end{algorithmic}
 \end{algorithm}
