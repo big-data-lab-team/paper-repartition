@@ -222,7 +222,7 @@ seeks globally. $s$ is the sum of:
 To compute the two last quantities, let us define $p_x$ the partition of $R_x$
 by both the input and output files' borders. We then define $d_x$ the number of
 distinct values in $p_x$:
-$$d_x=length(set(p_x))$$
+$$d_x=length(p_x)$$
 One can see $d_x$ as the number of times that the original image is being sliced
 in dimension $x$ by either an output or an input file (see Figure x) or as the
 number of shape mismatches between input and output files in dimension $x$.
@@ -240,13 +240,13 @@ seeks at write time is computed in one of three distinct cases:
 $I_j = O_j$ but $I_i \neq O_i$. Equation~\ref{eq:1} gives the amount of seeks
 done by writing data in output files for the whole baseline algorithm.
 The case is indicated using $\alpha$, defined as: \\
-$\alpha_x = \begin{cases}
+$$\alpha_x = \begin{cases}
    1 & \mathrm{if} I_x \neq O_x \leftrightarrow d_x > 0 \\
    0 & \mathrm{otherwise}
-\end{cases}$
+\end{cases}$$
 
 \begin{multline} \label{eq:1}
-s_{write} = [(d_k+1)R_iR_j]\alpha_k + [(d_j+1)R_i\frac{R_k}{I_k}](1-\alpha_k)\alpha_j \\ + [(d_i+1)\frac{R_j}{I_j}\frac{R_k}{I_k}](1-\alpha_k)(1-\alpha_j)\alpha_i
+s_{write} = [(d_k+1)R_iR_j]\alpha_k \\ + [(d_j+1)R_i\frac{R_k}{I_k}](1-\alpha_k)\alpha_j \\ + [(d_i+1)\frac{R_j}{I_j}\frac{R_k}{I_k}](1-\alpha_k)(1-\alpha_j)\alpha_i
 \end{multline}
 
 The seeks for opening output files are included in Equation~\ref{eq:1}.
@@ -259,11 +259,44 @@ Finally, an equation for $s$ is: $s = s_{write} + s_{read}$,
 with $s_{read} = \frac{R_i}{I_i} \frac{R_j}{I_j} \frac{R_k}{I_k}$, the number of
 input files a.k.a. buffers to read.
 
-As one can see from Equation~\ref{eq:1}, unless the dimensions of the input and
-output files match, a considerable amount of seeks \tristan{be more quantitative} will occur. Also, a shape mismatch
-in the $k$ dimension is more costly than a shape mismatch in the $j$ dimension,
+
+ \begin{table}[ht]
+  \centering
+  \caption{Shapes used for the experiment on the baseline seek model}
+
+   \begin{tabular}[t]{c c c c}
+   \hline
+   Mismatch & R & B=I & O \\
+     \hline\hline
+     k,j,i & (240,240,240) & (30,30,30) & (20,20,20) \\
+     \hline
+     j,i & (240,240,240) & (30,30,20) & (20,20,20) \\
+     \hline
+     i & (240,240,240) & (30,20,20) & (20,20,20) \\
+     \hline
+   \end{tabular}
+
+   \label{tab:expseekmodel}
+
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.55]{./figures/baseline_math_model.png}
+\caption{Illustration of seek gains when removing one shape mismatch at a time.
+}
+\label{fig:baseline_math_model}
+\end{figure}
+
+It seems from Equation~\ref{eq:1} that unless the dimensions of the input and
+output files match, a considerable amount of seeks will occur, the number of
+seeks being factors of $R_k$, $R_j$ and/or $R_i$. Also, a shape mismatch in the
+$k$ dimension seems to be more costly than a shape mismatch in the $j$ dimension,
 which is itself more costly than a mismatch in dimension $i$ (assuming that the
-files are stored in C-order).
+files are stored in C-order). The seek model has been implemented to confirm
+these theories by an experiment on cubic shapes
+(Figure~\ref{fig:baseline_math_model}). The shapes used for the experiment are
+described in Table~\ref{tab:expseekmodel}.
 
 \subsection{Dask}
 
