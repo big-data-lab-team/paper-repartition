@@ -49,6 +49,25 @@ images. Big Brain, a human brain model providing microscopic data (20 micrometer
 modeling and simulation~\cite{Amunts1472} is an example of ultra high resolution
 images in the neuroscience field.
 
+\subsection{Data storage on disk}
+% explain storage order
+Previous work focused on optimizing the data storage by looking for an optimal
+chunk shape that would reduce the expected number of chunks to be retrieved by
+any query~\cite{optimal_chuking} or by optimizing the ordering of the chunks
+using space filling curves for example~\cite{optimal_chuking, openconnectomecluster}.
+Instead, our approach is to leave the choice of the
+data storage to the application as much as possible, as in~\cite{seqalgorithms}. We therefore assume that
+the chunk shape and the data ordering in files are arbitrary but known.
+
+For the sake of clarity and without loss of generality,
+ we assume in this study that files are written in row-major order (a.k.a
+``C" ordering), where the fastest moving dimension in the file is the last
+dimension in the array, and the slowest moving dimension in the file is the first
+dimension in the array. For example a 3D array with dimensions $i$, $j$ and $k$
+would be written on disk by writing the complete columns in the k dimension first.
+Our experiments use the HDF5~\cite{hdf5} file format as it is commonly used in the
+scientific community and it is written in \texttt{C-order} by default.
+
 \subsection{Multidimensional array chunking}
 % use of chunking
 Scientific data is often represented as multidimensional arrays stored in
@@ -79,26 +98,6 @@ time depends on various parameters such as the distance in bytes between two
 data columns, we assume that all seeks incur the same time overhead for the sake
 of simplicity. Therefore our problem will be to minimize the number of seeks
 required to access data.
-
-\subsection{Data storage on disk}
-% explain storage order
-Previous work focused on optimizing the data storage by looking for an optimal
-chunk shape that would reduce the expected number of chunks to be retrieved by
-any query~\cite{optimal_chuking} or by optimizing the ordering of the chunks
-using space filling curves for example~\cite{optimal_chuking, openconnectomecluster}.
-Instead, our approach is to leave the choice of the
-data storage to the application as much as possible, as in~\cite{seqalgorithms}. We therefore assume that
-the chunk shape and the data ordering in files are arbitrary but known.
-
-For the sake of clarity and without loss of generality,
- we assume in this study that files are written in row-major order (a.k.a
-``C" ordering), where the fastest moving dimension in the file is the last
-dimension in the array, and the slowest moving dimension in the file is the first
-dimension in the array. For example a 3D array with dimensions $i$, $j$ and $k$
-would be written on disk by writing the complete columns in the k dimension first.
-Our experiments use the HDF5~\cite{hdf5} file format as it is commonly used in the
-scientific community and it is written in \texttt{C-order} by default.
-\tristan{Eventually this paragraph should be moved to the first place where we need this.}
 
 \subsection{Problem definition}
 We focus on 3D arrays for simplicity. Consider a 3D array of shape $R =
@@ -250,6 +249,8 @@ s_{write} = [(d_k+1)R_iR_j]\alpha_k \\ + [(d_j+1)R_i\frac{R_k}{I_k}](1-\alpha_k)
 \end{multline}
 
 The seeks for opening output files are included in Equation~\ref{eq:1}.
+We say that there is a \texttt{shape mismatch} in a given dimension $x$ if
+$I_x \neq O_x$.
 In case of no shape mismatch, no seek occur when writing the data into the output
 files apart from opening the output files. The number times that an output file
 has to be opened would be computed as $(d_i-1)*(d_j-1)*(d_k-1)$. However, not
@@ -270,9 +271,9 @@ input files a.k.a. buffers to read.
      \hline\hline
      k,j,i & (240,240,240) & (30,30,30) & (20,20,20) \\
      \hline
-     j,i & (240,240,240) & (30,30,20) & (20,20,20) \\
+     j,i & (240,240,240) & (30,30,\textbf{20}) & (20,20,20) \\
      \hline
-     i & (240,240,240) & (30,20,20) & (20,20,20) \\
+     i & (240,240,240) & (30,\textbf{20},\textbf{20}) & (20,20,20) \\
      \hline
    \end{tabular}
 
@@ -329,58 +330,46 @@ This paper makes the following contributions:
 \section{The ``keep" algorithm}
 %----------------------------------------
 
-\subsection{Considerations on shape mismatch}
-We call shape mismatch a rechunk problem where $I_x \neq O_x$ in a given dimension $x$. As it
-has been shown in the paragraph on the baseline algorithm \tristan{ambiguous and heavy: use either ``as mentioned previously'' or ``as mentioned in section x.y.z''}, if $I_x < O_x$ and
-we read one file at a time \tristan{unclear: express using the notations of Algo 1}, we are bound to seek in the output files at
-write time. If, however, $I_x > O_x$, then we get remainders \tristan{remainders weren't defined}. Finally, if we
-just read what we need from the input files to write in output files
-contiguously, we seek while reading and writing. A solution to reduce the
-number of seeks seems to be to read more than $O_x$ and to elaborate a strategy
-to keep the remainders in memory instead of writing it down directly \tristan{this is what the cache does in Algo 1} until we
-get enough data to write it with a reduced amount of seeks. Such a strategy is
-presented in this section.
-
-\tristan{The previous paragraph is unclear because Algo 1 already uses a cache. I think the point we want to make is that
-naive algorithms would empty the cache at each iteration, while a ``keep'' strategy doesnt.}
+As mentioned previously, like the split and merge strategies the baseline
+algorithm for the rechunk problem empties the cache at each iteration. In a
+split/merge/rechunk problem a lot of seeks occur in case of a shape mismatch,
+that is, when a data column loaded in memory is split between two output files.
+Therefore, a solution to reduce the number of seeks seems to use a ``keep''
+strategy, keeping some data in the cache while it cannot be written contiguously
+in output files. Such a strategy is presented in this section.
 
 \subsection{The keep strategy}
-The keep strategy uses a cache to keep remainders in memory.
-The strategy requires an algorithm to find the best buffer shape in order to
-always try to have remainders, i.e. $B_x>O_x$. As we are constrained by the
-amount of memory available, it may be that we cannot keep some of the remainders.
-In this case those remainders are directly written down into the appropriate
-output files to avoid re-reading input files several times and ensure that all
-the data has been written at the end of the algorithm. Being able to keep all
-remainders into memory to write an output file only when all the data has been
-loaded in memory means doing the minimum number of seeks possible during a
-rechunk task ($n_i + n_o$). In the following paragraphs we explain how to find
-the best buffer shape for to the keep strategy.
-
-\tristan{This is also a bit redundant with the formulation in Algorithm 1.
-I think there should rather be an addition to Algo 1 to flush the cache to disk when it is too big.}
+In the cache (Algorithm~\ref{algo:generalrechunk}), the data that is not
+contigous in its output file of destination is called \texttt{extra data}.
+The keep strategy first consists in finding a buffer shape covering at least
+one output file completely, i.e. $B_x>O_x$ for all dimensions $x$. If $m$ is too
+small for such a buffer shape, then the keep strategy tries to find a buffer
+shape as closed as possible from the optimal buffer shape. Using such an optimal
+buffer shape and being able to keep all the extra data into memory during the
+whole rechunk process would incur the minimum number of seeks possible: $n_i + n_o$.
+Indeed, it is equivalent to writing an output file only when all its data is in
+cache. In the following paragraphs we explain how to find the optimal buffer
+shape for the keep strategy.
 
 \subsection{Input aggregates}
-As explained, our goal is to find a buffer shape such that $B_x>O_x$ in any
-direction $x$ to be able to use the keep strategy hence reducing the number of
-seeks. If $I_x > O_x$, then $B_x$ can be set to $I_x$. If $I_x < O_x$ however,
-one needs a buffer that is a multiple of $I_x$ in order to minimize the number
-of seeks at read time and have remainders ($B_x>O_x$). We define an input
-aggregate as being the minimum aggregate of input files that covers one output
-file completely. In particular, it is the input aggregate that covers the first
-output file (indexed $(0,0,0)$) in the storage reconstructed image. The best
-buffer shape for the keep strategy is therefore the shape of an input aggregate.
-We call this shape $\Lambda$.
+Our goal is to find the optimal buffer shape such that $B_x>O_x$ in any dimension $x$.
+If $I_x > O_x$, then $B_x$ can be set to $I_x$. If $I_x < O_x$ however, $B_x$
+must be a multiple of $I_x$ in order to keep reading each input file in one seek.
+We define an input aggregate as being the minimum aggregate of input files that
+covers one output file completely. In particular, it is the input aggregate that
+covers the first output file (indexed $(0,0,0)$) in the original image being
+rechunked. The best buffer shape for the keep strategy is therefore the shape of
+an input aggregate. We call this shape $\Lambda$.
 
-\subsection{Stretching the buffer in the storage order}
+\subsection{Stretching the buffer in the inverse storage order}
 To get a buffer close to $\Lambda$ we define an algorithm that stretches the
 buffer shape step by step. At each step, the algorithm estimates how much the
 buffer can be stretched in one direction while keeping the remainders into
-memory. Thhe problem of what dimension to increase first still stands. A
+memory. The problem of what dimension to increase first still stands. A
 strategic order seems to be to stretch the buffer in the direction which saves
 the maximum number of seeks first. Given the analysis of the baseline algorithm,
-such an order is the storage order as in the case of a row-major ordering such
-an order would keep remainders in the $k$ dimension first. An analysis of the
+such an order is the storage order because in the case of a row-major ordering such
+an order would keep extra data in the $k$ dimension first. An analysis of the
 memory consumption of the keep strategy at each step together with the associated
 algorithm is given in the next section.
 
