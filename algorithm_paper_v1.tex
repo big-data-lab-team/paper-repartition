@@ -392,21 +392,36 @@ Thanksfully, the impact of the buffer ordering on performance can be
 mitigated. Indeed, the impact of the buffer ordering depends on the size of the
 mismatches. One can reduce the amount of extra data by using smallest chunks: Even
 if the overlap between the input and output files is big with respect to their
-size, the area/volume of the overlap will be kept small. 
+size, the area/volume of the overlap will be kept small.
 
 %----------------------------------------
-\section{A memory analysis of the keep strategy}
+\section{The buffer extension algorithm}
 %----------------------------------------
-This section covers how we estimate the amount of memory required by the keep
-strategy to know how much the buffer can be stretched in a given direction while
-keeping the remainders in memory. In this analysis, we express the quantity of
-memory used by an array as the number of voxels it contains. It is equivalent
-to saying that the number of bytes per voxel is 1.
 
-The amount of memory required is the maximum memory consumption reached during
-the execution of the keep algorithm. \tristan{To estimate this amount, we first need to
-define what a remainder volume is}. A buffer of shape $\Lambda$ can be divided in
-8 parts or ``volumes". 7 out of those 8 volumes are remainder volumes because
+The buffer extension algorithm aims at extending the buffer shape from
+(1,1,$\Lambda_k$) to the input aggregate shape $\Lambda$. Note that we assume
+that $m$ is large enough to store a buffer of shape (1,1,$\Lambda_k$). It means
+that we can read one complete data column from an input file and keep the
+remainder in memory for the next buffer. If it was not the case the keep
+algorithm would not give a significant improvement in the number of seeks
+produced by the rechunk task, compared to the baseline algorithm.
+
+In this analysis, we express the quantity of memory used by an array as the
+number of voxels it contains. It is equivalent to saying that the number of
+bytes per voxel is 1. With $\alpha$ the number of bytes per voxel in the storage
+device, $m$ is defined as $m/\alpha$ in the following computations.
+
+The following subsections covers how we estimate the amount of memory required
+by the keep strategy to know how much the buffer can be stretched in a given
+direction while keeping the extra data in memory. The amount of memory required
+is the maximum memory consumption reached during the execution of the keep algorithm.
+To estimate this amount, we first need to define what a remainder volume is.
+
+\subsection{Remainder volumes}
+
+A buffer of shape $\Lambda$ can be divided in
+8 parts or ``volumes" (Figure~\ref{fig:nomenclature_overlaps}).
+7 out of these 8 volumes are called \texttt{remainder volumes} because
 they represent the overlap between the input aggregate and the output files on
 its border. These 7 remainder volumes enclose an 8th part that is composed of
 input files that are either complete or which complementary part have already
@@ -414,28 +429,52 @@ been loaded by a previous buffer. This means that any complementary part is eith
 in memory (it has been kept in cache according to the keep strategy) or it has
 been written down previously. Therefore, this 8th volume cannot be kept by the
 keep strategy and is not considered a remainder. For each buffer, each of volume
-is indexed following the buffer order (see section on buffer order) $G_0$ to $G_7$, with
-$G_0$ being the non-remainder volume. If the buffer is smallest than the input
-aggrgegate or if there is no shape mismatch in a given dimension, it may be that
-a volume size is set to 0.
+is indexed following the buffer order $F_0$ to $F_7$, with $F_0$ being the
+non-remainder volume. If the buffer is smallest than the input aggregate or if
+there is no shape mismatch in a given dimension, it may be that a volume size
+is set to 0.
 
-Having partitioned the buffers into such volumes, we can see that the maximum
-memory consumption is computed from two pieces of information: The maximum number
-of each volumes we must keep during the process and the maximum size of each
-volume. The maximum number of each volumes that we must keep during the process
-is (see computation details in Appendix~\ref{bufferExtensionAlgorithm}):
+\begin{figure*}[h]
+\centering
+\includegraphics[scale=0.4]{./figures/new/nomenclature_overlaps.png}
+\caption{Division of a buffer into 8 parts indexed according to the storage
+order, 7 of which are remainder volumes.}
+\label{fig:nomenclature_overlaps}
+\end{figure*}
+
+\subsection{Maximum memory consumption}
+
+Having partitioned the buffers into volumes, the maximum memory consumption is
+computed from two pieces of information: The maximum number of each volume we
+must keep during the process and the maximum size of each volume.
+
+In the buffer extension algorithm, the buffer is stretched in one dimension at a time.
+When stretching the buffer, we compute the maximum length of the buffer possible
+in the dimension considered, while ensuring that the remainder volumes can be
+kept into memory according to the \texttt{keep} algorithm. To that aim, we need
+a formula that computes the maximum amount of times that we have to keep each
+remainder volume, together with the maximum size of those volumes. For example, if
+we consider stretching the buffer in the $j$ dimension, we want to know how big
+$B_j$ can be such that the remainders are kept in memory by the \texttt{keep}
+algorithm for later use, given the maximum amount of memory available, $m$.
+
+We define $\Sigma$, the maximum amount of data reached during the execution
+of the keep algorithm in terms of the number of volumes to be kept. From the
+previous sections we assume that the buffer order is the inverse of the storage order.
+In this order, the $F_1$ volume stored from a given buffer loading is recycled
+in the next one. Therefore there can be only one $F_1$ volume in cache at a
+given time. For any buffer, $F_2$ and $F_3$ are kept in memory until the next
+buffer in the $j$ dimension recyles them. Therefore they can be present in cache
+$n$ times at a maximum, with $n$ the number of buffers in a buffer column (the
+number of buffers in dimension $k$). Volumes 4 to 7 can only be recycled by the
+next buffer in the $i$ dimension. Therefore, the algorithm must read an entire
+buffer slice before being able to remove them from the cache. They are kept a
+maximum of $N$ times, with $N$ the number of buffers in a slice of the
+reconstructed image. Last but not least, a buffer must be loaded at each step of
+the keep algorithm. This gives us the following formula for $\Sigma$:
 
 \begin{equation} \label{eq:2}
-\sigma = F_1 + n(F_2 + F_3) + N(F_4 + F_5 + F_6 + F_7)
-\end{equation}
-
-With $n$ the number of buffers in the first direction of the buffer order and
-$N$ is the number of buffers in a buffer slice, i.e. in the second direction of
-the buffer order. Given that at each step of the rechunk algorithm one must
-load a buffer, we should also add the size of a buffer to the equation:
-
-\begin{equation} \label{eq:3}
-\Sigma = (F_1 + n(F_2 + F_3) + N(F_4 + F_5 + F_6 + F_7) + B_iB_jB_k)
+\Sigma = F_1 + n(F_2 + F_3) + N(F_4 + F_5 + F_6 + F_7) + B_iB_jB_k
 \end{equation}
 
 Finally, to find the maximum size of each volume one must know the maximum
@@ -443,15 +482,84 @@ overlap length between the buffer and the output files on its border. One can
 either compute all possibilities and take the maximum in each dimension if it is
 not too costly or use the following upper bound: By definition of an input
 aggregate, the overlap between any buffer and its bordering output files it at
-maximum Ox in dimension x.
+maximum $O_x$ in dimension $x$.
+
+\subsection{The getBufferPositions function}
+
+In order to compute $\Sigma$, the volumes' sizes need to be computed using the
+following nomenclature (Figure~\ref{fig:nomenclature_overlaps}):
+Given a buffer shape $B$ and the output file shape $O$, we define $C_d(x)$ as
+the overlap length between the buffer and an overlaping output file in direction
+$d$ for the $x{th}$ buffer. Let us define $\Omega$ and $\Theta$, that are used
+to define upper bounds in the volumes sizes formulas. $\Omega_d(x)$ is the
+equivalent of $C_d(x)$ if the buffer was of shape $\Lambda$, and $\Theta_k(x)$
+is the difference between $B_d$ and $\Omega_b$, with $B=\Lambda$.
+These metrics are computed as follows:
+$$C_d(x) = (x+1)B_d mod(O_d)$$
+$$\Omega_d(x) = (x+1)\Lambda_d mod(O_d)$$
+$$\Theta_d(x) = \Lambda_d - \Omega_d(x)$$
 
 Given equation~\ref{eq:2} and the maximum size of the volumes, we can now
 stretch the buffer shape one dimension at a time using simple equations to ensure
-that the maximum amount of memory consumed during the process wil stay below the
-amount of memory available. Such computations and the associated buffer stretching
-algorithm are given in Appendix~\ref{bufferExtensionAlgorithm}.
+that the maximum amount of memory consumed during the process will stay below the
+amount of memory available. Such computations are given in
+Appendix~\ref{bufferExtensionAlgorithm}.
+Algorithm~\ref{algo:bufferextensionalgorihm} summarizes the computations into a
+pseudocode for the buffer extension algorithm.
 
-\tristan{A figure is necessary to understand this section}
+\begin{algorithm}
+  \caption{Pseudocode of the buffer extension algorithm}
+  \label{algo:bufferextensionalgorihm}
+  \begin{algorithmic}[1]
+    \STATE \textbf{Inputs:} $\Omega_{max}$, $\Lambda$, $m$
+    \STATE $\Omega \leftarrow \Omega_{max}$
+    \STATE $\Theta = (\Lambda_i - \Omega_i, \Lambda_j - \Omega_j, \Lambda_k - \Omega_k)$
+    \STATE $B \leftarrow (1,1,\Lambda_k)$
+
+    \STATE $\phi = \lfloor \frac{m}{\Omega_k + \Lambda_k} \rfloor$
+    \STATE $B_j = \begin{cases}
+      \Theta_j & \textrm{if }\phi \geq \Theta_j \\
+      1 & \textrm{if }\phi = 0 \\
+      \phi & \textrm{else}
+    \end{cases}$
+
+    \IF{$B_j \neq \Theta_j$}
+      \RETURN $B$
+    \ENDIF
+
+    \STATE $\phi = \lfloor \frac{m-\Theta_j(\Omega_k\Lambda_k)}{\Lambda_k(n+1)} \rfloor$
+    \STATE $B_j = \begin{cases}
+      \Lambda_j & \textrm{if }\phi \geq \Lambda_j \\
+      B_j & \textrm{if }(B_j+\phi) = 0 \\
+      B_j + \phi & \textrm{else}
+    \end{cases}$
+
+    \IF{$B_j \neq \Lambda_j$}
+      \RETURN $B$
+    \ENDIF
+
+    \STATE $\phi = \lfloor \frac{m}{\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k} \rfloor$
+    \STATE $B_i = \begin{cases}
+      \Theta_i & \textrm{if }\phi \geq \Theta_i \\
+      1 & \textrm{if }\phi = 0 \\
+      \phi & \textrm{else}
+    \end{cases}$
+
+    \IF{$B_i \neq \Theta_i$}
+      \RETURN $B$
+    \ENDIF
+
+    \STATE $\phi = \lfloor \frac{m-\Theta_i(\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k)}{(N+1)\Lambda_j\Lambda_k} \rfloor$
+    \STATE $B_i = \begin{cases}
+      \Lambda_i & \textrm{if }(B_i+\phi) \geq \Lambda_i \\
+      B_i & \textrm{if }\phi = 0 \\
+      B_i+\phi & \textrm{else}
+    \end{cases}$
+
+    \RETURN $B$
+
+  \end{algorithmic}
+\end{algorithm}
 
 %----------------------------------------
 \section{Methods}
@@ -672,58 +780,6 @@ now recommended for use, even on local computers (using one node).
 
 \section{Buffer extension algorithm}
 \label{bufferExtensionAlgorithm}
-The buffer extension algorithm aims at extending the buffer shape from
-(1,1,$\Lambda_k$) to the input aggregate shape $\Lambda$. Note that we assume
-that $m$ is large enough to store a buffer of shape (1,1,$\Lambda_k$). It means
-that we can read one complete data column from an input file and keep the
-remainder in memory for the next buffer. If it was not the case the keep
-algorithm would not give a significant improvement in the number of seeks
-produced by the rechunk task, compared to the baseline algorithm. In all the
-computations below, we measure the amount of data as a number of voxels. With
-$\alpha$ the number of bytes per voxel in the storage device, $m$ is defined as
-$m/\alpha$ in the following computations.
-
-In the buffer extension algorithm, the buffer is stretched in one dimension at a
-time. As explained in section ``A memory analysis of the keep strategy", each
-buffer can be divided into 8 volumes, 7 of which are \texttt{remainder} volumes.
-When stretching the buffer, we compute the maximum length of the buffer possible
-in the dimension considered, while ensuring that the remainder volumes can be
-kept into memory according to the \texttt{keep} algorithm. To that aim, we need
-a formula that computes the maximum amount of times that we have to keep each
-remainder volume, together with the maximum size of those volumes. For example, if
-we consider stretching the buffer in the $j$ dimension, we want to know how big
-$B_j$ can be such that the remainders are kept in memory by the \texttt{keep}
-algorithm for later use, given the maximum amount of memory available, $m$.
-
-We define $\Sigma$ as the maximum amount of data reached during the execution
-of the keep algorithm in terms of the number of volumes to be kept. From the
-previous sections we assume that the buffer order is the storage order. In this
-order, the $F_1$ volume stored from a given buffer loading is necessary recycled
-in the next one. Therefore there can be only one $F_1$ volume in cache at a
-given time. For any buffer, $F_2$ and $F_3$ are kept in memory until the next
-buffer in the $j$ dimension recyles them. Therefore they can be present in cache
-$n$ times at a maximum, with $n$ the number of buffers in a buffer column (the
-number of buffers in dimension $k$). Volumes 4 to 7 can only be recycled by the
-next buffer in the $i$ dimension. Therefore, the algorithm must read an entire
-buffer slice before being able to use them from the cache. They are kept a
-maximum of $N$ times, with $N$ the number of buffers in a slice of the
-reconstructed image. Last but not least, a buffer must be loaded at each step of
-the keep algorithm. This gives us the following formula for $\Sigma$:
-
-$$\Sigma = F_1 + n(F_2 + F_3) + N(F_4 + F_5 + F_6 + F_7) + B_iB_jB_k$$
-
-In order to compute the volumes' sizes, we need to define some nomenclature.
-Given a buffer shape $B$ and the output file shape $O$, we define $C_d(x)$ as
-the overlap length between the buffer and an overlaping output file in direction
-$d$ for the $x{th}$ buffer. Let us define $\Omega$ and $\Theta$, that are used
-to define upper bounds in the volumes sizes formulas. $\Omega_d(x)$ is the
-equivalent of $C_d(x)$ if the buffer was of shape $\Lambda$, and $\Theta_k(x)$
-is the difference between $B_d$ and $\Omega_b$, with $B=\Lambda$.
-These metrics are computed as follows:
-
-$$C_d(x) = (x+1)B_d mod(O_d)$$
-$$\Omega_d(x) = (x+1)\Lambda_d mod(O_d)$$
-$$\Theta_d(x) = \Lambda_d - \Omega_d(x)$$
 
 For the $x^{th}$ buffer, the volumes' sizes are:
 
@@ -843,63 +899,5 @@ $$B_i = \begin{cases}
 
 The algorithm stops here, as if $B_i=\Lambda_i$, then the buffer has been
 successfully stretched to the input aggregate shape, $\Lambda$.
-
-\subsection{The buffer extension algorithm}
-Algorithm~\ref{algo:bufferextensionalgorihm} summarizes the computations into an
-pseudocode for the buffer extension algorithm.
-
-\begin{algorithm}
-  \caption{Pseudocode of the buffer extension algorithm}
-  \label{algo:bufferextensionalgorihm}
-  \begin{algorithmic}[1]
-    \STATE \textbf{Inputs:} $\Omega_{max}$, $\Lambda$, $m$
-    \STATE $\Omega \leftarrow \Omega_{max}$
-    \STATE $\Theta = (\Lambda_i - \Omega_i, \Lambda_j - \Omega_j, \Lambda_k - \Omega_k)$
-    \STATE $B \leftarrow (1,1,\Lambda_k)$
-
-    \STATE $\phi = \lfloor \frac{m}{\Omega_k + \Lambda_k} \rfloor$
-    \STATE $B_j = \begin{cases}
-      \Theta_j & \textrm{if }\phi \geq \Theta_j \\
-      1 & \textrm{if }\phi = 0 \\
-      \phi & \textrm{else}
-    \end{cases}$
-
-    \IF{$B_j \neq \Theta_j$}
-      \RETURN $B$
-    \ENDIF
-
-    \STATE $\phi = \lfloor \frac{m-\Theta_j(\Omega_k\Lambda_k)}{\Lambda_k(n+1)} \rfloor$
-    \STATE $B_j = \begin{cases}
-      \Lambda_j & \textrm{if }\phi \geq \Lambda_j \\
-      B_j & \textrm{if }(B_j+\phi) = 0 \\
-      B_j + \phi & \textrm{else}
-    \end{cases}$
-
-    \IF{$B_j \neq \Lambda_j$}
-      \RETURN $B$
-    \ENDIF
-
-    \STATE $\phi = \lfloor \frac{m}{\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k} \rfloor$
-    \STATE $B_i = \begin{cases}
-      \Theta_i & \textrm{if }\phi \geq \Theta_i \\
-      1 & \textrm{if }\phi = 0 \\
-      \phi & \textrm{else}
-    \end{cases}$
-
-    \IF{$B_i \neq \Theta_i$}
-      \RETURN $B$
-    \ENDIF
-
-    \STATE $\phi = \lfloor \frac{m-\Theta_i(\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k)}{(N+1)\Lambda_j\Lambda_k} \rfloor$
-    \STATE $B_i = \begin{cases}
-      \Lambda_i & \textrm{if }(B_i+\phi) \geq \Lambda_i \\
-      B_i & \textrm{if }\phi = 0 \\
-      B_i+\phi & \textrm{else}
-    \end{cases}$
-
-    \RETURN $B$
-
-  \end{algorithmic}
-\end{algorithm}
 
 \end{document}
