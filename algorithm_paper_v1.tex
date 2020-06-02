@@ -65,9 +65,17 @@ For the sake of clarity and without loss of generality,
 ``C" ordering), where the fastest moving dimension in the file is the last
 dimension in the array, and the slowest moving dimension in the file is the first
 dimension in the array. For example a 3D array with dimensions $i$, $j$ and $k$
-would be written on disk by writing the complete columns in the k dimension first.
+would be written on disk by writing the complete columns in the k dimension first
+~\ref{fig:seeks_and_rowmajor}.
 Our experiments use the HDF5~\cite{hdf5} file format as it is commonly used in the
 scientific community and it is written in \texttt{C-order} by default.
+
+\begin{figure*}[h]
+  \centering
+  \includegraphics[scale=0.35]{./figures/new/seeks_and_rowmajor.jpeg}
+  \caption{desc.}
+  \label{fig:seeks_and_rowmajor}
+\end{figure*}
 
 \subsection{Multidimensional array chunking}
 % use of chunking
@@ -95,7 +103,7 @@ when the reading or writing process moves within the block to access a
 contiguous piece of data. For a 3D cuboid of shape $C = (C_i, C_j, C_k)$ stored
 in row-major order, each column of data in the k dimension is contiguously
 stored. There are therefore $C_j \times C_i$ data columns that all require a
-seek. Although the seek time depends on various parameters such as the distance
+seek~\ref{fig:seeks_and_rowmajor}. Although the seek time depends on various parameters such as the distance
 in bytes between two data columns, we assume that all seeks incur the same time
 overhead for the sake of simplicity. Therefore our problem will be to minimize
 the number of seeks required to access data.
@@ -349,15 +357,23 @@ described in Table~\ref{tab:expseekmodel}.
 \section{The ``keep" algorithm}
 %----------------------------------------
 
+\subsection{The keep strategy}
+
 As mentioned previously, like the split and merge strategies the baseline
 algorithm for the rechunk problem empties the cache at each iteration. In a
 split/merge/rechunk problem a lot of seeks occur in case of a shape mismatch,
 that is, when a data column loaded in memory is split between two output files.
 Therefore, a solution to reduce the number of seeks seems to use a ``keep''
 strategy, keeping some data in the cache while it cannot be written contiguously
-in output files. Such a strategy is presented in this section.
+in output files~\ref{fig:keepvsbaseline}.
 
-\subsection{The keep strategy}
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.25]{./figures/new/naive_vs_keep.jpeg}
+\caption{desc.}
+\label{fig:keepvsbaseline}
+\end{figure}
+
 In the cache (Algorithm~\ref{algo:generalrechunk}), the data that is not
 contiguous in its output file of destination is called \texttt{extra data}.
 The keep strategy first consists in finding a buffer shape covering at least
@@ -467,7 +483,8 @@ Having partitioned the buffers into volumes, the maximum memory consumption is
 computed from two pieces of information: The maximum number of each volume we
 must keep during the process and the maximum size of each volume.
 
-In the buffer extension algorithm, the buffer is stretched in one dimension at a time.
+In the buffer extension algorithm, the buffer is stretched in one dimension at
+a time~\ref{fig:bufferextensionalgo}.
 When stretching the buffer, we compute the maximum length of the buffer possible
 in the dimension considered, while ensuring that the remainder volumes can be
 kept into memory according to the \texttt{keep} algorithm. To that aim, we need
@@ -476,6 +493,13 @@ remainder volume, together with the maximum size of those volumes. For example, 
 we consider stretching the buffer in the $j$ dimension, we want to know how big
 $B_j$ can be such that the remainders are kept in memory by the \texttt{keep}
 algorithm for later use, given the maximum amount of memory available, $m$.
+
+\begin{figure*}[h]
+\centering
+\includegraphics[scale=0.4]{./figures/new/bufferextensionalgo.png}
+\caption{desc.}
+\label{fig:bufferextensionalgo}
+\end{figure*}
 
 We define $\Sigma$, the maximum amount of data reached during the execution
 of the keep algorithm in terms of the number of volumes to be kept. From the
@@ -489,12 +513,19 @@ number of buffers in dimension $k$). Volumes 4 to 7 can only be recycled by the
 next buffer in the $i$ dimension. Therefore, the algorithm must read an entire
 buffer slice before being able to remove them from the cache. They are kept a
 maximum of $N$ times, with $N$ the number of buffers in a slice of the
-reconstructed image. Last but not least, a buffer must be loaded at each step of
+reconstructed image~\ref{fig:calculmemoire}. Last but not least, a buffer must be loaded at each step of
 the keep algorithm. This gives us the following formula for $\Sigma$:
 
 \begin{equation} \label{eq:2}
 \Sigma = F_1 + n(F_2 + F_3) + N(F_4 + F_5 + F_6 + F_7) + B_iB_jB_k
 \end{equation}
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.3]{./figures/new/bufferextensionalgoformula.jpeg}
+\caption{desc.}
+\label{fig:calculmemoire}
+\end{figure}
 
 Finally, to find the maximum size of each volume one must know the maximum
 overlap length between the buffer and the output files on its border. One can
