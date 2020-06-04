@@ -453,7 +453,7 @@ number of voxels it contains. It is equivalent to saying that the number of
 bytes per voxel is 1. With $\alpha$ the number of bytes per voxel in the storage
 device, $m$ is defined as $m/\alpha$ in the following computations.
 
-The following subsections covers how we estimate the amount of memory required
+The following subsections cover how we estimate the amount of memory required
 by the keep strategy to know how much the buffer can be stretched in a given
 direction while keeping the extra data in memory. The amount of memory required
 is the maximum memory consumption reached during the execution of the keep algorithm.
@@ -464,8 +464,8 @@ To estimate this amount, we first need to define what a remainder volume is.
 A buffer of shape $\Lambda$ can be divided in
 8 parts or ``volumes" (Figure~\ref{fig:nomenclature_overlaps}).
 7 out of these 8 volumes are called \texttt{remainder volumes} because
-they represent the overlap between the input aggregate and the output files on
-its border. These 7 remainder volumes enclose an 8th part that is composed of
+they represent the overlap between the input files and the output files on
+the buffer borders. These 7 remainder volumes enclose an 8th part that is composed of
 input files that are either complete or which complementary part have already
 been loaded by a previous buffer. This means that any complementary part is either
 in memory (it has been kept in cache according to the keep strategy) or it has
@@ -491,12 +491,10 @@ computed from two pieces of information: The maximum number of each volume we
 must keep during the process and the maximum size of each volume.
 
 In the buffer extension algorithm, the buffer is stretched in one dimension at
-a time~\ref{fig:bufferextensionalgo}.
+a time (Figure~\ref{fig:bufferextensionalgo}).
 When stretching the buffer, we compute the maximum length of the buffer possible
 in the dimension considered, while ensuring that the remainder volumes can be
-kept into memory according to the \texttt{keep} algorithm. To that aim, we need
-a formula that computes the maximum amount of times that we have to keep each
-remainder volume, together with the maximum size of those volumes. For example, if
+kept into memory according to the \texttt{keep} algorithm. For example, if
 we consider stretching the buffer in the $j$ dimension, we want to know how big
 $B_j$ can be such that the remainders are kept in memory by the \texttt{keep}
 algorithm for later use, given the maximum amount of memory available, $m$.
@@ -508,19 +506,21 @@ algorithm for later use, given the maximum amount of memory available, $m$.
 \label{fig:bufferextensionalgo}
 \end{figure*}
 
-We define $\Sigma$, the maximum amount of data reached during the execution
-of the keep algorithm in terms of the number of volumes to be kept. From the
-previous sections we assume that the buffer order is the inverse of the storage order.
+$\Sigma$, the maximum amount of data reached during the execution of the keep
+algorithm is defined in terms of the number of volumes to keep in cache. From the
+previous sections we assume that the buffer order is the storage order.
 In this order, the $F_1$ volume stored from a given buffer loading is recycled
-in the next one. Therefore there can be only one $F_1$ volume in cache at a
-given time. For any buffer, $F_2$ and $F_3$ are kept in memory until the next
+in the next one (Figure~\ref{fig:calculmemoire}). Therefore there can be only
+one $F_1$ volume in cache at a
+given time. $F_2$ and $F_3$ are kept in memory until the next
 buffer in the $j$ dimension recyles them. Therefore they can be present in cache
 $n$ times at a maximum, with $n$ the number of buffers in a buffer column (the
 number of buffers in dimension $k$). Volumes 4 to 7 can only be recycled by the
 next buffer in the $i$ dimension. Therefore, the algorithm must read an entire
 buffer slice before being able to remove them from the cache. They are kept a
 maximum of $N$ times, with $N$ the number of buffers in a slice of the
-reconstructed image~\ref{fig:calculmemoire}. Last but not least, a buffer must be loaded at each step of
+reconstructed image (Figure~\ref{fig:calculmemoire}).
+Last but not least, a buffer must be loaded at each step of
 the keep algorithm. This gives us the following formula for $\Sigma$:
 
 \begin{equation} \label{eq:2}
@@ -534,12 +534,8 @@ the keep algorithm. This gives us the following formula for $\Sigma$:
 \label{fig:calculmemoire}
 \end{figure}
 
-Finally, to find the maximum size of each volume one must know the maximum
-overlap length between the buffer and the output files on its border. One can
-either compute all possibilities and take the maximum in each dimension if it is
-not too costly or use the following upper bound: By definition of an input
-aggregate, the overlap between any buffer and its bordering output files it at
-maximum $O_x$ in dimension $x$.
+Now that we have an expression for $\Sigma$, we must find its maximum value by
+computing the volumes' sizes and their maximum.
 
 \subsection{The getBufferPositions function}
 
@@ -547,7 +543,7 @@ In order to compute $\Sigma$, the volumes' sizes need to be computed using the
 following nomenclature (Figure~\ref{fig:nomenclature_overlaps}):
 Given a buffer shape $B$ and the output file shape $O$, we define $C_d(x)$ as
 the overlap length between the buffer and an overlaping output file in direction
-$d$ for the $x{th}$ buffer. Let us define $\Omega$ and $\Theta$, that are used
+$d$ for the $x^{th}$ buffer. Let us define $\Omega$ and $\Theta$, that are used
 to define upper bounds in the volumes sizes formulas. $\Omega_d(x)$ is the
 equivalent of $C_d(x)$ if the buffer was of shape $\Lambda$, and $\Theta_k(x)$
 is the difference between $B_d$ and $\Omega_b$, with $B=\Lambda$.
@@ -555,6 +551,16 @@ These metrics are computed as follows:
 $$C_d(x) = (x+1)B_d mod(O_d)$$
 $$\Omega_d(x) = (x+1)\Lambda_d mod(O_d)$$
 $$\Theta_d(x) = \Lambda_d - \Omega_d(x)$$
+
+The volumes sizes are computed in Appendix~\ref{bufferExtensionAlgorithm}.
+Finally, to find the maximum size
+of each volume one must know the maximum overlap length between the buffer and
+the output files on its border. One can either compute all possibilities and
+take the maximum in each dimension if it is not too costly or use the following
+upper bound: By definition of an input aggregate, the overlap between any buffer
+and its bordering output files it at maximum $O_x$ in dimension $x$. Once the
+maximum volumes' sizes are found they can be replaced in $\Sigma$ to find the
+maximum memory consumption of the keep algorithm.
 
 Given equation~\ref{eq:2} and the maximum size of the volumes, we can now
 stretch the buffer shape one dimension at a time using simple equations to ensure
@@ -576,7 +582,11 @@ Algorithm~\ref{algo:getbuffersposition}.
   \caption{Pseudocode of the \texttt{getBufferPositions} function for the keep strategy}
   \label{algo:getbuffersposition}
   \begin{algorithmic}[1]
-  \STATE \textbf{Inputs:} $\Omega_{max}$, $\Lambda$, $m$
+  \STATE \textbf{Inputs:} $\Omega_{max}$: tuple of the maximum overlap length
+  of any buffer in all dimensions, $\Lambda$: input aggregate shape,
+  $m$: amount of available memory for the buffer
+  \STATE \textbf{Outputs:} \texttt{buffersList} the coordinates of all buffers to be loaded,
+  \texttt{policy} the policy to be used for the cache management by \texttt{getDataToWrite}
   \STATE $B$, volumesToKeep $\leftarrow$ BufferExtAlg($\Omega_{max}$, $\Lambda$, $m$)
   \STATE policy $\leftarrow$ getPolicy(volumesToKeep)
   \STATE buffersList $\leftarrow$ getBuffersCoordinates($B$)
@@ -647,10 +657,10 @@ Algorithm~\ref{algo:getbuffersposition}.
 
 \subsection{Clustered strategy}
 
-As explained in the introduction, daks represents computations by a task graph.
+As explained in the introduction, \texttt{dask} represents computations by a task graph.
 Implementing the clustered strategy consisted in modifying that graph. To that
 aim, we implemented an optimization function to create ``buffer" tasks in the
-graph~\ref{fig:bufferization}.
+graph (Figure~\ref{fig:bufferization}).
 
 \begin{figure*}
   \centering
@@ -666,15 +676,14 @@ graph~\ref{fig:bufferization}.
 
 The optimization starts by converting the task graph into a mathematical
 directed graph for use by a BFS (Breadth First Search) algorithm. More
-precisely, we implement it as adjacency lists. The BFS algorithm allows us to
-find and store tasks by type for later processing. Assuming that the whole array
-is being processed, we find the appropriate buffering scheme from $I$, $O$ and
-$m$, according to the algorithm in~\cite{seqalgorithms}. The buffering scheme
-specifies if the algorithm loads buffers block by block, block columns by
-block columns or block slices by block slices.
+precisely, we implemented it as adjacency lists. The BFS algorithm allows us to
+find and store tasks by type for later processing.  Again, the clustered
+strategy loads buffers block by block, block columns by block columns or block
+slices by block slices~\cite{seqalgorithms}. Assuming that the whole array is
+being processed, we find the appropriate buffering scheme from $I$, $O$ and $m$.
 
-We then update the data loading tasks to force \texttt{dask} to load a whole buffer at
-a time instead of small chunks. Finally, we modify the dependent tasks to make
+We then updated the data loading tasks to force \texttt{dask} to load a whole buffer at
+a time instead of small chunks. Finally, we modified the dependent tasks to make
 them use our new buffer tasks. According to the clustered algorithm, all buffers
 do not necessarily have the same shape, that is why we could not use the
 \texttt{dask.array.rechunk} method.
@@ -684,9 +693,8 @@ that at the beginning of the execution \texttt{dask} dispatches some tasks that 
 no dependencies into different threads. The problem is that the clustered
 strategy tries to use all the memory available for each buffer, and such buffer
 tasks are the one with no initial dependencies. Therefore, we needed to
-modify \texttt{dask}'s scheduler to make it load one buffer only after the previous one
-and its dependent tasks have ended. This avoid running out of memory during the
-processing.
+modify \texttt{dask}'s scheduler to make it load one buffer only at a time.
+This avoids running out of memory during the processing.
 
 \subsection{The keep algorithm}
 
