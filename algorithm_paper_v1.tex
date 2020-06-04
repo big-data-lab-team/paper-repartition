@@ -698,7 +698,7 @@ This avoids running out of memory during the processing.
 
 \subsection{The keep algorithm}
 
-The buffer extension algorithm described before has been direclty
+The buffer extension algorithm described before has been directly
 implemented in plain Python. Implementing the last part of the algorithm
 consisted in: (1) creating the buffer tasks, (2) dispatching the different data
 parts loaded by each buffer into the appropriate output files, (3) simulating
@@ -728,16 +728,39 @@ algorithms described in this study (figure x).
 %----------------------------------------
 \section{Experiments}
 %----------------------------------------
-Before diving into the implementation of the keep algorithm we first designed
-an experiment to prove that \texttt{dask.array} was subject to the seek problem. To that
-aim we created a random array from a uniform distribution and stored it as a
-HDF5 file for later processing. The array had a shape of x which represents 1/8
+This section describes the three experiments we did in this study. All the
+results are described in the ``Results" section, and the code of the experiments
+is available in a dedicated repository on Github.
+
+We first designed
+an experiment to prove that \texttt{dask.array} was subject to the seek problem.
+To that aim we created a random array from a uniform distribution and stored it
+as a HDF5 file for later processing. The array had a shape of
+$(1925, 1512, 1750)$ which represents 1/8
 of the Big Brain size. The experiment then consisted in splitting and merging
-the array with \texttt{dask} using two different chunk shapes: one of them doing more
-seeks than the other. We did this experiment on both HDD and SSD to see if the
+the array with \texttt{dask} using two different chunk shapes: one of them,
+$(275,189,250)$, doing more seeks than the other; $(5,1512,1750)$
+(Table~\ref{tab:exp1}). We did this experiment on both HDD and SSD to see if the
 results were also visible when using an SSD which is suposedly less affected by
-seeks. The results of this experiment showed that \texttt{dask} was indeed subject to the
-seek problem. See the ``Results" section for more details.
+seeks. The results of this experiment showed that \texttt{dask} was indeed
+subject to the seek problem.
+
+\begin{table}[ht]
+ \centering
+ \caption{Experiment 1}
+
+  \begin{tabular}[t]{c c c c}
+  \hline
+  chunks shape & R partition & nb of chunks & nb voxels/chunk \\
+    \hline\hline
+    (5,1512,1750) & (385,1,1) & 385 & 13,230,000 \\
+    \hline
+    (275,189,250) & (7,8,7) & 392 & 12,993,750 \\
+    \hline
+  \end{tabular}
+
+  \label{tab:exp1}
+\end{table}
 
 In order to see if a strategy to reduce the number of seeks was effective, we
 implemented and tested the ``clustered" strategy for splitting and merging
@@ -747,27 +770,41 @@ working. It means that if it failed the problem would be more likely to come
 from the implementation or dask than from the algorithm itself. We also know
 from~\cite{seqalgorithms} that the difference between the naive and clustered
 strategies should be large enough to be visible in the processing time. The
-shapes used for the experiment are shown on the table x. The implementation
-details of the clustered strategy are discussed in the appropriate section and
-again, the results are presented in the ``Resuts" section. The code of the
-experiment is available in a dedicated repository on Github.
+shapes used for the experiment are shown on the Table~\ref{tab:exp2}.
+
+\begin{table}[ht]
+ \centering
+ \caption{Experiment 2}
+
+  \begin{tabular}[t]{c c c c}
+  \hline
+    R & chunks shape & buffer size \\
+    \hline\hline
+    (3500, 3500, 3500) & (875, 875, 875) & 15 GB  \\
+    \hline
+    (3500, 3500, 3500) & (50, 3500, 3500) & 15 GB  \\
+    \hline
+  \end{tabular}
+
+  \label{tab:exp2}
+\end{table}
 
 After these two preliminary experiment, we implemented a simplified version of
-the keep algorithm due to the difficulty to implemlent such an algorithm in a
-task graph (see section ``Implementation"). In order to evaluate the
+the keep algorithm due to the difficulty to implement the special case where
+$B_x<I_x$ (see section ``Implementation") \timothee{TODO}. In order to evaluate the
 efficiency of the keep algorithm we compare it against vanilla \texttt{dask} on local
 computer. To be fair we used dask with one thread as required for our
-implementation but also with the classic multi-threaded  scheduler as it is the
-default when using \texttt{dask.array}. In order to compare both implementations to a
-naive rechunk, we also added a plain Python implementation to the benchmark. For
-the experiments presented below we built a random 3D array of the size of Big
-Brain, drawn from a uniform distribution. Once again, the array is initially
-stored into an HDF5 file.
+implementation but also with the classic multi-threaded scheduler as it is the
+default when using \texttt{dask.array}. In order to compare our implementation
+and dask vanilla to a naive rechunk, we also added a plain Python implementation
+to the benchmark. For the experiments presented below we built a random 3D array
+ of the size of Big Brain, drawn from a uniform distribution. Once again, the
+ array is initially stored into an HDF5 file.
 
-We did three experiments on the keep algorithm. The first one consisted in
+We did three sub-experiments on the keep algorithm. The first one consisted in
 comparing the different implementations in the case where the keep algorithm is
 supposed to be the most effective i.e. when the buffer is equal to the input
-aggregate $B_x=\Lambda_x$. In particular, three interesting cases are when
+aggregate $B_x=\Lambda_x$. In particular, three interesting cases are
 $B=(1,1,\Lambda_k)$, $B=(1,\Lambda_j, \Lambda_k)$ and $B=\Lambda$. Those three
 cases represent ideal cases with different amount of data available. This
 experiment aimed at (1) showing if the keep algorithm worked, (2) seeing how much it
@@ -796,22 +833,23 @@ while increasing $O$.
 %----------------------------------------
 
 \subsection{The buffer ordering problem}
-The buffer ordering problem can be modeled as follows: We can reprensent the
+The buffer ordering problem can be modeled as follows: We can represent the
 problem as a complete bidirectional graph in which each vertex is a buffer. At
 initialization, we must choose a first buffer as an entry point. Let us define
-a path in the graph as visitation order of all buffers in the graph. One buffer
+a path in the graph as a visitation order of all buffers in the graph. One buffer
 cannot appear twice in the list. Finally, let us define a cache that contains
 the data currently in main memory. We define the buffer ordering problem as the
 problem of finding the optimal path such that the amount of memory used by the
 cache is kept minimal during the process. For each buffer, we load some data
-into the cache and free some of it (writing into output files). The amount of
+into the cache (reading the buffer) and free some of it (writing into output files). The amount of
 data released is different depending of the buffers previously visited and each
-buffer can only be visited once which can be reprensented by removing all edges
+buffer can only be visited once which can be represented by removing all edges
 pointing to a visited vertex except the one coming from the previously visited
-vertex. One may solve this problem by using a greedy algorithm but it would
+vertex. One may solve this problem by using a greedy algorithm or a shortest path
+algorithm but it would
 incur more infering at runtime and a potentially complex algorithm to run.
 We decided to keep things simple using a naive buffer order, the storage order,
-as the goal of this study is primarily to assess if the keep algorithm works.
+as the goal of this study was primarily to assess if the keep algorithm works.
 
 \subsection{Breaking the buffers}
 To even reduce the maximum amount of memory used during the rechunk process, we
@@ -827,12 +865,12 @@ loaded anyways.
 
 \subsection{ROI extraction problem}
 The Region Of Interest (ROI) extraction problem is a related problem that still needs
-to be adressed. A solution using chunking as been introduced in []. The authors
+to be adressed. A solution using chunking as been introduced in~\cite{optimal_chuking}. The authors
 define an array partitioned into chunks of equal shapes and then define a
 query as an arbitrary subarray of the input, chunked, array. They define the
 optimal chunking problem as finding the optimal chunk such that the expected
 number of chunks retrieved to answer the query is minimal. In our opinion, the
-solution in [] is limited due to the need of historical or theoretical workload
+solution in~\cite{optimal_chuking} is limited due to the need of historical or theoretical workload
 and the necessity to rechunk the input array into an ``optimal" chunk shape. We
 would prefer letting the application choose the appropriate chunk shape
 regarding its needs and not needing to estimate the processing workload. We
@@ -849,9 +887,8 @@ If we were to use the keep algorithm with $I=R$, we would read the input data
 in slices, exactly like the multiple strategy. The only difference between the
 two strategies, however, is that if some remainders appear at the bottom of the
 buffer, the keep algorithm would keep it to try to read and write files in one
-seek. This is what we meant by "a smarter adaptation of the multiple strategy
-to the rechunk task": We not only try to limit seeking into the files but we
-also try to limit switching between the files. It would be interesting to
+seek. Not only the keep algorithm tries to limit seeking into the files but it
+also tries to limit switching between the files. It would be interesting to
 compare the two algorithms for the split/merge tasks to see if the keep
 implementation brings any kind of improvement.
 
@@ -879,7 +916,9 @@ now recommended for use, even on local computers (using one node).
 \section{Buffer extension algorithm}
 \label{bufferExtensionAlgorithm}
 
-For the $x^{th}$ buffer, the volumes' sizes are:
+Using the nomenclature in section ``The buffer extension algorithm"
+(see Figure~\ref{fig:nomenclature_overlaps}), the $x^{th}$ buffer, the volumes'
+sizes are:
 
 $\begin{cases}
 F_1 = \Omega_k min(B_j, \Theta_j) min(B_i, \Theta_i) \\
@@ -893,9 +932,7 @@ F_7 = \Omega_k \Omega_j max(0, min(B_i-\Theta_i, \Omega_i))
 
 We are only interested in the maximum amount of memory that will be reached by
 the algorithm. To that aim, we will not evaluate the above formula for each $x$
-but we will replace each $\Omega_d(x)$ by its maximum in $\Sigma$. By definition
-of $\Omega_d(x)$, an upper bound is $O_d$ but one can find the exact maximum
-value by computing $\Omega_d(x)$ for all $x$, for each dimension $d$.
+but we will replace each $\Omega_d(x)$ by its maximum in $\Sigma$.
 
 In the following paragraphs, we are finding formulas to extend the buffer one
 dimension at a time, for use in the buffer stretching algorithm.
