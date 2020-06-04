@@ -45,7 +45,7 @@ With the improvement of acquisition methods and the growth in the amount of data
 available in several scientific domains such as health
 sciences~\cite{bigdata_health}~\cite{Amunts1472}, geology~\cite{big_data_geology}
 and astrophysics~\cite{biguniverse}, new big data challenges have emerged related
-to the processing of large amounts of data, including ultra-high resolution
+to the processing of large amounts of data and ultra-high resolution
 images. Big Brain, a human brain model providing microscopic data (20 micrometers) for
 modeling and simulation~\cite{Amunts1472} is an example of ultra high resolution
 images in the neuroscience field.
@@ -57,23 +57,27 @@ chunk shape that would reduce the expected number of chunks to be retrieved by
 any query~\cite{optimal_chuking} or by optimizing the ordering of the chunks
 using space filling curves for example~\cite{optimal_chuking, openconnectomecluster}.
 Instead, our approach is to leave the choice of the
-data storage to the application as much as possible, as in~\cite{seqalgorithms}. We therefore assume that
+data storage to the application as much as possible, as in~\cite{seqalgorithms}.
+We therefore assume that
 the chunk shape and the data ordering in files are arbitrary but known.
 
 For the sake of clarity and without loss of generality,
  we assume in this study that files are written in row-major order (a.k.a
-``C" ordering), where the fastest moving dimension in the file is the last
+``C" order), where the fastest moving dimension in the file is the last
 dimension in the array, and the slowest moving dimension in the file is the first
 dimension in the array. For example a 3D array with dimensions $i$, $j$ and $k$
 would be written on disk by writing the complete columns in the k dimension first
-~\ref{fig:seeks_and_rowmajor}.
+(see Figure~\ref{fig:seeks_and_rowmajor} (a)).
 Our experiments use the HDF5~\cite{hdf5} file format as it is commonly used in the
 scientific community and it is written in \texttt{C-order} by default.
 
 \begin{figure*}[h]
   \centering
   \includegraphics[scale=0.35]{./figures/new/seeks_and_rowmajor.jpeg}
-  \caption{desc.}
+  \caption{Illustration of the r\texttt{C-order} in files. The left subfigure
+  shows how the data is written on disk, with each cube representing a voxel. The
+  right subfigure shows how reading or writing only one part of a cuboid written
+  in the \texttt{C-order} can produce seeks. Each cross represents a seek.}
   \label{fig:seeks_and_rowmajor}
 \end{figure*}
 
@@ -84,13 +88,9 @@ chunks to facilitate processing and storage. Among other advantages, chunking
 allows for efficient queries, flexibility in adding new
 data~\cite{optimal_chuking}, parallel processing, and out-of-core
 computations through block algorithms~\cite{matthew_rocklin-proc-scipy-2015}.
-Moreover, as explained in~\cite{matthew_rocklin-proc-scipy-2015}, block
-algorithms are ``necessary when data cannot be entirely loaded in memory".
-\tristan{last sentence is redundant with last part of previous one.}
-\timothee{to be discussed}
 
 % need for tools to rechunk
-Chunking multidimensional array requires tools to efficiently split,
+Using chunked multidimensional arrays requires tools to efficiently split,
 merge, and ``resplit" or ``rechunk" data files. Previous work in~\cite{seqalgorithms}
 showed that naive algorithms to split an array into several chunks or merge
 array chunks into one output file perform very poorly due to millions of seeks
@@ -103,7 +103,8 @@ when the reading or writing process moves within the block to access a
 contiguous piece of data. For a 3D cuboid of shape $C = (C_i, C_j, C_k)$ stored
 in row-major order, each column of data in the k dimension is contiguously
 stored. There are therefore $C_j \times C_i$ data columns that all require a
-seek~\ref{fig:seeks_and_rowmajor}. Although the seek time depends on various parameters such as the distance
+seek (see Figure~\ref{fig:seeks_and_rowmajor} (b)).
+Although the seek time depends on various parameters such as the distance
 in bytes between two data columns, we assume that all seeks incur the same time
 overhead for the sake of simplicity. Therefore our problem will be to minimize
 the number of seeks required to access data.
@@ -111,8 +112,8 @@ the number of seeks required to access data.
 Not only extracting a subarray from a chunk incurs seeks on disk, but also
 accessing any piece of data from a chunk results in loading the whole chunk in
 memory. Chunking must therefore be used with care as it can be detrimental for
-performance. The Python library \texttt{h5py} (for manipulating HDF5 files in
-Python) recommends a chunk size ``between 10 KiB and 1 MiB" or more for larger
+performance. The Python library \texttt{h5py} for manipulating HDF5 files
+recommends a chunk size ``between 10 KiB and 1 MiB" and more for larger
 datasets~\cite{collette_2014}. The \texttt{dask} Python package presented
 hereafter also mentions the issues relative to chunking and suggests a chunk
 size greater than 100 MB, although remainding that the chunk shape selection is
@@ -154,33 +155,34 @@ This paper makes the following contributions:
 \subsection{The rechunk problem}
 We focus on 3D arrays for simplicity. Consider a 3D array of shape $R =
 (R_i, R_j, R_k)$, stored as input blocks of uniform shape $I =
-(I_i, I_j, I_k)$. Our goal is to rechunk input blocks into output blocks of
+(I_i, I_j, I_k)$. Our goal is to rechunk the input blocks into output blocks of
 uniform but different shape $O = (O_i, O_j, O_k)$. ``Rechunking" is used in
 the literature and in \texttt{dask} with the meaning of logically changing the
 chunk shape. In our context however, we are talking of rechuking files.
 
 A rechunk algorithm (Algorithm~\ref{algo:generalrechunk}) takes as input a
-list of input files \texttt{inFiles} of shape $I$, a list of output files
+list of input files \texttt{inFiles} of shape $I$, a list of empty output files
 \texttt{outFiles} of shape $O$ and the amount of memory \texttt{m}
-available for the rechunk. Based on a given strategy and taking $m$ into
+available for the algorithm. Based on a given strategy and taking $m$ into
 account, the algorithm first defines an ordered list of buffers positions
 \texttt{buffersList} (line 2) together with a \texttt{writing policy}. The
 \texttt{buffersList} defines a partition of array $R$ and output files
 may be covered by one or more buffers. The buffers are loaded sequentially
 (line 4), and their data is stored in a cache (line 6). After each buffer load,
-the \texttt{writing policy} is used by the algorithm to know when to write down
-the data from the cache (lines 7 and 8). An example of a writing policy could be:
+the \texttt{writing policy} is used by the algorithm to know when and where to
+write down the data from the cache to the output files (lines 7 and 8). An
+example of a writing policy could be:
 ``write the data from the cache into the appropriate output file only when all
 the data from that output file has been successfully loaded".
 
 For simplicity, we require that all buffers in \texttt{buffersList} have
 the same shape $B$. We define the ``rechunk problem" the problem of finding the
-best writing policy, together with its associated buffer shape, to minimize the
+best buffer shape, together with its associated writing policy, to minimize the
 number of seeks produced by rechunking the input array from a given chunk shape
 $I$ to another chunk shape $O$, constrained by a fixed amount of memory $m$
 available for the buffer. In this study we attempt to answer to this problem by
-giving an implementation to the \texttt{getBufferPositions}-\texttt{getDataToWrite}
-pair of functions. As you can see in Algorithm~\ref{algo:generalrechunk} there
+giving an implementation to the \texttt{getBufferPositions} function.
+As you can see in Algorithm~\ref{algo:generalrechunk} there
 are no safeguards preventing a bad writing policy to keep too much data in the
 cache or a bad buffer shape to load too much data at a time; these issues have
 to be addressed by \texttt{getBufferPositions}, too.
