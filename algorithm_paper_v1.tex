@@ -280,10 +280,17 @@ distinct values in $p_x$:
 $$d_x=length(set(p_x))$$
 One can see $d_x$ as the number of times that the original image is being sliced
 in dimension $x$ by either an output or an input file or as the number of shape
-mismatches between input and output files in dimension $x$ (see Figure x).
+mismatches between input and output files in dimension $x$ (see Figure~\ref{fig:p}).
 We say that there is a \texttt{shape mismatch} in a given dimension $x$ if
 the border of an output file does not fall over the border of an input file, and
 vice versa.
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.15]{./figures/new/p.jpeg}
+\caption{desc.}
+\label{fig:p}
+\end{figure}
 
 Let us consider a given buffer (of shape $I$). In case of a mismatch in
 dimension $k$ the buffer is divided into two parts in dimension $k$ which results
@@ -723,7 +730,24 @@ needs to load two buffers before writing a given subarray for example.
 Both implementations are available in a same Python package called \texttt{dask rechunk}. It
 contains tests with 99\% coverage and is available on PyPI (The Python Package
 Index). \texttt{dask rechunk} provides a simple API to use the split, merge and rechunk
-algorithms described in this study (figure x).
+algorithms described in this study (Figure~\ref{fig:daskrechunk_split}).
+
+\begin{figure}
+  \begin{verbatim}
+  from dask_io.optimizer as opt
+  from opt.cases.case_config import Split
+
+  case = Split(inputfilepath, I)
+  case.split_hdf5_multiple(datadir)
+  arr = case.get()
+
+  enable_clustering(ONE_GIG * 5)
+  arr.compute()
+  \end{verbatim}
+  \caption{Example code to split a multidimensional array using \texttt{dask rechunk}'s clustered strategy implementation'}
+  \label{fig:daskrechunk_split}
+\end{figure}
+
 
 %----------------------------------------
 \section{Experiments}
@@ -913,7 +937,7 @@ now recommended for use, even on local computers (using one node).
 
 \appendices
 
-\section{Buffer extension algorithm}
+\section{Memory analysis for the buffer extension algorithm}
 \label{bufferExtensionAlgorithm}
 
 Using the nomenclature in section ``The buffer extension algorithm"
