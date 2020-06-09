@@ -8,6 +8,7 @@
 \usepackage{xcolor}
 \usepackage{subfig}
 \usepackage{algorithmic, algorithm}
+\usepackage{hyperref}
 \usepackage{hyperref} % makes cross-refs (biblio, figures, algos, ...) clickable
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
@@ -756,6 +757,7 @@ This section describes the three experiments we did in this study. All the
 results are described in the ``Results" section, and the code of the experiments
 is available in a dedicated repository on Github.
 
+\subsection{Dask's sensitivity to seeks}
 We first designed
 an experiment to prove that \texttt{dask.array} was subject to the seek problem.
 To that aim we created a random array from a uniform distribution and stored it
@@ -786,6 +788,7 @@ subject to the seek problem.
   \label{tab:exp1}
 \end{table}
 
+\subsection{Evaluation of the clustered strategy with dask}
 In order to see if we could reduce the split/merge processing time of dask, we
 implemented and tested the ``clustered" strategy for splitting and merging
 multidimensional arrays. We chose this strategy first because it seemed simpler
@@ -811,6 +814,7 @@ Table~\ref{tab:exp2}.
   \label{tab:exp2}
 \end{table}
 
+\subsection{Evaluation of the keep algorithm}
 After these two preliminary experiment, and in order to evaluate the
 efficiency of the keep algorithm, we compared it against vanilla \texttt{dask}
 on local computer. To be fair we used dask with one thread as required for our
@@ -928,6 +932,19 @@ that the algorithm has to switch between a lot of input files.
   \label{tab:exp3_3}
 \end{table*}
 
+\subsection{Experimental setting}
+All these experiments have been executed under the same conditions, on a private
+cluster using \texttt{slurm} as workload manager. Each compute node has 256GB of
+RAM, 6 SSDs of size 480 GB and 32 cores. We only used 1 node and 1 SSD at a
+time. The Python environment used was a
+conda environment, all packages used together with their version are available
+in a \texttt{requirements.txt} file. The instructions about how to install the
+dependencies in a virtual or
+conda environement are provided in the \texttt{README} file of the
+\href{https://github.com/big-data-lab-team/dask_io}{project's repository}. The
+code for all experiments can be found in a
+\href{https://github.com/GTimothee/dask_io_experiments}{dedicated repository}
+as well.
 %----------------------------------------
 \section{Results}
 %----------------------------------------
