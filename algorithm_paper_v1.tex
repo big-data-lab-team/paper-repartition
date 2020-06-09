@@ -786,15 +786,13 @@ subject to the seek problem.
   \label{tab:exp1}
 \end{table}
 
-In order to see if a strategy to reduce the number of seeks was effective, we
+In order to see if we could reduce the split/merge processing time of dask, we
 implemented and tested the ``clustered" strategy for splitting and merging
 multidimensional arrays. We chose this strategy first because it seemed simpler
-to implement and study~\cite{seqalgorithms} showed that such a strategy was
-working. It means that if it failed the problem would be more likely to come
-from the implementation or dask than from the algorithm itself. We also know
-from~\cite{seqalgorithms} that the difference between the naive and clustered
-strategies should be large enough to be visible in the processing time. The
-shapes used for the experiment are shown on the Table~\ref{tab:exp2}.
+to implement. We also know from~\cite{seqalgorithms} that the difference between
+the naive and clustered strategies should be large enough to be visible in the
+processing time. The shapes used for the experiment are shown on the
+Table~\ref{tab:exp2}.
 
 \begin{table}[ht]
  \centering
@@ -813,40 +811,122 @@ shapes used for the experiment are shown on the Table~\ref{tab:exp2}.
   \label{tab:exp2}
 \end{table}
 
-After these two preliminary experiment, we implemented a simplified version of
-the keep algorithm due to the difficulty to implement the special case where
-$B_x<I_x$ (see section ``Implementation") \timothee{TODO}. In order to evaluate the
-efficiency of the keep algorithm we compare it against vanilla \texttt{dask} on local
-computer. To be fair we used dask with one thread as required for our
-implementation but also with the classic multi-threaded scheduler as it is the
+After these two preliminary experiment, and in order to evaluate the
+efficiency of the keep algorithm, we compared it against vanilla \texttt{dask}
+on local computer. To be fair we used dask with one thread as required for our
+implementation but also with the standard multi-threaded scheduler as it is the
 default when using \texttt{dask.array}. In order to compare our implementation
 and dask vanilla to a naive rechunk, we also added a plain Python implementation
 to the benchmark. For the experiments presented below we built a random 3D array
  of the size of Big Brain, drawn from a uniform distribution. Once again, the
  array is initially stored into an HDF5 file.
 
-We did three sub-experiments on the keep algorithm. The first one consisted in
-comparing the different implementations in the case where the keep algorithm is
-supposed to be the most effective i.e. when the buffer is equal to the input
-aggregate $B_x=\Lambda_x$. In particular, three interesting cases are
-$B=(1,1,\Lambda_k)$, $B=(1,\Lambda_j, \Lambda_k)$ and $B=\Lambda$. Those three
-cases represent ideal cases with different amount of data available. This
-experiment aimed at (1) showing if the keep algorithm worked, (2) seeing how much it
-can improve the processing speed and (3) how much gain it represents to be able to
-stretch the buffer in each dimension.
+We did three sub-experiments on the keep algorithm on a multidimensional array
+of shape $(3900,3000,3500)$. The first one consisted in comparing the different
+implementations in the case where the keep algorithm is supposed to be the most
+effective i.e. when the buffer is equal to the input aggregate $B_x=\Lambda_x$
+(Table~\ref{tab:exp3_1}). This experiment aimed at showing if the keep
+algorithm worked and seeing how much it can improve the processing speed.
+The experiment has been done with $I>O$ and $I<O$ at different resolution:
+$I~=\frac{R}{5}$, $I~=\frac{R}{10}$, $I~=\frac{R}{22}$ and $I$ of size the size
+recommended by \texttt{dask} i.e. more than 100MB (about 200MB in our case).
+Note that in Table~\ref{tab:exp3_1} we only tested $I<O$ when $I=(195,150,175)$
+as the resulting $O$ size would be too small (less than 10MB).
 
-In the second experiment, a more realistic case has been tested. In this case,
-$O~=I$ which is more likely to happen in real life. Although in a realistic
-scenario $O$ and $I$ would be relatively small, we also tested bigger shapes to
-see the impact on performance and if one implementation was more resilient than
-another.
+\begin{table}[ht]
+ \centering
+ \caption{Experiment 3.1}
 
-Finally, the particular case of an important shape mismatch was tested. The cases
-where $O>>I$ and $O<<I$ are equivalent, as in both cases the input aggegate
-will be quite big. This is supposed to be a bad case for the keep algorithm
-as extending the buffer to $\Lambda$ will be more complicated. For this
-experiment, we fixed $m$ and $I$ and then ran multiple times the algorithms
-while increasing $O$.
+  \begin{tabular}[t]{c c c}
+  \hline
+    I & O & $I<O$ \\
+    \hline\hline
+    (780,600,700) & (650,500,500) & False \\
+    \hline
+    (780,600,700) & (975,1000,875) & True \\
+    \hline
+    (390,300,350) & (325,250,250) & False  \\
+    \hline
+    (390,300,350) & (650,500,700) & True \\
+    \hline
+    (195,150,175) & (300,250,250) & True \\
+    \hline
+    (195,150,175) & (650,375,500) & True \\
+    \hline
+    (650,375,500) & (390,300,350) & False \\
+    \hline
+    (650,375,500) & (975,600,700) & True \\
+    \hline
+  \end{tabular}
+
+  \label{tab:exp3_1}
+\end{table}
+
+In the second experiment, we tested the case where $m$ is not big enough to get
+$B=\Lambda$. We did this experiment at two different resolutions, with $I>O$
+and $I<O$ (see Table~\ref{tab:exp3_2}) and tested two buffers for each case:
+$B_1=(1,0.5\Lambda_j,\Lambda_k)$ and $B_2=(0.5\Lambda_i,\Lambda_j,\Lambda_k)$.
+In each case, $B$, $I$ and $O$ must be a partition of $R$. There is one missing
+experiment in Table~\ref{tab:exp3_2} as the resulting buffer $B_2$ was not a
+partition of $R$.
+
+\begin{table*}[ht]
+ \centering
+ \caption{Experiment 3.2}
+
+  \begin{tabular}[t]{c c c c c}
+  \hline
+    $I$ & $O$ & $\Lambda$ & B1 & B2 \\
+    \hline\hline
+    (780,600,700) & (975,1000,875) ($I<O$) & (1560,1200,1400) & (1,600,1400) & Not a partition of R \\
+    \hline
+    (780,600,700) & (650,500,500) ($I>O$) & (780,600,700) & (1,300,700) & (390,600,700) \\
+    \hline
+    (390,300,350) & (650,500,700) ($I<O$) & (780,600,700) & (1,300,700) & (390,600,700) \\
+    \hline
+    (390,300,350) & (325,250,250) ($I>O$) & (390,300,350) & (1,150,350) & (195,300,350) \\
+    \hline
+  \end{tabular}
+  \label{tab:exp3_2}
+\end{table*}
+
+Finally, the particular case of an important shape mismatch was tested, where
+$O>>I$ and $O<<I$. In both cases the input aggegate will be quite big which is
+supposed to be a bad case for the keep algorithm as extending the buffer to
+$\Lambda$ will be more complicated. We tested several cases described in
+Table~\ref{tab:exp3_3}. As one can see, $O>>I$ and $O<<I$ seems to be pretty
+equivalent as in both cases the input aggregate shape is the same. But both are
+worth experimenting as when $O<<I$ we only read one file, whereas $O>>I$ implies
+that the algorithm has to switch between a lot of input files.
+
+\begin{table*}[ht]
+ \centering
+ \caption{Experiment 3.3}
+
+  \begin{tabular}[t]{c c c c c}
+  \hline
+    $I$ & $O$ & $\Lambda$ & B & $x_i$/$x_j$\\
+    \hline\hline
+    (1950,1500,1750) & (195,150,175) & (1950,1500,1750) & (1,375,$\Lambda_k$) & $x_j=$25\%$\Lambda_j$ \\
+    \hline
+    (1950,1500,1750) & (195,150,175) & (1950,1500,1750) & (1,750,$\Lambda_k$) & $x_j=$50\%$\Lambda_j$ \\
+    \hline
+    (1950,1500,1750) & (195,150,175) & (1950,1500,1750) & (390,$\Lambda_j$,$\Lambda_k$) & $x_i=$20\%$\Lambda_i$ \\
+    \hline
+    (1950,1500,1750) & (195,150,175) & (1950,1500,1750) & (975,$\Lambda_j$,$\Lambda_k$) & $x_i=$50\%$\Lambda_i$ \\
+    \hline
+    (195,150,175) & (1950,1500,1750) & (1950,1500,1750) & (1,375,$\Lambda_k$) & $x_j=$25\%$\Lambda_j$ \\
+    \hline
+    (195,150,175) & (1950,1500,1750) & (1950,1500,1750) & (1,750,$\Lambda_k$) & $x_j=$50\%$\Lambda_j$ \\
+    \hline
+    (195,150,175) & (1950,1500,1750) & (1950,1500,1750) & (390,$\Lambda_j$,$\Lambda_k$) & $x_i=$20\%$\Lambda_i$ \\
+    \hline
+    (195,150,175) & (1950,1500,1750) & (1950,1500,1750) & (975,$\Lambda_j$,$\Lambda_k$) & $x_i=$50\%$\Lambda_i$ \\
+    \hline
+  \end{tabular}
+
+  \label{tab:exp3_3}
+\end{table*}
 
 %----------------------------------------
 \section{Results}
