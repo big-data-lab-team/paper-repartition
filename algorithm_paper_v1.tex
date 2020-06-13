@@ -955,30 +955,47 @@ as well.
 \section{Results}
 %----------------------------------------
 
+\subsection{Experiment 1}
+\begin{figure*}
+  \centering
+  \includegraphics[scale=0.5]{./figures/exp1_results.png}
+  \label{fig:exp1}
+  \caption{Experiment 1}
+\end{figure*}
+
 \subsection{Experiment 2}
 \begin{figure*}
   \centering
-  \includegraphics[scale=0.5]{./figures/exp2_results_blocks.png}
-  \label{fig:exp2_block}
-  \caption{Experiment 2 on blocks}
-\end{figure*}
-
-\begin{figure*}
-  \centering
-  \includegraphics[scale=0.5]{./figures/exp2_results_slabs.png}
-  \label{fig:exp2_slabs}
-  \caption{Experiment 2 on slabs}
+  \includegraphics[scale=0.5]{./figures/exp2_results.png}
+  \label{fig:exp2}
+  \caption{Experiment 3.2  - (chunk shape)\\
+  case 1 (350, 350, 350)\\
+  case 2 (500, 500, 500)\\
+  case 3 (875, 875, 875)\\
+  case 4 (28, 3500, 3500)\\
+  case 5 (50, 3500, 3500)\\
+  }
 \end{figure*}
 
 \subsection{Experiment 3}
 \subsubsection{Experiment 3.1}
 \begin{figure*}
   \centering
-  \includegraphics[scale=0.4]{./figures/exp5_1_results.png}
+  \includegraphics[scale=0.5]{./figures/exp5_1_results.png}
   \label{fig:exp3_1}
-  \caption{Experiment 3.1}
-
+  \caption{Experiment 3.1  - (O)(I)(B)\\
+  case 1 (300, 250, 250)(195, 150, 175)(390, 300, 350)\\
+  case 2 (325, 250, 250)(390, 300, 350)(390, 300, 350)\\
+  case 3 (390, 300, 350)(650, 375, 500)(650, 375, 500)\\
+  case 4 (650, 500, 500)(780, 600, 700)(780, 600, 700)\\
+  case 5 (650, 500, 700)(390, 300, 350)(780, 600, 700)\\
+  }
 \end{figure*}
+
+Note that the keep algorithm is being run with the single-threaded scheduler.
+
+\subsubsection{Experiment 3.2}
+\subsubsection{Experiment 3.3}
 
 %----------------------------------------
 \section{Discussion}
