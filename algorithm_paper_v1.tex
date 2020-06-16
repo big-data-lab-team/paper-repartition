@@ -20,9 +20,7 @@
 
 \begin{document}
 
-\title{Repartitioning large multi-dimensional arrays: a sequential algorithm and its implementation in Dask
-\tristan{I reformulated the title with this logic: (1) I don't think split and merge should be part of the title, as these are now special cases of re-partitioning
- (2) I think the emphasis should be on the algorithm (first words in the title) rather than on Dask which is here just an implementation framework.}}
+\title{Repartitioning large multi-dimensional arrays: a sequential algorithm and its implementation in Dask}
 
 \author{\IEEEauthorblockN{Timoth\'ee Gu\'edon, Val\'erie Hayot-Sasson, Tristan Glatard \\
   \IEEEauthorblockA{
@@ -92,12 +90,15 @@ allows for efficient queries, flexibility in adding new
 data~\cite{optimal_chuking}, parallel processing, and out-of-core
 computations through block algorithms~\cite{matthew_rocklin-proc-scipy-2015}.
 
-% need for tools to rechunk
+% need for tools to repartition
 Using chunked multidimensional arrays requires tools to efficiently split,
-merge, and ``resplit" or ``rechunk" data files. Previous work in~\cite{seqalgorithms}
+merge, and ``resplit" or ``repartition" data files. Previous work in~\cite{seqalgorithms}
 showed that naive algorithms to split an array into several chunks or merge
-array chunks into one output file perform very poorly due to millions of seeks
-occurring on disk.
+array chunks into one output file do not perform well due to millions of seeks
+occurring on disk. This study is focused on sequential algorithms for
+repartitioning multidimensional arrays, letting the parallel and distributed
+cases as future work, although they are relevant, too. To the best of our
+knowledge, the repartition problem has not been extensively studied.
 
 % why subarray extraction incurs seeks
 Indeed, retrieving sub-arrays from an array stored on disk incurs seeks in two
@@ -126,7 +127,7 @@ highly dependent on the application~\cite{rocklin_bourbeau_2019}.
 \texttt{dask} is a popular Python package, part of the SciPy ecosystem, enabling parallel
 and out-of-core computations~\cite{matthew_rocklin-proc-scipy-2015}. It has an
 important scientific community which is likely to have the problem we try to
-solve in this paper, i.e. rechunking multidimensional array files. That is why
+solve in this paper, i.e. repartitioning multidimensional array files. That is why
 we decided to implement our work as an optimization package for \texttt{dask}.
 We focus on the \texttt{dask.array} collection, a data structure designed for
 multi-dimensional array processing using blocked algorithms, hence leveraging
@@ -146,37 +147,32 @@ Numpy clone, and \texttt{dask.dataframe}, a Pandas clone.
 \subsection{Contributions}
 This paper makes the following contributions:
 \begin{itemize}
-  \item Definition of the rechunk problem for multidimensional arrays
-  \item A sequential algorithm to efficiently rechunk multidimensional arrays
+  \item Definition of the repartition problem for multidimensional arrays
+  \item A sequential algorithm to efficiently repartition multidimensional arrays
   \item An open implementation of this algorithm in \texttt{dask},
-  in a library called \texttt{dask rechunk}.
+  in a library called \texttt{dask repartition}.
   \item An open implementation in \texttt{dask} of the ``clustered" split and
-  merge strategy described in~\cite{seqalgorithms}, in \texttt{dask rechunk} too.
+  merge strategy described in~\cite{seqalgorithms}, in \texttt{dask repartition} too.
 \end{itemize}
 
-\tristan{In the intro, make sure that we clearly explain that we focus on the sequential case although the parallel one would be relevant too.
-We should also explain that this problem has been seldom studied}
-
 \section{Problem definition}
-\subsection{The rechunk problem}
+\subsection{The repartition problem}
 We focus on 3D arrays for simplicity. Consider a 3D array of shape $R =
 (R_i, R_j, R_k)$, partitioned as input blocks of uniform shape $I = (I_i,
 I_j, I_k)$ stored on disk. Our goal is to repartition the input blocks into output blocks
 of uniform but different shape $O = (O_i, O_j, O_k)$. A repartitioning function reads the input blocks from
-disk, and writes the output blocks to disk. \tristan{I think
-re-partioning is a better word than re-chunking as it: (1) reflects the
-mathematical definition of a partition, (2) avoids the ambiguity with logical rechunk.}
+disk, and writes the output blocks to disk.
 
-A re-partioning algorithm (Algorithm~\ref{algo:generalrechunk}) takes a
-list of input blocks \texttt{inBlocks} of shape $I$ \tristan{I changed inFiles to inBlocks, as blocks can be stored in 1 or multiple files}, a list of output block definitions
+A re-partioning algorithm (Algorithm~\ref{algo:generalrepartition}) takes a
+list of input blocks \texttt{inBlocks} of shape $I$, a list of output block definitions
 \texttt{outBlocks} of shape $O$ and the amount of memory \texttt{m}
 available for the algorithm. Subject to $m$, the algorithm first defines an ordered list of buffers positions
-\texttt{buffersList} (line 2) and a \texttt{writing policy} \tristan{The definition of this policy is ambiguous}. 
+\texttt{buffersList} (line 2) and a \texttt{writing policy} \tristan{The definition of this policy is ambiguous}.
 \texttt{buffersList} defines the partition of array $R$ to be used by the algorithm internally.
 The buffers are then loaded sequentially from disk
 (line 4-5), and their data is stored in a memory cache (line 6). After each buffer load,
 the \texttt{writing policy} is used by the algorithm to know when and where to
-write down the data from the cache to the output files (lines 7 and 8) \tristan{This is ill-defined, see previous comment}. An
+write down the data from the cache to the output files (lines 7 and 8). An
 example of a writing policy could be:
 ``write the data from the cache into the appropriate output file only when all
 the data from that output file has been successfully loaded".
@@ -186,11 +182,9 @@ the same shape $B$. Our objective function
 $\mathrm{seeks}$ returns the number of seeks incurred by the use of
 $B$ and $\mathrm{policy}$ in the repartitioning algorithm. The
 repartitioning problem is to find $B$ and $\mathrm{policy}$ that minimize
-$\mathrm{seeks(B, policy)}$ subject to $m$ \tristan{Once policy is
-clarified, we could write the problem definition more clearly, as an
-optimization problem called repartition(I, O)}. Solutions of this problem materialize as
+$\mathrm{seeks(B, policy)}$ subject to $m$. Solutions of this problem materialize as
 implementations of function \texttt{getBufferPositions} in
-Algorithm~\ref{algo:generalrechunk}.
+Algorithm~\ref{algo:generalrepartition}.
 
 A lower bound on the number of seeks for the repartitioning problem is
 $n_i + n_o$, with $n_i$ the number of input files and $n_o$ the number of output
@@ -198,13 +192,20 @@ files. Indeed, input and output files all have to be accessed at least once,
 which requires a seek.
 
 \begin{algorithm}
-  \caption{General re-partitioning algorithm \tristan{some notations are still undefined, for instance I and O. Moreover, inputs and outputs should be defined with a line 
-  of text, as in Algorithm 1 of \url{https://github.com/big-data-lab-team/paper-multidimensional-ltc/releases/download/0.1/paper.pdf}.}}
-  \label{algo:generalrechunk}
+  \caption{General re-partitioning algorithm}
+  \label{algo:generalrepartition}
   \begin{algorithmic}[1]
-    \STATE \textbf{Inputs:} inBlocks, outBlocks, $m$
-    \STATE buffersList, policy $\leftarrow$ getBufferPositions($I$,$O$,$m$)
+    \STATE \textbf{Inputs}
+    \STATE inBlocks: input chunk stored in one dedicated file or in one dataset from a HDF5 file.
+    \STATE outBlocks: output chunks to be filled in, created as one dedicated file or as one dataset from a unique output HDF5 file.
+    \STATE $m$: memory available for the algorithm
+    \STATE $I$: shape of one input block
+    \STATE $O$: shape of one output block
+    \STATE
+    \STATE \textbf{Algorithm}
+    \STATE B, policy $\leftarrow$ getBufferPositions($I$,$O$,$m$)
     \STATE initialize(cache)
+    \STATE buffersList = getBuffers(B)
     \FOR{buffer in buffersList}
       \STATE bufferData $\leftarrow$ read(inBlocks, buffer)
       \STATE cache.insert(bufferData)
@@ -220,10 +221,7 @@ which requires a seek.
 Special cases of the repartitioning problem occur when $I=R$ (``split'' problem)
 or when $O=R$ (``merge'' problem). Two strategies were introduced
 in~\cite{seqalgorithms} to address these problems: the ``multiple" and the
-``clustered" strategies. These strategies
-use of cache of size $B$ \tristan{mention somewhere, in a notation box,
-that B is used to represent the array, the shape of the array and the size
-of it}, that is, every loaded buffer is directly written to the
+``clustered" strategies. In these strategies, every loaded buffer is directly written to the
 destination output files. It is equivalent to defining the writing policy
 as ``write all the cache into the appropriate output files". The only difference
 between the merge and the cluster strategies lies in definition of the buffer shape $B$.
@@ -243,11 +241,11 @@ cases in which the algorithm seeks in all dimensions \tristan{Last sentence is a
 The multiple strategy used for the split problem  in~\cite{seqalgorithms}
 aims at not doing any seek while reading and writing \tristan{all strategies aim at not seeking, reformulate}.
 Both the input file and the output blocks are read/written contiguously. In
-terms of Algorithm~\ref{algo:generalrechunk}, this means defining buffers as
+terms of Algorithm~\ref{algo:generalrepartition}, this means defining buffers as
 contiguous parts of the input array. It is equivalent to extending the buffer
 in the inverse of the storage order: $k \rightarrow j \rightarrow i$ in the case
 of the \texttt{C-order}. The tradeoff lies in switching between files
-at each buffer loading. Using this strategy for the rechunk task would imply
+at each buffer loading. Using this strategy for the repartition task would imply
 reading contiguous columns or slices of data from the input files and writing it
 contiguously in the output files. This would result in even more switches
 between input and output files and one can find worst cases when using small
@@ -261,14 +259,12 @@ adaptation of the multiple strategy to the repartitioning problem.
 
 Our baseline algorithm for the repartitioning problem loads one input block
 at a time, that is, $B$=$I$ in
-Algorithm~\ref{algo:generalrechunk}, and directly writes it to the appropriate output blocks \tristan{Neither B nor I appears in Algo 1 while these notations are used to define the problem.
-Suggestion: rename getBufferPositions to getBufferShape, return B instead of buffersList, use a function getBuffers(B) in the for loop to return buffer positions from B}.
-We assume that one input block fits in memory ($m \geq I_iI_jI_k$) \tristan{This assumption should go into problem definition}. Each
-buffer is loaded only once \tristan{This should be explained in the description of Algo 1.}
+Algorithm~\ref{algo:generalrepartition}, and directly writes it to the appropriate output blocks.
+For the basline algorithm, we assume that one input block fits in memory ($m \geq I_iI_jI_k$).
+As in Algorithm~\ref{algo:generalrepartition}, each buffer is loaded only once.
 
-The buffer order has no
-implication on the number of seeks, so let us set the buffer order arbitrarily
-to the storage order ($i \rightarrow j \rightarrow k$ in \texttt{C-order}) \tristan{I don't get this part}.
+The buffer order has no implication on the number of seeks, so let us set the buffer order arbitrarily
+to the storage order ($i \rightarrow j \rightarrow k$ in \texttt{C-order}).
 
 The number of seeks $s$ induced by this baseline algorithm is the
 sum of the number of seeks done for each buffer, that is, the sum of:
@@ -287,10 +283,8 @@ such that each element in $p_x$ is included in exactly one input block and in ex
   \label{fig:p}
   \end{figure}
 
-\tristan{Shall we just focus on the worst-case configuration where shape mismatches occur in each dimension?
-I think it would simplify the analysis. In any case this explanation still requires clarification.}
 We say that there is a \emph{shape mismatch} in a given dimension $x$ if $I_x$
-isn't a multiple of $O_x$, and $O_x$ isn't a multiple of $I_x$ \tristan{is this what you mean?}.
+isn't a multiple of $O_x$, and $O_x$ isn't a multiple of $I_x$.
 
 Let us consider a given buffer (of shape $I$). In case of a mismatch in
 dimension $k$ the buffer is divided into two parts in dimension $k$ which results
@@ -316,7 +310,7 @@ s_{write} = [(d_k+1)R_iR_j]\alpha_k \\ + [(d_j+1)R_i\frac{R_k}{I_k}](1-\alpha_k)
 The seeks for opening output files are included in Equation~\ref{eq:1}.
 In case of no shape mismatch, no seek occur when writing the data into the output
 files apart from opening the output files. However, no shape mismatch imply no
-rechunk problem so we do not consider this case in $s$.
+repartition problem so we do not consider this case in $s$.
 
 Finally, an equation for $s$ is: $s = s_{write} + s_{read}$,
 with $s_{read} = \frac{R_i}{I_i} \frac{R_j}{I_j} \frac{R_k}{I_k}$, the number of
@@ -346,7 +340,7 @@ input files a.k.a. buffers to read.
 \begin{figure}[h]
 \centering
 \includegraphics[scale=0.55]{./figures/baseline_math_model.png}
-\caption{Experiment on the seek model of the baseline algorithm for rechunking a 3D cubic array.
+\caption{Experiment on the seek model of the baseline algorithm for repartitioning a 3D cubic array.
 The results show considerable seek reduction when removing one shape mismatch at a time.
 }
 \label{fig:baseline_math_model}
@@ -370,8 +364,8 @@ If the goal of this experiment is to validate the seek model, then the values pr
 \subsection{The keep strategy}
 
 As mentioned previously, like the split and merge strategies the baseline
-algorithm for the rechunk problem empties the cache at each iteration. In a
-split/merge/rechunk problem a lot of seeks occur in case of a shape mismatch,
+algorithm for the repartition problem empties the cache at each iteration. In a
+split/merge/repartition problem a lot of seeks occur in case of a shape mismatch,
 for example, when a data column loaded in memory is split between two output
 files or more. We propose to leverage the cache using a \texttt{keep strategy}
 to keep some data in the cache while it cannot be written contiguously in output
@@ -384,7 +378,7 @@ files~\ref{fig:keepvsbaseline}.
 \label{fig:keepvsbaseline}
 \end{figure}
 
-In the cache (Algorithm~\ref{algo:generalrechunk}), the data that is not
+In the cache (Algorithm~\ref{algo:generalrepartition}), the data that is not
 contiguous in its output file of destination is called \texttt{extra data}.
 The \texttt{keep strategy} first consists in finding a buffer shape covering at least
 one output file completely, i.e. $B_x>O_x$ for all dimensions $x$.
@@ -393,11 +387,11 @@ mismatch, hence making the cache management possible to reduce the number of see
 If $m$ is too small, then the keep strategy tries to find a buffer
 shape as closed as possible from the optimal buffer shape. Using such an optimal
 buffer shape and being able to keep all the extra data into memory during the
-whole rechunk algorithm would incur the minimum number of seeks possible: $n_i + n_o$.
+whole repartition algorithm would incur the minimum number of seeks possible: $n_i + n_o$.
 Indeed, it is equivalent to writing an output file only when all its data is in
 cache.
 The implementation of the keep strategy is equivalent to implementing
-\texttt{getBufferPositions} in Algorithm~\ref{algo:generalrechunk} to find a
+\texttt{getBufferPositions} in Algorithm~\ref{algo:generalrepartition} to find a
 buffer shape closed to the optimal buffer shape, and defining the write policy
 as ``write all the data that is not extra data".
 
@@ -408,7 +402,7 @@ must be a multiple of $I_x$ in order to keep reading each input file in one seek
 We define an \texttt{input aggregate} as being the minimum aggregate of input files that
 covers one output file completely. In particular, it is the input aggregate that
 covers the first output file (indexed $(0,0,0)$) in the original image being
-rechunked. The best buffer shape for the keep strategy is therefore the shape of
+repartitioned. The best buffer shape for the keep strategy is therefore the shape of
 an input aggregate. We call this shape $\Lambda$.
 
 \subsection{Stretching the buffer in the inverse storage order}
@@ -454,7 +448,7 @@ that $m$ is large enough to store a buffer of shape (1,1,$\Lambda_k$). It means
 that we can read one complete data column from an input file and keep the
 remainder in memory for the next buffer. If it was not the case the keep
 algorithm would not give a significant improvement in the number of seeks
-produced by the rechunk task, compared to the baseline algorithm.
+produced by the repartition task, compared to the baseline algorithm.
 
 In this analysis, we express the quantity of memory used by an array as the
 number of voxels it contains. It is equivalent to saying that the number of
@@ -583,7 +577,7 @@ can take at any step of the algorithm is represented by $\phi$ (lines 6, 11,
 16, 21).
 
 Now that the best buffer shape can be computed, we can express the
-\texttt{getBufferPositions} function (Algorithm~\ref{algo:generalrechunk}) in
+\texttt{getBufferPositions} function (Algorithm~\ref{algo:generalrepartition}) in
 Algorithm~\ref{algo:getbuffersposition}.
 
 \begin{algorithm}
@@ -726,12 +720,12 @@ a given data part of a given output file has to be stored at once. By doing this
 we create dependencies in the task graph. Such dependency tells \texttt{dask} that it
 needs to load two buffers before writing a given subarray for example.
 
-\subsection{Dask rechunk}
+\subsection{Dask repartition}
 
-Both implementations are available in a same Python package called \texttt{dask rechunk}. It
+Both implementations are available in a same Python package called \texttt{dask repartition}. It
 contains tests with 99\% coverage and is available on PyPI (The Python Package
-Index). \texttt{dask rechunk} provides a simple API to use the split, merge and rechunk
-algorithms described in this study (Figure~\ref{fig:daskrechunk_split}).
+Index). \texttt{dask repartition} provides a simple API to use the split, merge and repartition
+algorithms described in this study (Figure~\ref{fig:daskrepartition_split}).
 
 \begin{figure}
   \begin{verbatim}
@@ -745,8 +739,8 @@ algorithms described in this study (Figure~\ref{fig:daskrechunk_split}).
   enable_clustering(ONE_GIG * 5)
   arr.compute()
   \end{verbatim}
-  \caption{Example code to split a multidimensional array using \texttt{dask rechunk}'s clustered strategy implementation'}
-  \label{fig:daskrechunk_split}
+  \caption{Example code to split a multidimensional array using \texttt{dask repartition}'s clustered strategy implementation'}
+  \label{fig:daskrepartition_split}
 \end{figure}
 
 
@@ -826,7 +820,7 @@ efficiency of the keep algorithm, we compared it against vanilla \texttt{dask}
 on local computer. To be fair we used dask with one thread as required for our
 implementation but also with the standard multi-threaded scheduler as it is the
 default when using \texttt{dask.array}. In order to compare our implementation
-and dask vanilla to a naive rechunk, we also added a plain Python implementation
+and dask vanilla to a naive repartition, we also added a plain Python implementation
 to the benchmark. For the experiments presented below we built a random 3D array
  of the size of Big Brain, drawn from a uniform distribution. Once again, the
  array is initially stored into an HDF5 file.
@@ -1021,7 +1015,7 @@ We decided to keep things simple using a naive buffer order, the storage order,
 as the goal of this study was primarily to assess if the keep algorithm works.
 
 \subsection{Breaking the buffers}
-To even reduce the maximum amount of memory used during the rechunk process, we
+To even reduce the maximum amount of memory used during the repartition process, we
 could read the input files one by one instead of enforcing \texttt{dask} to read a whole
 buffer at a time, provided that the input files' parts are read in the right
 order (following the buffer order). The idea of reading an entire buffer at a
@@ -1040,7 +1034,7 @@ query as an arbitrary subarray of the input, chunked, array. They define the
 optimal chunking problem as finding the optimal chunk such that the expected
 number of chunks retrieved to answer the query is minimal. In our opinion, the
 solution in~\cite{optimal_chuking} is limited due to the need of historical or theoretical workload
-and the necessity to rechunk the input array into an ``optimal" chunk shape. We
+and the necessity to repartition the input array into an ``optimal" chunk shape. We
 would prefer letting the application choose the appropriate chunk shape
 regarding its needs and not needing to estimate the processing workload. We
 define the ROI extraction problem as follows: Finding an algorithm that takes
@@ -1049,8 +1043,8 @@ the less number of seeks as possible.
 
 \subsection{Solving three problems at once}
 As stated in the introduction, the split and merge tasks are special cases of
-the rechunk task. This observation leads us to think that maybe one could find
-one optimal algorithm for the split, merge and rechunk tasks.
+the repartition task. This observation leads us to think that maybe one could find
+one optimal algorithm for the split, merge and repartition tasks.
 
 If we were to use the keep algorithm with $I=R$, we would read the input data
 in slices, exactly like the multiple strategy. The only difference between the
@@ -1062,7 +1056,7 @@ compare the two algorithms for the split/merge tasks to see if the keep
 implementation brings any kind of improvement.
 
 \subsection{Towards distributed systems}
-A future work would be to find distributed versions of the split/merge/rechunk
+A future work would be to find distributed versions of the split/merge/repartition
 algorithms. Lots of scientists use HPC (High Performance Computing) clusters
 regularly which brings considerations about how to use such distributed
 algorithms with Lustre for example, a commonly used filesystem for HPC. \texttt{dask}
