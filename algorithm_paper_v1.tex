@@ -276,8 +276,10 @@ sum of the number of seeks done for each buffer, that is, the sum of:
   \item the number of seeks done by writing into the output blocks
 \end{itemize}
 To compute the last term, let us define $p_x$ the partition of $R_x$
-such that each element in $p_x$ is included in exactly one input block and in exactly one output block \tristan{is this what you mean?}
-(see Figure~\ref{fig:p}). $d_x$ is the number of elements in $p_x$.
+such that each element in $p_x$ is included in exactly one input block and in
+exactly one output block (see Figure~\ref{fig:p}). $p_x$ can be considered as
+the number of times $R$ is being cut by either an input or an output file in
+dimension $x$. $d_x$ is the number of elements in $p_x$.
 \begin{figure}[h]
   \centering
   \includegraphics[scale=0.15]{./figures/new/p.jpeg}
