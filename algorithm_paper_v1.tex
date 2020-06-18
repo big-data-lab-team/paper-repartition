@@ -224,7 +224,8 @@ in~\cite{seqalgorithms} to address these problems: the ``multiple" and the
 ``clustered" strategies. In these strategies, every loaded buffer is directly written to the
 destination output files. It is equivalent to defining the writing policy
 as ``write all the cache into the appropriate output files". The only difference
-between the merge and the cluster strategies lies in definition of the buffer shape $B$.
+between the multiple and the clustered strategies lies in the definition of the
+buffer shape $B$.
 
 In the split problem studied in~\cite{seqalgorithms} $(I=R)$, a naive
 strategy defines buffers with the same shape as the output blocks
@@ -232,28 +233,29 @@ strategy defines buffers with the same shape as the output blocks
 to the appropriate output block. The clustered strategy, however, loads as
 many contiguous data blocks of shape $O$ as possible to fit in $m$.
 Depending on the amount of main memory available, data blocks may be loaded
-individually, by entire columns, or by entire slabs. Using the clustered
-strategy for repartitioning would imply reading multiple complete input
-blocks, which incurs seeks in the output blocks, or reading complete output
-blocks by seeking into input files. In either case one can find special
-cases in which the algorithm seeks in all dimensions \tristan{Last sentence is a bit vague}.
+individually, by entire columns, or by entire slabs.
+Although this strategy allows to write each output block in one seek
+(for opening the output file), the clustered strategy is limited by the fact
+that it does not optimize the reading step; it reads an output block no matter
+if (1) it is split in a lot of different input blocks or if (2) even if it is stored
+in one input block it will do a lot of seeks in case of a shape mismatch.
+In the case of the repartition task, one can expect the clustered strategy to
+perform poorly as these limits are exacerbated as there are more than one input or
+output file (as it is the case in the split/merge problems).
 
 The multiple strategy used for the split problem  in~\cite{seqalgorithms}
-aims at not doing any seek while reading and writing \tristan{all strategies aim at not seeking, reformulate}.
+aims at not doing any seek while reading \textit{and} writing;
 Both the input file and the output blocks are read/written contiguously. In
 terms of Algorithm~\ref{algo:generalrepartition}, this means defining buffers as
 contiguous parts of the input array. It is equivalent to extending the buffer
 in the inverse of the storage order: $k \rightarrow j \rightarrow i$ in the case
 of the \texttt{C-order}. The tradeoff lies in switching between files
-at each buffer loading. Using this strategy for the repartition task would imply
-reading contiguous columns or slices of data from the input files and writing it
-contiguously in the output files. This would result in even more switches
-between input and output files and one can find worst cases when using small
-$I$ and $O$ shapes for example where a smarter strategy would be appreciated. \tristan{This paragraph is unclear}
+at each buffer loading. Again, using this strategy for the repartition task would
+result in even more switches between input and output files which makes the limit
+even more important.
 
 To the best of our knowledge, no algorithm has been proposed for the
-repartitioning task. The ``keep" algorithm presented below can be seen as an
-adaptation of the multiple strategy to the repartitioning problem.
+repartitioning task.
 
 \subsection{Baseline solution}
 
@@ -410,7 +412,7 @@ The next subsections explain each part of Algorithm~\ref{algo:getbuffersposition
 in details.
 
 \begin{algorithm}
-  \caption{Pseudocode of the \texttt{getBufferPositions} function for the keep strategy}
+  \caption{The keep algorithm - Pseudocode of the \texttt{getBufferPositions} function for the keep strategy}
   \label{algo:getbuffersposition}
   \begin{algorithmic}[1]
   \STATE \textbf{Inputs}
