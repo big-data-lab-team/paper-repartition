@@ -405,6 +405,74 @@ covers the first output file (indexed $(0,0,0)$) in the original image being
 repartitioned. The best buffer shape for the keep strategy is therefore the shape of
 an input aggregate. We call this shape $\Lambda$.
 
+\begin{algorithm}
+  \caption{Pseudocode of the \texttt{getBufferPositions} function for the keep strategy}
+  \label{algo:getbuffersposition}
+  \begin{algorithmic}[1]
+  \STATE \textbf{Inputs}
+  \STATE $\Omega_{max}$: tuple of the maximum overlap length
+  of any buffer in all dimensions,
+  \STATE $\Lambda$: input aggregate shape,
+  \STATE $m$: amount of available memory for the buffer
+  \STATE
+  \STATE \textbf{Outputs}
+  \STATE \texttt{buffersList} the coordinates of all buffers to be loaded,
+  \STATE \texttt{policy} the policy to be used for the cache management by \texttt{getDataToWrite}
+  \STATE
+  \STATE \textbf{Algorithm}
+
+  \STATE $\Omega \leftarrow \Omega_{max}$
+  \STATE $\Theta = (\Lambda_i - \Omega_i, \Lambda_j - \Omega_j, \Lambda_k - \Omega_k)$
+  \STATE $B \leftarrow (1,1,\Lambda_k)$
+
+  \STATE $\phi = \lfloor \frac{m}{\Omega_k + \Lambda_k} \rfloor$ // keeping $F_1$
+  \STATE $B_j = \begin{cases}
+    \Theta_j & \textrm{if }\phi \geq \Theta_j \\
+    1 & \textrm{if }\phi = 0 \\
+    \phi & \textrm{else}
+  \end{cases}$
+
+  \IF{$B_j \neq \Theta_j$}
+    \STATE volumesToKeep = [1] // if cannot store $F_1$ entirely, stop the algorithm
+  \ELSE
+    \STATE $\phi = \lfloor \frac{m-\Theta_j(\Omega_k\Lambda_k)}{\Lambda_k(n+1)} \rfloor$  // keeping $F_1$, $F_2$ and $F_3$
+    \STATE $B_j = \begin{cases}
+      \Lambda_j & \textrm{if }\phi \geq \Lambda_j \\
+      B_j & \textrm{if }(B_j+\phi) = 0 \\
+      B_j + \phi & \textrm{else}
+    \end{cases}$
+
+    \IF{$B_j \neq \Lambda_j$}
+      \STATE volumesToKeep = [1,2,3]
+    \ELSE
+      \STATE $\phi = \lfloor \frac{m}{\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k} \rfloor$ // extending $F_1$, $F_2$ and $F_3$ in dimension $i$
+      \STATE $B_i = \begin{cases}
+        \Theta_i & \textrm{if }\phi \geq \Theta_i \\
+        1 & \textrm{if }\phi = 0 \\
+        \phi & \textrm{else}
+      \end{cases}$
+
+      \IF{$B_i \neq \Theta_i$}
+        \STATE volumesToKeep = [1,2,3]
+      \ELSE
+        \STATE $\phi = \lfloor \frac{m-\Theta_i(\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k)}{(N+1)\Lambda_j\Lambda_k} \rfloor$ // keeping $F_1$ to $F_7$
+        \STATE $B_i = \begin{cases}
+          \Lambda_i & \textrm{if }(B_i+\phi) \geq \Lambda_i \\
+          B_i & \textrm{if }\phi = 0 \\
+          B_i+\phi & \textrm{else}
+        \end{cases}$
+
+        \STATE volumesToKeep = [1,2,3,4,5,6,7]
+      \ENDIF
+    \ENDIF
+  \ENDIF
+
+  \STATE policy $\leftarrow$ getPolicy(volumesToKeep)
+  \STATE buffersList $\leftarrow$ getBuffersCoordinates($B$)
+  \RETURN buffersList, policy
+  \end{algorithmic}
+\end{algorithm}
+
 \subsection{Stretching the buffer in the inverse storage order}
 To get a buffer shape close to $\Lambda$ we define an algorithm
 \texttt{getBufferShape} in \texttt{getBufferPositions} that stretches the
@@ -579,79 +647,6 @@ can take at any step of the algorithm is represented by $\phi$ (lines 6, 11,
 Now that the best buffer shape can be computed, we can express the
 \texttt{getBufferPositions} function (Algorithm~\ref{algo:generalrepartition}) in
 Algorithm~\ref{algo:getbuffersposition}.
-
-\begin{algorithm}
-  \caption{Pseudocode of the \texttt{getBufferPositions} function for the keep strategy}
-  \label{algo:getbuffersposition}
-  \begin{algorithmic}[1]
-  \STATE \textbf{Inputs:} $\Omega_{max}$: tuple of the maximum overlap length
-  of any buffer in all dimensions, $\Lambda$: input aggregate shape,
-  $m$: amount of available memory for the buffer
-  \STATE \textbf{Outputs:} \texttt{buffersList} the coordinates of all buffers to be loaded,
-  \texttt{policy} the policy to be used for the cache management by \texttt{getDataToWrite}
-  \STATE $B$, volumesToKeep $\leftarrow$ BufferExtAlg($\Omega_{max}$, $\Lambda$, $m$)
-  \STATE policy $\leftarrow$ getPolicy(volumesToKeep)
-  \STATE buffersList $\leftarrow$ getBuffersCoordinates($B$)
-  \RETURN buffersList, policy
-  \end{algorithmic}
-\end{algorithm}
-
-\begin{algorithm}
-  \caption{Pseudocode of the buffer extension algorithm}
-  \label{algo:bufferextensionalgorihm}
-  \begin{algorithmic}[1]
-    \STATE \textbf{Inputs:} $\Omega_{max}$: tuple of the maximum overlap length
-    of any buffer in all dimensions, $\Lambda$: input aggregate shape,
-    $m$: amount of available memory for the buffer
-    \STATE \textbf{Outputs:} $B$: buffer shape, the index list of the remainder volumes to keep
-    \STATE $\Omega \leftarrow \Omega_{max}$
-    \STATE $\Theta = (\Lambda_i - \Omega_i, \Lambda_j - \Omega_j, \Lambda_k - \Omega_k)$
-    \STATE $B \leftarrow (1,1,\Lambda_k)$
-
-    \STATE $\phi = \lfloor \frac{m}{\Omega_k + \Lambda_k} \rfloor$ // keeping $F_1$
-    \STATE $B_j = \begin{cases}
-      \Theta_j & \textrm{if }\phi \geq \Theta_j \\
-      1 & \textrm{if }\phi = 0 \\
-      \phi & \textrm{else}
-    \end{cases}$
-
-    \IF{$B_j \neq \Theta_j$}
-      \RETURN $B$, [1] // if cannot store $F_1$ entirely, stop the algorithm
-    \ENDIF
-
-    \STATE $\phi = \lfloor \frac{m-\Theta_j(\Omega_k\Lambda_k)}{\Lambda_k(n+1)} \rfloor$  // keeping $F_1$, $F_2$ and $F_3$
-    \STATE $B_j = \begin{cases}
-      \Lambda_j & \textrm{if }\phi \geq \Lambda_j \\
-      B_j & \textrm{if }(B_j+\phi) = 0 \\
-      B_j + \phi & \textrm{else}
-    \end{cases}$
-
-    \IF{$B_j \neq \Lambda_j$}
-      \RETURN $B$, [1,2,3]
-    \ENDIF
-
-    \STATE $\phi = \lfloor \frac{m}{\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k} \rfloor$ // extending $F_1$, $F_2$ and $F_3$ in dimension $i$
-    \STATE $B_i = \begin{cases}
-      \Theta_i & \textrm{if }\phi \geq \Theta_i \\
-      1 & \textrm{if }\phi = 0 \\
-      \phi & \textrm{else}
-    \end{cases}$
-
-    \IF{$B_i \neq \Theta_i$}
-      \RETURN $B$, [1,2,3]
-    \ENDIF
-
-    \STATE $\phi = \lfloor \frac{m-\Theta_i(\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k)}{(N+1)\Lambda_j\Lambda_k} \rfloor$ // keeping $F_1$ to $F_7$
-    \STATE $B_i = \begin{cases}
-      \Lambda_i & \textrm{if }(B_i+\phi) \geq \Lambda_i \\
-      B_i & \textrm{if }\phi = 0 \\
-      B_i+\phi & \textrm{else}
-    \end{cases}$
-
-    \RETURN $B$, [1,2,3,4,5,6,7]
-
-  \end{algorithmic}
-\end{algorithm}
 
 %----------------------------------------
 \section{Implementation}
