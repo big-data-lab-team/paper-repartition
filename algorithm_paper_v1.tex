@@ -384,26 +384,28 @@ The \texttt{keep strategy} first consists in finding a buffer shape covering at 
 one output file completely, i.e. $B_x>O_x$ for all dimensions $x$.
 Such a buffer shape would allow to always have extra data in case of a shape
 mismatch, hence making the cache management possible to reduce the number of seeks.
+We call this ideal buffer shape an \texttt{input aggregate}, which shape is
+written $\Lambda$. Using such an optimal buffer shape and being able to keep all
+the extra data into memory during the whole repartition algorithm would incur
+the minimum number of seeks possible: $n_i + n_o$. Indeed, it is equivalent to
+writing an output file only when all its data is in cache.
 If $m$ is too small, then the keep strategy tries to find a buffer
-shape as closed as possible from the optimal buffer shape. Using such an optimal
-buffer shape and being able to keep all the extra data into memory during the
-whole repartition algorithm would incur the minimum number of seeks possible: $n_i + n_o$.
-Indeed, it is equivalent to writing an output file only when all its data is in
-cache.
+shape as closed as possible from $\Lambda$.
+
 The implementation of the keep strategy is equivalent to implementing
 \texttt{getBufferPositions} in Algorithm~\ref{algo:generalrepartition} to find a
-buffer shape closed to the optimal buffer shape, and defining the write policy
-as ``write all the data that is not extra data".
-
-\subsection{Input aggregates}
-Our goal is to find the optimal buffer shape such that $B_x>O_x$ in any dimension $x$.
-If $I_x > O_x$, then $B_x$ can be set to $I_x$. If $I_x < O_x$ however, $B_x$
-must be a multiple of $I_x$ in order to keep reading each input file in one seek.
-We define an \texttt{input aggregate} as being the minimum aggregate of input files that
-covers one output file completely. In particular, it is the input aggregate that
-covers the first output file (indexed $(0,0,0)$) in the original image being
-repartitioned. The best buffer shape for the keep strategy is therefore the shape of
-an input aggregate. We call this shape $\Lambda$.
+buffer shape closed to the optimal buffer shape $\Lambda$. Such an implementation is
+presented in Algorithm~\ref{algo:getbuffersposition}. The implementation
+consists in extending the buffer shape, initialized as $B=(1,1,\Lambda_k)$ (line 13), in
+one dimension at a time. Because of its initialization, $B_k=\Lambda_k$, therefore
+the buffer needs to be extended in the $i$ and $j$ dimensions only (in 3D).
+From line 14 to 22 the buffer is extended in the $j$
+dimension, and from line 23 to 31 the buffer is extended in the $i$ dimension.
+Finally, the coordinates list of each buffer is computed from the buffer shape
+that has been found. At each step of the buffer extension \texttt{volumesToKeep}
+is computed to define which part of extra data will have to be kept in memory.
+The next subsections explain each part of Algorithm~\ref{algo:getbuffersposition}
+in details.
 
 \begin{algorithm}
   \caption{Pseudocode of the \texttt{getBufferPositions} function for the keep strategy}
@@ -473,6 +475,16 @@ an input aggregate. We call this shape $\Lambda$.
   \end{algorithmic}
 \end{algorithm}
 
+\subsection{Input aggregates}
+Our goal is to find the optimal buffer shape such that $B_x>O_x$ in any dimension $x$.
+If $I_x > O_x$, then $B_x$ can be set to $I_x$. If $I_x < O_x$ however, $B_x$
+must be a multiple of $I_x$ in order to keep reading each input file in one seek.
+We define an \texttt{input aggregate} as being the minimum aggregate of input files that
+covers one output file completely. In particular, it is the input aggregate that
+covers the first output file (indexed $(0,0,0)$) in the original image being
+repartitioned. The best buffer shape for the keep strategy is therefore the shape of
+an input aggregate.
+
 \subsection{Stretching the buffer in the inverse storage order}
 To get a buffer shape close to $\Lambda$ we define an algorithm
 \texttt{getBufferShape} in \texttt{getBufferPositions} that stretches the
@@ -506,11 +518,9 @@ mismatches. One can reduce the amount of extra data by using smallest chunks: Ev
 if the overlap between the input and output files is big with respect to their
 size, the area/volume of the overlap will be kept small.
 
-%----------------------------------------
-\section{The buffer extension algorithm}
-%----------------------------------------
+\subsection{The buffer extension}
 
-The buffer extension algorithm aims at extending the buffer shape from
+The buffer extension aims at extending the buffer shape from
 (1,1,$\Lambda_k$) to the input aggregate shape $\Lambda$. Note that we assume
 that $m$ is large enough to store a buffer of shape (1,1,$\Lambda_k$). It means
 that we can read one complete data column from an input file and keep the
