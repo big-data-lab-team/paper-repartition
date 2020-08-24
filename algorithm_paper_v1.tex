@@ -52,6 +52,13 @@ modeling and simulation~\cite{Amunts1472} is an example of ultra high resolution
 images in the neuroscience field.
 
 \subsection{Data storage on disk}
+% use of chunking
+Scientific data is often represented as multidimensional arrays stored in
+chunks to facilitate processing and storage. Among other advantages, chunking
+allows for efficient queries, flexibility in adding new
+data~\cite{optimal_chuking}, parallel processing, and out-of-core
+computations through block algorithms~\cite{matthew_rocklin-proc-scipy-2015}.
+
 % explain storage order
 Previous work focused on optimizing the data storage by looking for an optimal
 chunk shape that would reduce the expected number of chunks to be retrieved by
@@ -59,8 +66,8 @@ any query~\cite{optimal_chuking} or by optimizing the ordering of the chunks
 using space filling curves for example~\cite{optimal_chuking, openconnectomecluster}.
 Instead, our approach is to leave the choice of the
 data storage to the application as much as possible, as in~\cite{seqalgorithms}.
-We therefore assume that
-the chunk shape and the data ordering in files are arbitrary but known.
+We therefore assume that the chunk shape and the data ordering in files are
+arbitrary but known.
 
 For the sake of clarity and without loss of generality,
  we assume in this study that files are written in row-major order (a.k.a
@@ -83,25 +90,19 @@ scientific community and it is written in \texttt{C-order} by default.
 \end{figure*}
 
 \subsection{Multidimensional array chunking}
-% use of chunking
-Scientific data is often represented as multidimensional arrays stored in
-chunks to facilitate processing and storage. Among other advantages, chunking
-allows for efficient queries, flexibility in adding new
-data~\cite{optimal_chuking}, parallel processing, and out-of-core
-computations through block algorithms~\cite{matthew_rocklin-proc-scipy-2015}.
 
 % need for tools to repartition
 Using chunked multidimensional arrays requires tools to efficiently split,
 merge, and ``resplit" or ``repartition" data files. Previous work in~\cite{seqalgorithms}
 showed that naive algorithms to split an array into several chunks or merge
 array chunks into one output file do not perform well due to millions of seeks
-occurring on disk. This study is focused on sequential algorithms for
+occurring on disk. The present study is focused on sequential algorithms for
 repartitioning multidimensional arrays, letting the parallel and distributed
 cases as future work, although they are relevant, too. To the best of our
 knowledge, the repartition problem has not been extensively studied.
 
 % why subarray extraction incurs seeks
-Indeed, retrieving sub-arrays from an array stored on disk incurs seeks in two
+Retrieving sub-arrays from an array stored on disk incurs seeks in two
 situations: (1) when an array block is opened for reading or writing, and (2)
 when the reading or writing process moves within the block to access a
 contiguous piece of data. For a 3D cuboid of shape $C = (C_i, C_j, C_k)$ stored
@@ -118,56 +119,40 @@ accessing any piece of data from a chunk results in loading the whole chunk in
 memory. Chunking must therefore be used with care as it can be detrimental for
 performance. The Python library \texttt{h5py} for manipulating HDF5 files
 recommends a chunk size ``between 10 KiB and 1 MiB" and more for larger
-datasets~\cite{collette_2014}. The \texttt{dask} Python package presented
-hereafter also mentions the issues relative to chunking and suggests a chunk
-size greater than 100 MB, although remainding that the chunk shape selection is
-highly dependent on the application~\cite{rocklin_bourbeau_2019}.
-
-\subsection{Dask}
-\texttt{dask} is a popular Python package, part of the SciPy ecosystem, enabling parallel
-and out-of-core computations~\cite{matthew_rocklin-proc-scipy-2015}. It has an
-important scientific community which is likely to have the problem we try to
-solve in this paper, i.e. repartitioning multidimensional array files. That is why
-we decided to implement our work as an optimization package for \texttt{dask}.
-We focus on the \texttt{dask.array} collection, a data structure designed for
-multi-dimensional array processing using blocked algorithms, hence leveraging
-chunking.
-
-\texttt{dask} represents computations as task graphs that are dynamically executed by one
-of several schedulers including the single-threaded, the multi-threaded, the
-multi-process, and the distributed schedulers. Custom schedulers can also be
-implemented. \texttt{dask} graphs can be used out-of-the-box or through
-built-in APIs. A \texttt{dask} graph is implemented in plain Python as a
-dictionary with any hashable as keys and any object as values. More precisely,
-a ``Value" is any object different than a task and a ``Task" is a tuple with a
-callable as first element. Examples of APIs/collections include
-\texttt{dask.array}, a parallel and out-of-core
-Numpy clone, and \texttt{dask.dataframe}, a Pandas clone.
+datasets~\cite{collette_2014}. \texttt{dask}, a popular Python package, part of
+the SciPy ecosystem, enabling parallel and out-of-core
+computations~\cite{matthew_rocklin-proc-scipy-2015} also mentions the issues
+relative to chunking and suggests a chunk size greater than 100 MB, although
+remainding that the chunk shape selection is highly dependent on the
+application~\cite{rocklin_bourbeau_2019}.
 
 \subsection{Contributions}
 This paper makes the following contributions:
 \begin{itemize}
-  \item Definition of the repartition problem for multidimensional arrays
-  \item A sequential algorithm to efficiently repartition multidimensional arrays
-  \item An open implementation of this algorithm in \texttt{dask},
-  in a library called \texttt{dask repartition}.
-  \item An open implementation in \texttt{dask} of the ``clustered" split and
-  merge strategy described in~\cite{seqalgorithms}, in \texttt{dask repartition} too.
+  \item The definition of the re-partition problem for multidimensional arrays
+  \item The proposition of a sequential algorithm to efficiently
+  re-partition multidimensional arrays
+  \item An open implementation of this algorithm on Github
 \end{itemize}
 
 \section{Problem definition}
-\subsection{The repartition problem}
+\subsection{The re-partition problem}
 We focus on 3D arrays for simplicity. Consider a 3D array of shape $R =
-(R_i, R_j, R_k)$, partitioned as input blocks of uniform shape $I = (I_i,
-I_j, I_k)$ stored on disk. Our goal is to repartition the input blocks into output blocks
-of uniform but different shape $O = (O_i, O_j, O_k)$. A repartitioning function reads the input blocks from
-disk, and writes the output blocks to disk.
+(R_i, R_j, R_k)$, partitioned as input chunks of uniform shape $I = (I_i,
+I_j, I_k)$ stored on disk. Our goal is to re-partition the input blocks into
+output blocks of uniform but different shape $O = (O_i, O_j, O_k)$.
+A re-partitioning algorithm reads the input blocks from disk, and writes the
+output blocks to disk.
+
+We present hereafter a general algorithm for the re-partition task.
+It first consists in defining two types of buffers: read and write buffers.
 
 A re-partioning algorithm (Algorithm~\ref{algo:generalrepartition}) takes a
-list of input blocks \texttt{inBlocks} of shape $I$, a list of output block definitions
-\texttt{outBlocks} of shape $O$ and the amount of memory \texttt{m}
-available for the algorithm. Subject to $m$, the algorithm first defines an ordered list of buffers positions
-\texttt{buffersList} (line 2) and a \texttt{writing policy} \tristan{The definition of this policy is ambiguous}.
+list of input blocks \texttt{inBlocks} of shape $I$, a list of output block
+definitions \texttt{outBlocks} of shape $O$ and the amount of memory \texttt{m}
+available for the algorithm.
+Subject to $m$, the algorithm first defines an ordered list of buffers positions
+\texttt{buffersList} (line 2) and a \texttt{writing policy}.
 \texttt{buffersList} defines the partition of array $R$ to be used by the algorithm internally.
 The buffers are then loaded sequentially from disk
 (line 4-5), and their data is stored in a memory cache (line 6). After each buffer load,
@@ -203,14 +188,17 @@ which requires a seek.
     \STATE $O$: shape of one output block
     \STATE
     \STATE \textbf{Algorithm}
-    \STATE B, policy $\leftarrow$ getBufferPositions($I$,$O$,$m$)
+    \STATE B, writeBuffers $\leftarrow$ getWriteBuffers($I$,$O$,$m$)
+    \STATE readBuffers = getReadBuffers(B)
     \STATE initialize(cache)
-    \STATE buffersList = getBuffers(B)
-    \FOR{buffer in buffersList}
-      \STATE bufferData $\leftarrow$ read(inBlocks, buffer)
+    \FOR{readBuffer in readBuffers}
+      \STATE bufferData $\leftarrow$ read(readBuffer, inBlocks)
       \STATE cache.insert(bufferData)
-      \FOR{(fileIndex, data) in getDataToWrite(cache, policy)}
-        \STATE write(outFiles[fileIndex], data)
+      \FOR{writeBuffer in writeBuffers}
+        \IF{cache.isComplete(writeBuffer)}
+          \STATE data = cache.pop(writeBuffer)
+          \STATE write(writeBuffer, outBlocks)
+        \ENDIF
       \ENDFOR
     \ENDFOR
 
@@ -762,7 +750,7 @@ This section describes the three experiments we did in this study. All the
 results are described in the ``Results" section, and the code of the experiments
 is available in a dedicated repository on Github.
 
-\subsection{Dask's sensitivity to seeks}
+\subsection{Baseline experiment}
 We first designed
 an experiment to prove that \texttt{dask.array} was subject to the seek problem.
 To that aim we created a random array from a uniform distribution and stored it
@@ -778,7 +766,7 @@ subject to the seek problem.
 
 \begin{table}[ht]
  \centering
- \caption{Experiment 1}
+ \caption{Baseline experiment}
 
   \begin{tabular}[t]{c c c c}
   \hline
@@ -880,26 +868,24 @@ as the resulting $O$ size would be too small (less than 10MB).
 In the second experiment, we tested the case where $m$ is not big enough to get
 $B=\Lambda$. We did this experiment at two different resolutions, with $I>O$
 and $I<O$ (see Table~\ref{tab:exp3_2}) and tested two buffers for each case:
-$B_1=(1,0.5\Lambda_j,\Lambda_k)$ and $B_2=(0.5\Lambda_i,\Lambda_j,\Lambda_k)$.
+$B=(1,0.5\Lambda_j,\Lambda_k)$ and $B=(0.5\Lambda_i,\Lambda_j,\Lambda_k)$.
 In each case, $B$, $I$ and $O$ must be a partition of $R$. There is one missing
-experiment in Table~\ref{tab:exp3_2} as the resulting buffer $B_2$ was not a
+experiment in Table~\ref{tab:exp3_2} as the resulting buffer $B$ was not a
 partition of $R$.
 
 \begin{table*}[ht]
  \centering
  \caption{Experiment 3.2}
 
-  \begin{tabular}[t]{c c c c c}
+  \begin{tabular}[t]{c c c c}
   \hline
-    $I$ & $O$ & $\Lambda$ & B1 & B2 \\
+    $I$ & $O$ & $\Lambda$ & B \\
     \hline\hline
-    (780,600,700) & (975,1000,875) ($I<O$) & (1560,1200,1400) & (1,600,1400) & Not a partition of R \\
+    (780,600,700) & (650,500,500) ($O<I$) & (780,600,700) & (390,600,700) \\
     \hline
-    (780,600,700) & (650,500,500) ($I>O$) & (780,600,700) & (1,300,700) & (390,600,700) \\
+    (390,300,350) & (650,500,700) ($O>I$) & (780,600,700) & (390,600,700) \\
     \hline
-    (390,300,350) & (650,500,700) ($I<O$) & (780,600,700) & (1,300,700) & (390,600,700) \\
-    \hline
-    (390,300,350) & (325,250,250) ($I>O$) & (390,300,350) & (1,150,350) & (195,300,350) \\
+    (390,300,350) & (325,250,250) ($O<I$) & (390,300,350) & (195,300,350) \\
     \hline
   \end{tabular}
   \label{tab:exp3_2}
@@ -960,7 +946,7 @@ as well.
 \section{Results}
 %----------------------------------------
 
-\subsection{Experiment 1}
+\subsection{Baseline experiment}
 \begin{figure*}
   \centering
   \includegraphics[scale=0.5]{./figures/exp1_results.png}
