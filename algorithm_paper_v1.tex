@@ -151,24 +151,23 @@ A re-partioning algorithm (Algorithm~\ref{algo:generalrepartition}) takes a
 list of input blocks \texttt{inBlocks} of shape $I$, a list of output block
 definitions \texttt{outBlocks} of shape $O$ and the amount of memory \texttt{m}
 available for the algorithm.
-Subject to $m$, the algorithm first defines an ordered list of buffers positions
-\texttt{buffersList} (line 2) and a \texttt{writing policy}.
-\texttt{buffersList} defines the partition of array $R$ to be used by the algorithm internally.
-The buffers are then loaded sequentially from disk
-(line 4-5), and their data is stored in a memory cache (line 6). After each buffer load,
-the \texttt{writing policy} is used by the algorithm to know when and where to
-write down the data from the cache to the output files (lines 7 and 8). An
-example of a writing policy could be:
-``write the data from the cache into the appropriate output file only when all
-the data from that output file has been successfully loaded".
+Subject to $m$, the algorithm first finds the optimal shape for the buffers
+and returns a list of buffers, \texttt{readBuffers}, to read from the input
+blocks (line 9).
+Then, the algorithm computes another list of buffers, \texttt{writeBuffers},
+in which each buffer is a piece of data to be written at a time into an
+output file (line 10).
+In other words, the write buffers describe how each output file will be written.
+Finally, the main loop of the algorithm (line 12) loads one readBuffer at a
+time (line 13), inserts it into a cache (line 14), and writes each writeBuffer
+as soon as its data is available in cache (line 16 to 18).
 
-For simplicity, we require that all buffers in \texttt{buffersList} have
-the same shape $B$. Our objective function
-$\mathrm{seeks}$ returns the number of seeks incurred by the use of
-$B$ and $\mathrm{policy}$ in the repartitioning algorithm. The
-repartitioning problem is to find $B$ and $\mathrm{policy}$ that minimize
-$\mathrm{seeks(B, policy)}$ subject to $m$. Solutions of this problem materialize as
-implementations of function \texttt{getBufferPositions} in
+For simplicity, we require that all buffers in \texttt{readBuffers} have
+the same shape $B$. The cost function $\mathrm{seeks}$ would return the number
+of seeks incurred by the definition of the read and write buffers in the
+repartitioning algorithm. The repartitioning problem is those lists to minimize
+$\mathrm{seeks}$ subject to $m$. Solutions of this problem materialize as
+implementations of function \texttt{getReadBuffers} and \texttt{getWriteBuffers} in
 Algorithm~\ref{algo:generalrepartition}.
 
 A lower bound on the number of seeks for the repartitioning problem is
@@ -181,15 +180,15 @@ which requires a seek.
   \label{algo:generalrepartition}
   \begin{algorithmic}[1]
     \STATE \textbf{Inputs}
-    \STATE inBlocks: input chunk stored in one dedicated file or in one dataset from a HDF5 file.
-    \STATE outBlocks: output chunks to be filled in, created as one dedicated file or as one dataset from a unique output HDF5 file.
-    \STATE $m$: memory available for the algorithm
+    \STATE inBlocks: input chunk stored in one dedicated file or in one dataset of a HDF5 file.
+    \STATE outBlocks: output chunks to be written, created as one empty file (/dataset of a HDF5 output file).
+    \STATE $m$: memory available for one readBuffer or writeBuffer
     \STATE $I$: shape of one input block
     \STATE $O$: shape of one output block
     \STATE
     \STATE \textbf{Algorithm}
-    \STATE B, writeBuffers $\leftarrow$ getWriteBuffers($I$,$O$,$m$)
-    \STATE readBuffers = getReadBuffers(B)
+    \STATE B, readBuffers $\leftarrow$ getReadBuffers($I$,$O$,$m$)
+    \STATE writeBuffers $\leftarrow$ getWriteBuffers($O$, $B$)
     \STATE initialize(cache)
     \FOR{readBuffer in readBuffers}
       \STATE bufferData $\leftarrow$ read(readBuffer, inBlocks)
