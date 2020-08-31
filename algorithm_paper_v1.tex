@@ -163,6 +163,11 @@ Finally, the main loop of the algorithm (line 12) loads one readBuffer at a
 time (line 13), inserts it into a cache (line 14), and writes each writeBuffer
 as soon as its data is available in cache (lines 15 to 18).
 
+In this study, we express the quantity of memory used by an array as the
+number of voxels it contains. It is equivalent to saying that the number of
+bytes per voxel is 1. With $\alpha$ the number of bytes per voxel in the storage
+device, $m$ is defined as $m/\alpha$.
+
 For simplicity, we require that all buffers in \texttt{readBuffers} have
 the same shape $B$. We define the cost function $\mathrm{seeks}$ as returning
 the number of seeks incurred by the repartitioning algorithm.
@@ -326,14 +331,12 @@ in table~\ref{tab:simseekmodel}.
 \end{table}
 
 %----------------------------------------
-\section{The ``keep" algorithm}
+\section{The ``keep" strategy}
 %----------------------------------------
 
-\subsection{The keep strategy}
-
 As mentioned previously, like the split and merge strategies the baseline
-algorithm for the repartition problem empties the cache at each iteration. In a
-split/merge/repartition problem a lot of seeks occur in case of a shape mismatch,
+algorithm for the re-partition problem empties the cache at each iteration. In a
+split/merge/re-partition problem a lot of seeks occur in case of a shape mismatch,
 for example, when a data column loaded in memory is split between two output
 files or more. We propose to leverage the cache using a \texttt{keep strategy}
 to keep some data in the cache while it cannot be written contiguously in output
@@ -346,138 +349,83 @@ files~\ref{fig:keepvsbaseline}.
 \label{fig:keepvsbaseline}
 \end{figure}
 
-In the cache (Algorithm~\ref{algo:generalrepartition}), the data that is not
-contiguous in its output file of destination is called \texttt{extra data}.
-The \texttt{keep strategy} first consists in finding a buffer shape covering at least
-one output file completely, i.e. $B_x>O_x$ for all dimensions $x$.
+When loading a read buffer, we call \texttt{extra data} the data pieces that
+are not contiguous in their output file(s) of destination.
+The keep strategy tries to use read buffers of shape $B$ such that $B$ covers
+at least one output file completely i.e. $B_x>O_x$ for all dimensions $x$.
 Such a buffer shape would allow to always have extra data in case of a shape
 mismatch, hence making the cache management possible to reduce the number of seeks.
-We call this ideal buffer shape an \texttt{input aggregate}, which shape is
-written $\Lambda$. Using such an optimal buffer shape and being able to keep all
-the extra data into memory during the whole repartition algorithm would incur
-the minimum number of seeks possible: $n_i + n_o$. Indeed, it is equivalent to
-writing an output file only when all its data is in cache.
-If $m$ is too small, then the keep strategy tries to find a buffer
+Indeed, it would allow to store the extra data into the cache in order to write
+an output file only when all its data has been loaded.
+We call this ideal read buffer shape $\Lambda$.
+If $m$ is too small, then the keep strategy will find a buffer
 shape as closed as possible from $\Lambda$.
 
-\subsection{The keep algorithm}
-
-The implementation of the keep strategy is equivalent to implementing
-\texttt{getBufferPositions} in Algorithm~\ref{algo:generalrepartition} to find a
-buffer shape closed to the optimal buffer shape $\Lambda$. Such an implementation is
-presented in Algorithm~\ref{algo:getbuffersposition}. The implementation
-consists in extending the buffer shape, initialized as $B=(1,1,\Lambda_k)$ (line 13), in
-one dimension at a time. Because of its initialization, $B_k=\Lambda_k$, therefore
-the buffer needs to be extended in the $i$ and $j$ dimensions only (in 3D).
-From line 14 to 22 the buffer is extended in the $j$
-dimension, and from line 23 to 31 the buffer is extended in the $i$ dimension.
-Finally, the coordinates list of each buffer is computed from the buffer shape
-that has been found. At each step of the buffer extension \texttt{volumesToKeep}
-is computed to define which part of extra data will have to be kept in memory.
-The next subsections explain each part of Algorithm~\ref{algo:getbuffersposition}
-in details.
-
-\begin{algorithm}
-  \caption{The keep algorithm - Pseudocode of the \texttt{getBufferPositions} function for the keep strategy}
-  \label{algo:getbuffersposition}
-  \begin{algorithmic}[1]
-  \STATE \textbf{Inputs}
-  \STATE $\Omega_{max}$: tuple of the maximum overlap length
-  of any buffer in all dimensions,
-  \STATE $\Lambda$: input aggregate shape,
-  \STATE $m$: amount of available memory for the buffer
-  \STATE
-  \STATE \textbf{Outputs}
-  \STATE \texttt{buffersList} the coordinates of all buffers to be loaded,
-  \STATE \texttt{policy} the policy to be used for the cache management by \texttt{getDataToWrite}
-  \STATE
-  \STATE \textbf{Algorithm}
-
-  \STATE $\Omega \leftarrow \Omega_{max}$
-  \STATE $\Theta = (\Lambda_i - \Omega_i, \Lambda_j - \Omega_j, \Lambda_k - \Omega_k)$
-  \STATE $B \leftarrow (1,1,\Lambda_k)$
-
-  \STATE $\phi = \lfloor \frac{m}{\Omega_k + \Lambda_k} \rfloor$ // keeping $F_1$
-  \STATE $B_j = \begin{cases}
-    \Theta_j & \textrm{if }\phi \geq \Theta_j \\
-    1 & \textrm{if }\phi = 0 \\
-    \phi & \textrm{else}
-  \end{cases}$
-
-  \IF{$B_j \neq \Theta_j$}
-    \STATE volumesToKeep = [1] // if cannot store $F_1$ entirely, stop the algorithm
-  \ELSE
-    \STATE $\phi = \lfloor \frac{m-\Theta_j(\Omega_k\Lambda_k)}{\Lambda_k(n+1)} \rfloor$  // keeping $F_1$, $F_2$ and $F_3$
-    \STATE $B_j = \begin{cases}
-      \Lambda_j & \textrm{if }\phi \geq \Lambda_j \\
-      B_j & \textrm{if }(B_j+\phi) = 0 \\
-      B_j + \phi & \textrm{else}
-    \end{cases}$
-
-    \IF{$B_j \neq \Lambda_j$}
-      \STATE volumesToKeep = [1,2,3]
-    \ELSE
-      \STATE $\phi = \lfloor \frac{m}{\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k} \rfloor$ // extending $F_1$, $F_2$ and $F_3$ in dimension $i$
-      \STATE $B_i = \begin{cases}
-        \Theta_i & \textrm{if }\phi \geq \Theta_i \\
-        1 & \textrm{if }\phi = 0 \\
-        \phi & \textrm{else}
-      \end{cases}$
-
-      \IF{$B_i \neq \Theta_i$}
-        \STATE volumesToKeep = [1,2,3]
-      \ELSE
-        \STATE $\phi = \lfloor \frac{m-\Theta_i(\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k)}{(N+1)\Lambda_j\Lambda_k} \rfloor$ // keeping $F_1$ to $F_7$
-        \STATE $B_i = \begin{cases}
-          \Lambda_i & \textrm{if }(B_i+\phi) \geq \Lambda_i \\
-          B_i & \textrm{if }\phi = 0 \\
-          B_i+\phi & \textrm{else}
-        \end{cases}$
-
-        \STATE volumesToKeep = [1,2,3,4,5,6,7]
-      \ENDIF
-    \ENDIF
-  \ENDIF
-
-  \STATE policy $\leftarrow$ getPolicy(volumesToKeep)
-  \STATE buffersList $\leftarrow$ getBuffersCoordinates($B$)
-  \RETURN buffersList, policy
-  \end{algorithmic}
-\end{algorithm}
+The implementation of the keep strategy for
+Algorithm~\ref{algo:generalrepartition} consists in implementing
+getReadBuffers and getWriteBuffers.
 
 \subsection{Input aggregates}
-Our goal is to find the optimal buffer shape such that $B_x>O_x$ in any dimension $x$.
-If $I_x > O_x$, then $B_x$ can be set to $I_x$. If $I_x < O_x$ however, $B_x$
-must be a multiple of $I_x$ in order to keep reading each input file in one seek.
-We define an \texttt{input aggregate} as being the minimum aggregate of input files that
-covers one output file completely. In particular, it is the input aggregate that
-covers the first output file (indexed $(0,0,0)$) in the original image being
-repartitioned. The best buffer shape for the keep strategy is therefore the shape of
-an input aggregate.
+getReadBuffers finds the buffer shape $B$ that is the closest to the optimal buffer
+shape $\Lambda$, such that $\Lambda_x>O_x$ in any dimension $x$.
+If $I_x > O_x$, then $\Lambda_x$ can be set to $I_x$. If $I_x < O_x$ however,
+$Lambda_x$ must be a multiple of $I_x$ in order to keep reading each input
+block part in one seek (for opening the file).
+We define an \texttt{input aggregate} as being the minimum aggregate of input
+files that covers one output file completely. In particular, $\Lambda$ is the
+input aggregate that covers the first output file (indexed $(0,0,0)$) in the
+original image being re-partitioned.
 
-\subsection{Stretching the buffer in the inverse storage order}
-To get a buffer shape close to $\Lambda$ we define an algorithm
-\texttt{getBufferShape} in \texttt{getBufferPositions} that stretches the
-buffer shape step by step. At each step, the algorithm estimates how much the
-buffer can be stretched in one direction while keeping the remainders into
-memory. The problem of what dimension to increase first still stands. A
-strategic order seems to be to stretch the buffer in the direction which saves
-the maximum number of seeks first. Given the analysis of the baseline algorithm,
-such an order is the inverse of the storage order i.e.
-$k \rightarrow j \rightarrow i$ for the \texttt{C-order}.
+\subsection{Searching for the optimal buffer in the inverse storage order}
+
+For the \texttt{C-order} and given the analysis of the baseline algorithm,
+it seems better to have a buffer shape that stores extra data in the $k$
+dimension first, rather than in the $j$ or $i$ dimension.
+Therefore, if $m$ is too small to get $B=\Lambda$, one must try to get
+$B_k=\Lambda_k$ first, then $B_j=\Lambda_j$ and $B_i=\Lambda_i$, i.e. in the
+inverse of the storage order (the C-order: $i\rightarrow j\rightarrow k$).
+
+In practice, the buffer is initialized as $B=(1,1,\Lambda_k)$ which means
+that we can read one complete data column from an input block and keep the
+remainder in memory for the next buffer.
+Note that we assume that $m$ is large enough to store a buffer of shape
+(1,1,$\Lambda_k$).
+If it was not the case the keep algorithm would not give a significant
+improvement in the number of seeks produced by the repartition task, compared
+to the baseline algorithm.
+
+\subsection{Bruteforce search of the read buffer shape}
+We found that stretching the buffer step by step in the $j$ and then in the
+$i$ dimension does not reduce $s$
+in a strictly decreasing way which mean we may go over local minima.
+We therefore decided to compute the quantity of seeks produced for all the
+possible buffers together with their maximum RAM consumption.
+It is then possible to find the buffer shape producing the less seeks, subject
+to $m$.
+
+There is not an infinite possibility for the buffer shapes;
+Firstly, the only possibilities for the buffer dimensions are the integer
+divisors of R, such that $B_i*B_j*B_k < m$. Indeed, the buffer dimensions must
+be integers and the buffer shape B must be a partition of R.
+Secondly, as it has been said in the previous subsection, we are only
+interested in buffer shapes following the inverse storage order. It implies that
+we are only interested in buffers that are of the form $(1,1,R_k)$,
+$(1,B_j,R_k)$ or $(B_i,R_j,R_k)$.
 
 \subsection{Impact of the buffer order on performance}
 Using the keep strategy, one may order the buffer loadings to reduce the maximum
 quantity of extra data stored in memory, hence, reducing the amount of seeks.
-For example, if an overlap occurs only in the $k$ axis, loading the next buffers
-in this direction will enable recycling the extra data kept in memory, resulting
-in a smallest memory consumption over time. The memory saved thanks to a smart
+For example, if the shape mismatches occur only in the $k$ axis, loading the
+buffers in this direction will enable recycling the extra data in cache,
+resulting in a smallest memory consumption over time.
+The memory saved thanks to a smart
 ordering could enable the storage of more overlaps in memory using the
 ``keep strategy", further reducing the overall number of seeks.
 
 As explained in the discussion, the buffer ordering problem is complex and does
 not seem easily solvable.
-This study uses a naive order which is the storage order. Note that using such
+This study uses a naive order which is, again, the inverse storage order.
+Note that using such
 an order allows recycling extra data in the $k$ dimension first, it is therefore
 most efficient when the biggest overlap between input and output files is in the
 $k$ dimension.
@@ -488,43 +436,31 @@ mismatches. One can reduce the amount of extra data by using smallest chunks: Ev
 if the overlap between the input and output files is big with respect to their
 size, the area/volume of the overlap will be kept small.
 
-\subsection{The buffer extension}
-
-The buffer extension aims at extending the buffer shape from
-(1,1,$\Lambda_k$) to the input aggregate shape $\Lambda$. Note that we assume
-that $m$ is large enough to store a buffer of shape (1,1,$\Lambda_k$). It means
-that we can read one complete data column from an input file and keep the
-remainder in memory for the next buffer. If it was not the case the keep
-algorithm would not give a significant improvement in the number of seeks
-produced by the repartition task, compared to the baseline algorithm.
-
-In this analysis, we express the quantity of memory used by an array as the
-number of voxels it contains. It is equivalent to saying that the number of
-bytes per voxel is 1. With $\alpha$ the number of bytes per voxel in the storage
-device, $m$ is defined as $m/\alpha$ in the following computations.
-
-The following subsections cover how we estimate the amount of memory required
-by the keep strategy to know how much the buffer can be stretched in a given
-direction while keeping the extra data in memory. The amount of memory required
-is the maximum memory consumption reached during the execution of the keep algorithm.
-To estimate this amount, we first need to define what a remainder volume is.
-
 \subsection{Remainder volumes}
 
-A buffer of shape $\Lambda$ can be divided in
+getWriteBuffers defines the blocks of data that will be written at once in each
+output file.
+To find these buffers, we first need to define what a remainder volume is.
+
+A read buffer of shape $\Lambda$ can be divided in
 8 parts or ``volumes" (Figure~\ref{fig:nomenclature_overlaps}).
 7 out of these 8 volumes are called \texttt{remainder volumes} because
-they represent the overlap between the input files and the output files on
-the buffer borders. These 7 remainder volumes enclose an 8th part that is composed of
+they are created by the shape mismatch between the input files and the output files on
+the buffer borders.
+The 7 remainder volumes enclose an 8th part that is composed of
 input files that are either complete or which complementary part have already
 been loaded by a previous buffer. This means that any complementary part is either
 in memory (it has been kept in cache according to the keep strategy) or it has
-been written down previously. Therefore, this 8th volume cannot be kept by the
-keep strategy and is not considered a remainder. For each buffer, each of volume
+been written down previously.
+In other words the remainder volumes contain non contiguous parts of output blocks
+as opposed to the non-remainder volume which contains a contiguous part of
+an output block.
+For each buffer, each of volume
 is indexed following the buffer order $F_0$ to $F_7$, with $F_0$ being the
 non-remainder volume. If the buffer is smallest than the input aggregate or if
 there is no shape mismatch in a given dimension, it may be that a volume size
 is set to 0.
+Note that a single remainder volume can contain several output file parts.
 
 \begin{figure*}[h]
 \centering
@@ -534,60 +470,55 @@ order, 7 of which are remainder volumes.}
 \label{fig:nomenclature_overlaps}
 \end{figure*}
 
+In the baseline algorithm, the write buffers are defined as the
+intersection between the read buffers and the output blocks.
+In the context of the keep strategy, some of the remainder volumes are kept
+to be written together with other remainder volume(s) contiguously in the output
+blocks.
+This is equivalent to initializing the write buffers with the same definition as
+in the baseline algorithm, and then fusing some of them to be written at once.
+The way in which the remainder volumes are fused is summarized in
+Table~\ref{tab:fusion}.
+
+\begin{table}[ht]
+  \centering
+  \caption{Direction(s) in which to fuse the write buffers according to the keep strategy}
+
+   \begin{tabular}[t]{c c }
+   \hline
+   remainder index & direction to fuse \\
+     \hline\hline
+     1 & k \\
+     \hline
+     2 & j \\
+     \hline
+     3 & j,k \\
+     \hline
+     4 & i \\
+     \hline
+     5 & i,k \\
+     \hline
+     6 & i,j \\
+     \hline
+     7 & i,j,k \\
+     \hline
+   \end{tabular}
+
+   \label{tab:fusion}
+
+\end{table}
+
 \subsection{Maximum memory consumption}
 
-Having partitioned the buffers into volumes, the maximum memory consumption is
-computed from two pieces of information: The maximum number of each volume we
-must keep during the process and the maximum size of each volume.
+In order to perform the bruteforce search of the best read buffer shape $B$,
+we need a way to compute the maximum memory consumption of the algorithm using
+this shape.
+Having partitioned the buffers into volumes, the maximum memory consumption can
+be computed by simulating the re-partition algorithm and computing, at each step,
+the cache size.
 
-In the buffer extension algorithm, the buffer is stretched in one dimension at
-a time (Figure~\ref{fig:bufferextensionalgo}).
-When stretching the buffer, we compute the maximum length of the buffer possible
-in the dimension considered, while ensuring that the remainder volumes can be
-kept into memory according to the \texttt{keep} algorithm. For example, if
-we consider stretching the buffer in the $j$ dimension, we want to know how big
-$B_j$ can be such that the remainders are kept in memory by the \texttt{keep}
-algorithm for later use, given the maximum amount of memory available, $m$.
-
-\begin{figure*}[h]
-\centering
-\includegraphics[scale=0.4]{./figures/new/bufferextensionalgo.png}
-\caption{desc.}
-\label{fig:bufferextensionalgo}
-\end{figure*}
-
-$\Sigma$, the maximum amount of data reached during the execution of the keep
-algorithm is defined in terms of the number of volumes to keep in cache. From the
-previous sections we assume that the buffer order is the storage order.
-In this order, the $F_1$ volume stored from a given buffer loading is recycled
-in the next one (Figure~\ref{fig:calculmemoire}). Therefore there can be only
-one $F_1$ volume in cache at a
-given time. $F_2$ and $F_3$ are kept in memory until the next
-buffer in the $j$ dimension recyles them. Therefore they can be present in cache
-$n$ times at a maximum, with $n$ the number of buffers in a buffer column (the
-number of buffers in dimension $k$). Volumes 4 to 7 can only be recycled by the
-next buffer in the $i$ dimension. Therefore, the algorithm must read an entire
-buffer slice before being able to remove them from the cache. They are kept a
-maximum of $N$ times, with $N$ the number of buffers in a slice of the
-reconstructed image (Figure~\ref{fig:calculmemoire}).
-Last but not least, a buffer must be loaded at each step of
-the keep algorithm. This gives us the following formula for $\Sigma$:
-
-\begin{equation} \label{eq:2}
-\Sigma = F_1 + n(F_2 + F_3) + N(F_4 + F_5 + F_6 + F_7) + B_iB_jB_k
-\end{equation}
-
-\begin{figure}[h]
-\centering
-\includegraphics[scale=0.3]{./figures/new/bufferextensionalgoformula.jpeg}
-\caption{desc.}
-\label{fig:calculmemoire}
-\end{figure}
-
-Now that we have an expression for $\Sigma$, we must find its maximum value by
-computing the volumes' sizes and their maximum.
-
-\subsection{The getBufferPositions function}
+Let us define $\Sigma$, the amount of data in RAM at a given time during the
+execution of the re-partition algorithm.
 
 In order to compute $\Sigma$, the volumes' sizes need to be computed using the
 following nomenclature (Figure~\ref{fig:nomenclature_overlaps}):
@@ -602,311 +533,47 @@ $$C_d(x) = (x+1)B_d mod(O_d)$$
 $$\Omega_d(x) = (x+1)\Lambda_d mod(O_d)$$
 $$\Theta_d(x) = \Lambda_d - \Omega_d(x)$$
 
-The volumes sizes are computed in Appendix~\ref{bufferExtensionAlgorithm}.
-Finally, to find the maximum size
-of each volume one must know the maximum overlap length between the buffer and
-the output files on its border. One can either compute all possibilities and
-take the maximum in each dimension if it is not too costly or use the following
-upper bound: By definition of an input aggregate, the overlap between any buffer
-and its bordering output files it at maximum $O_x$ in dimension $x$. Once the
-maximum volumes' sizes are found they can be replaced in $\Sigma$ to find the
-maximum memory consumption of the keep algorithm.
+\subsection{Seek estimation for the keep strategy}
 
-Given equation~\ref{eq:2} and the maximum size of the volumes, we can now
-stretch the buffer shape one dimension at a time using simple equations to ensure
-that the maximum amount of memory consumed during the process will stay below the
-amount of memory available. Such computations are given in
-Appendix~\ref{bufferExtensionAlgorithm}.
-Algorithm~\ref{algo:bufferextensionalgorihm} summarizes the computations into a
-pseudocode for the buffer extension algorithm which returns two pieces of
-information: the best buffer shape affordable given $m$ and the indices of the
-remainder volumes that can be kept in cache. The maximum value that the buffer
-can take at any step of the algorithm is represented by $\phi$ (lines 6, 11,
-16, 21).
+In order to compute the amount of seeks produced by running the re-partition
+algorithm using the keep strategy with a given read shape $B$, we computed this
+amount as the sum of the amount of seeks caused by loading the read buffers $s_r$
+and the amount of seeks caused by writing the write buffers $s_w$,
+such that $s=s_r+s_w$.
 
-Now that the best buffer shape can be computed, we can express the
-\texttt{getBufferPositions} function (Algorithm~\ref{algo:generalrepartition}) in
-Algorithm~\ref{algo:getbuffersposition}.
+When loading the read buffers, the seeks occur in case of a shape mismatch
+between a read buffer and the input files. It is the exact same problem than
+when computing the amount of seeks produced by the baseline algorithm when
+writing in the output files. Therefore, the baseline seek model presented
+before can be used to compute $s_r$.
+
+In order to compute the amount of seeks produced by the write buffers however,
+we did not find an elegant formula to solve the problem. We can compute $s_w$
+by first finding the write buffers, and then summing the amount of seeks done
+by each write buffer. Indeed, given a dimension $x$, a write buffer will seek
+if its length in the $x^{th}$ dimension is different than $O_x$.
+
+In particular, with $WB$ the write buffer shape,
+\begin{itemize}
+  \item $WB_k \neq O_k => WB_i*WB_j$ seeks.
+  \item $WB_j \neq O_j => WB_i$ seeks.
+  \item $WB_i \neq O_i => 1$ seeks.
+\end{itemize}
 
 %----------------------------------------
 \section{Implementation}
 %----------------------------------------
 
-\subsection{Clustered strategy}
-
-As explained in the introduction, \texttt{dask} represents computations by a task graph.
-Implementing the clustered strategy consisted in modifying that graph. To that
-aim, we implemented an optimization function to create ``buffer" tasks in the
-graph (Figure~\ref{fig:bufferization}).
-
-\begin{figure*}
-  \centering
-
-  \subfloat[\texttt{dask} graph for splitting a multidimensional array.]{{\includegraphics[width=8cm]{./figures/new/before_store.png} }}
-  \qquad
-  \subfloat[Same \texttt{dask} graph after creating a buffer task (\texttt{merged part}).]{{\includegraphics[width=8cm]{./figures/new/after_store.png} }}
-
-  \caption{Optimization of a \texttt{dask} graph of a split using the clustered strategy.}
-  \label{fig:bufferization}
-
-\end{figure*}
-
-The optimization starts by converting the task graph into a mathematical
-directed graph for use by a BFS (Breadth First Search) algorithm. More
-precisely, we implemented it as adjacency lists. The BFS algorithm allows us to
-find and store tasks by type for later processing.  Again, the clustered
-strategy loads buffers block by block, block columns by block columns or block
-slices by block slices~\cite{seqalgorithms}. Assuming that the whole array is
-being processed, we find the appropriate buffering scheme from $I$, $O$ and $m$.
-
-We then updated the data loading tasks to force \texttt{dask} to load a whole buffer at
-a time instead of small chunks. Finally, we modified the dependent tasks to make
-them use our new buffer tasks. According to the clustered algorithm, all buffers
-do not necessarily have the same shape, that is why we could not use the
-\texttt{dask.array.rechunk} method.
-
-The default scheduler for \texttt{dask.array} is the multi-threaded scheduler. It means
-that at the beginning of the execution \texttt{dask} dispatches some tasks that have
-no dependencies into different threads. The problem is that the clustered
-strategy tries to use all the memory available for each buffer, and such buffer
-tasks are the one with no initial dependencies. Therefore, we needed to
-modify \texttt{dask}'s scheduler to make it load one buffer only at a time.
-This avoids running out of memory during the processing.
-
-\subsection{The keep algorithm}
-
-The buffer extension algorithm described before has been directly
-implemented in plain Python. Implementing the last part of the algorithm
-consisted in: (1) creating the buffer tasks, (2) dispatching the different data
-parts loaded by each buffer into the appropriate output files, (3) simulating
-the cache to keep remainders in memory between buffer loadings.
-
-This time, the buffer task creation was straightforward as it is assumed by the
-algorithm that the buffers constitute a partition of the whole array. For the
-second and third part, we used the \texttt{dask.array.store} method that
-requires input arrays as argument, together with the output files in which to
-store the data and the indices of each data part in the output files. To
-automatically compute such information, we proceeded as follows. We first
-compute, for each output file, the list of each constitutive subarrays, with
-subarrays defined by the intersection of input and output files and buffers.
-When each output file ``knows" which part from which buffer are required, we
-merge some of them according to the keep strategy to enforce the fact that
-a given data part of a given output file has to be stored at once. By doing this
-we create dependencies in the task graph. Such dependency tells \texttt{dask} that it
-needs to load two buffers before writing a given subarray for example.
-
-\subsection{Dask repartition}
-
-Both implementations are available in a same Python package called \texttt{dask repartition}. It
-contains tests with 99\% coverage and is available on PyPI (The Python Package
-Index). \texttt{dask repartition} provides a simple API to use the split, merge and repartition
-algorithms described in this study (Figure~\ref{fig:daskrepartition_split}).
-
-\begin{figure}
-  \begin{verbatim}
-  from dask_io.optimizer as opt
-  from opt.cases.case_config import Split
-
-  case = Split(inputfilepath, I)
-  case.split_hdf5_multiple(datadir)
-  arr = case.get()
-
-  enable_clustering(ONE_GIG * 5)
-  arr.compute()
-  \end{verbatim}
-  \caption{Example code to split a multidimensional array using \texttt{dask repartition}'s clustered strategy implementation'}
-  \label{fig:daskrepartition_split}
-\end{figure}
 
 
 %----------------------------------------
 \section{Experiments}
 %----------------------------------------
-This section describes the three experiments we did in this study. All the
-results are described in the ``Results" section, and the code of the experiments
-is available in a dedicated repository on Github.
 
-\subsection{Baseline experiment}
-We first designed
-an experiment to prove that \texttt{dask.array} was subject to the seek problem.
-To that aim we created a random array from a uniform distribution and stored it
-as a HDF5 file for later processing. The array had a shape of
-$(1925, 1512, 1750)$ which represents 1/8
-of the Big Brain size. The experiment then consisted in splitting and merging
-the array with \texttt{dask} using two different chunk shapes: one of them,
-$(275,189,250)$, doing more seeks than the other; $(5,1512,1750)$
-(Table~\ref{tab:exp1}). We did this experiment on both HDD and SSD to see if the
-results were also visible when using an SSD which is suposedly less affected by
-seeks. The results of this experiment showed that \texttt{dask} was indeed
-subject to the seek problem.
 
-\begin{table}[ht]
- \centering
- \caption{Baseline experiment}
-
-  \begin{tabular}[t]{c c c c}
-  \hline
-  chunks shape & R partition & nb of chunks & nb voxels/chunk \\
-    \hline\hline
-    (5,1512,1750) & (385,1,1) & 385 & 13,230,000 \\
-    \hline
-    (275,189,250) & (7,8,7) & 392 & 12,993,750 \\
-    \hline
-  \end{tabular}
-
-  \label{tab:exp1}
-\end{table}
-
-\subsection{Evaluation of the clustered strategy with dask}
-In order to see if we could reduce the split/merge processing time of dask, we
-implemented and tested the ``clustered" strategy for splitting and merging
-multidimensional arrays. We chose this strategy first because it seemed simpler
-to implement. We also know from~\cite{seqalgorithms} that the difference between
-the naive and clustered strategies should be large enough to be visible in the
-processing time. The shapes used for the experiment are shown on the
-Table~\ref{tab:exp2}.
-
-\begin{table}[ht]
- \centering
- \caption{Experiment 2}
-
-  \begin{tabular}[t]{c c c c}
-  \hline
-    R & chunks shape & buffer size \\
-    \hline\hline
-    (3500, 3500, 3500) & (875, 875, 875) & 15 GB  \\
-    \hline
-    (3500, 3500, 3500) & (500, 500, 500) & 15 GB  \\
-    \hline
-    (3500, 3500, 3500) & (350, 350, 350) & 15 GB  \\
-    \hline
-    (3500, 3500, 3500) & (50, 3500, 3500) & 15 GB \\
-    \hline
-    (3500, 3500, 3500) & (28, 3500, 3500) & 15 GB \\
-    \hline
-  \end{tabular}
-
-  \label{tab:exp2}
-\end{table}
-
-\subsection{Evaluation of the keep algorithm}
-After these two preliminary experiment, and in order to evaluate the
-efficiency of the keep algorithm, we compared it against vanilla \texttt{dask}
-on local computer. To be fair we used dask with one thread as required for our
-implementation but also with the standard multi-threaded scheduler as it is the
-default when using \texttt{dask.array}. In order to compare our implementation
-and dask vanilla to a naive repartition, we also added a plain Python implementation
-to the benchmark. For the experiments presented below we built a random 3D array
- of the size of Big Brain, drawn from a uniform distribution. Once again, the
- array is initially stored into an HDF5 file.
-
-We did three sub-experiments on the keep algorithm on a multidimensional array
-of shape $(3900,3000,3500)$. The first one consisted in comparing the different
-implementations in the case where the keep algorithm is supposed to be the most
-effective i.e. when the buffer is equal to the input aggregate $B_x=\Lambda_x$
-(Table~\ref{tab:exp3_1}). This experiment aimed at showing if the keep
-algorithm worked and seeing how much it can improve the processing speed.
-The experiment has been done with $I>O$ and $I<O$ at different resolution:
-$I~=\frac{R}{5}$, $I~=\frac{R}{10}$, $I~=\frac{R}{22}$ and $I$ of size the size
-recommended by \texttt{dask} i.e. more than 100MB (about 200MB in our case).
-Note that in Table~\ref{tab:exp3_1} we only tested $I<O$ when $I=(195,150,175)$
-as the resulting $O$ size would be too small (less than 10MB).
-
-\begin{table}[ht]
- \centering
- \caption{Experiment 3.1}
-
-  \begin{tabular}[t]{c c c c}
-  \hline
-    I & O & $I<O$ & B is partition of R \\
-    \hline\hline
-    (780,600,700) & (650,500,500) & False & True \\
-    \hline
-    (780,600,700) & (975,1000,875) & True & False \\
-    \hline
-    (390,300,350) & (325,250,250) & False & True \\
-    \hline
-    (390,300,350) & (650,500,700) & True & True \\
-    \hline
-    (195,150,175) & (300,250,250) & True & True \\
-    \hline
-    (195,150,175) & (650,375,500) & True & False \\
-    \hline
-    (650,375,500) & (390,300,350) & False & True \\
-    \hline
-    (650,375,500) & (975,600,700) & True & False \\
-    \hline
-  \end{tabular}
-
-  \label{tab:exp3_1}
-\end{table}
-
-In the second experiment, we tested the case where $m$ is not big enough to get
-$B=\Lambda$. We did this experiment at two different resolutions, with $I>O$
-and $I<O$ (see Table~\ref{tab:exp3_2}) and tested two buffers for each case:
-$B=(1,0.5\Lambda_j,\Lambda_k)$ and $B=(0.5\Lambda_i,\Lambda_j,\Lambda_k)$.
-In each case, $B$, $I$ and $O$ must be a partition of $R$. There is one missing
-experiment in Table~\ref{tab:exp3_2} as the resulting buffer $B$ was not a
-partition of $R$.
-
-\begin{table*}[ht]
- \centering
- \caption{Experiment 3.2}
-
-  \begin{tabular}[t]{c c c c}
-  \hline
-    $I$ & $O$ & $\Lambda$ & B \\
-    \hline\hline
-    (780,600,700) & (650,500,500) ($O<I$) & (780,600,700) & (390,600,700) \\
-    \hline
-    (390,300,350) & (650,500,700) ($O>I$) & (780,600,700) & (390,600,700) \\
-    \hline
-    (390,300,350) & (325,250,250) ($O<I$) & (390,300,350) & (195,300,350) \\
-    \hline
-  \end{tabular}
-  \label{tab:exp3_2}
-\end{table*}
-
-Finally, the particular case of an important shape mismatch was tested, where
-$O>>I$ and $O<<I$. In both cases the input aggegate will be quite big which is
-supposed to be a bad case for the keep algorithm as extending the buffer to
-$\Lambda$ will be more complicated. We tested several cases described in
-Table~\ref{tab:exp3_3}. As one can see, $O>>I$ and $O<<I$ seems to be pretty
-equivalent as in both cases the input aggregate shape is the same. But both are
-worth experimenting as when $O<<I$ we only read one file, whereas $O>>I$ implies
-that the algorithm has to switch between a lot of input files.
-
-\begin{table*}[ht]
- \centering
- \caption{Experiment 3.3}
-
-  \begin{tabular}[t]{c c c c c}
-  \hline
-    $I$ & $O$ & $\Lambda$ & B & $x_i$/$x_j$\\
-    \hline\hline
-    (1950,1500,1750) & (195,150,175) & (1950,1500,1750) & (1,375,$\Lambda_k$) & $x_j=$25\%$\Lambda_j$ \\
-    \hline
-    (1950,1500,1750) & (195,150,175) & (1950,1500,1750) & (1,750,$\Lambda_k$) & $x_j=$50\%$\Lambda_j$ \\
-    \hline
-    (1950,1500,1750) & (195,150,175) & (1950,1500,1750) & (390,$\Lambda_j$,$\Lambda_k$) & $x_i=$20\%$\Lambda_i$ \\
-    \hline
-    (1950,1500,1750) & (195,150,175) & (1950,1500,1750) & (975,$\Lambda_j$,$\Lambda_k$) & $x_i=$50\%$\Lambda_i$ \\
-    \hline
-    (195,150,175) & (1950,1500,1750) & (1950,1500,1750) & (1,375,$\Lambda_k$) & $x_j=$25\%$\Lambda_j$ \\
-    \hline
-    (195,150,175) & (1950,1500,1750) & (1950,1500,1750) & (1,750,$\Lambda_k$) & $x_j=$50\%$\Lambda_j$ \\
-    \hline
-    (195,150,175) & (1950,1500,1750) & (1950,1500,1750) & (390,$\Lambda_j$,$\Lambda_k$) & $x_i=$20\%$\Lambda_i$ \\
-    \hline
-    (195,150,175) & (1950,1500,1750) & (1950,1500,1750) & (975,$\Lambda_j$,$\Lambda_k$) & $x_i=$50\%$\Lambda_i$ \\
-    \hline
-  \end{tabular}
-
-  \label{tab:exp3_3}
-\end{table*}
 
 \subsection{Experimental setting}
-All these experiments have been executed under the same conditions, on a private
+The experiments have been executed under the same conditions, on a private
 cluster using \texttt{slurm} as workload manager. Each compute node has 256GB of
 RAM, 6 SSDs of size 480 GB and 32 cores. We only used 1 node and 1 SSD at a
 time. The Python environment used was a
@@ -914,55 +581,10 @@ conda environment, all packages used together with their version are available
 in a \texttt{requirements.txt} file. The instructions about how to install the
 dependencies in a virtual or
 conda environement are provided in the \texttt{README} file of the
-\href{https://github.com/big-data-lab-team/dask_io}{project's repository}. The
-code for all experiments can be found in a
-\href{https://github.com/GTimothee/dask_io_experiments}{dedicated repository}
-as well.
-%----------------------------------------
-\section{Results}
-%----------------------------------------
+\href{https://github.com/GTimothee/repartition_experiments}{project's repository}. The
+code for all experiments can be found in the same repository as well.
 
-\subsection{Baseline experiment}
-\begin{figure*}
-  \centering
-  \includegraphics[scale=0.5]{./figures/exp1_results.png}
-  \label{fig:exp1}
-  \caption{Experiment 1}
-\end{figure*}
-
-\subsection{Experiment 2}
-\begin{figure*}
-  \centering
-  \includegraphics[scale=0.5]{./figures/exp2_results.png}
-  \label{fig:exp2}
-  \caption{Experiment 3.2  - (chunk shape)\\
-  case 1 (350, 350, 350)\\
-  case 2 (500, 500, 500)\\
-  case 3 (875, 875, 875)\\
-  case 4 (28, 3500, 3500)\\
-  case 5 (50, 3500, 3500)\\
-  }
-\end{figure*}
-
-\subsection{Experiment 3}
-\subsubsection{Experiment 3.1}
-\begin{figure*}
-  \centering
-  \includegraphics[scale=0.5]{./figures/exp5_1_results.png}
-  \label{fig:exp3_1}
-  \caption{Experiment 3.1  - (O)(I)(B)\\
-  case 1 (300, 250, 250)(195, 150, 175)(390, 300, 350)\\
-  case 2 (325, 250, 250)(390, 300, 350)(390, 300, 350)\\
-  case 3 (390, 300, 350)(650, 375, 500)(650, 375, 500)\\
-  case 4 (650, 500, 500)(780, 600, 700)(780, 600, 700)\\
-  case 5 (650, 500, 700)(390, 300, 350)(780, 600, 700)\\
-  }
-\end{figure*}
-
-Note that the keep algorithm is being run with the single-threaded scheduler.
-
-\subsubsection{Experiment 3.2}
-\subsubsection{Experiment 3.3}
+\subsection{Results}
 
 %----------------------------------------
 \section{Discussion}
@@ -977,7 +599,8 @@ cannot appear twice in the list. Finally, let us define a cache that contains
 the data currently in main memory. We define the buffer ordering problem as the
 problem of finding the optimal path such that the amount of memory used by the
 cache is kept minimal during the process. For each buffer, we load some data
-into the cache (reading the buffer) and free some of it (writing into output files). The amount of
+into the cache (reading the buffer) and free some of it (writing into output files).
+The amount of
 data released is different depending of the buffers previously visited and each
 buffer can only be visited once which can be represented by removing all edges
 pointing to a visited vertex except the one coming from the previously visited
@@ -1046,129 +669,5 @@ now recommended for use, even on local computers (using one node).
 
 \bibliography{Bibliography}
 \bibliographystyle{ieeetr}
-
-\appendices
-
-\section{Memory analysis for the buffer extension algorithm}
-\label{bufferExtensionAlgorithm}
-
-Using the nomenclature in section ``The buffer extension algorithm"
-(see Figure~\ref{fig:nomenclature_overlaps}), the $x^{th}$ buffer, the volumes'
-sizes are:
-
-$\begin{cases}
-F_1 = \Omega_k min(B_j, \Theta_j) min(B_i, \Theta_i) \\
-F_2 = \Theta_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i) \\
-F_3 = \Omega_k max(0, min(B_j - \Theta_j, \Omega_j)) min(B_i, \Theta_i) \\
-F_4 = \Theta_k \Theta_j max(0, min(B_i-\Theta_i, \Omega_i)) \\
-F_5 = \Omega_k \Theta_j max(0, min(B_i-\Theta_i, \Omega_i)) \\
-F_6 = \Theta_k \Omega_j max(0, min(B_i-\Theta_i, \Omega_i)) \\
-F_7 = \Omega_k \Omega_j max(0, min(B_i-\Theta_i, \Omega_i))
-\end{cases}$
-
-We are only interested in the maximum amount of memory that will be reached by
-the algorithm. To that aim, we will not evaluate the above formula for each $x$
-but we will replace each $\Omega_d(x)$ by its maximum in $\Sigma$.
-
-In the following paragraphs, we are finding formulas to extend the buffer one
-dimension at a time, for use in the buffer stretching algorithm.
-
-\subsection{Formulas of the buffer extension}
-\subsubsection{Keeping F1}
-
-We first extend the buffer in the $j$ dimension to keep $F_1$.
-
-\noindent $$F_1 = \Omega_k B_j B_i = \Omega_k B_j$$
-$$\Sigma = F_1 + B_iB_jB_k$$
-$$\Sigma = B_j (\Omega_k + \Lambda_k)$$
-$$\Sigma \leq m \Leftrightarrow B_j (\Omega_k + \Lambda_k) \leq m$$
-$$\Sigma \leq m \Leftrightarrow B_j \leq \frac{m}{\Omega_k + \Lambda_k}$$
-
-We define $\phi$, the maximum value for $B_j$:
-$$\phi = \lfloor \frac{m}{\Omega_k + \Lambda_k} \rfloor$$
-
-When extending the buffer in the $j$ dimension, $B_i$ stays at 1, so by
-definition of $F_1$ the maximum value that $F_1$ can take is $\Omega_k\Theta_j$.
-$$B_j = \begin{cases}
-  \Theta_j & \textrm{if }\phi \geq \Theta_j \\
-  1 & \textrm{if }\phi = 0 \\
-  \phi & \textrm{else}
-\end{cases}$$
-
-If $B_j=\Theta_j$, then we can continue stretching $B$ in the $j$ direction to
-try to keep $F_2$ and $F_3$ areas.
-
-\subsubsection{Keeping F2 and F3}
-
-Let us define $\delta_j$, the amount we will try to add to $B_j$, such that:
-$$B_j - \Theta_j = \delta_j$$
-$$B_j = \delta_j + \Theta_j$$
-
-From the previous subsection, $F_1$ is of size:
-$$F_1 = \Omega_k \Theta_j B_i = \Omega_k \Theta_j$$
-$F_2$ and $F_3$ are defined in terms of $\delta_i$:
-$$F_2 = \Theta_k \delta_j B_i = \Theta_k \delta_j$$
-$$F_3 = \Omega_k \delta_j B_i = \Omega_k \delta_j$$
-
-We get:
-$$\Sigma = F_1 + n(F_2+F_3)$$
-$$\Sigma = \delta_j\Lambda_k(n+1) + \Theta_j(\Omega_k\Lambda_k)$$
-$$\Sigma \leq m \leftrightarrow \frac{m-\Theta_j(\Omega_k\Lambda_k)}{\Lambda_k(n+1)}$$
-$$\phi = \lfloor \frac{m-\Theta_j(\Omega_k\Lambda_k)}{\Lambda_k(n+1)} \rfloor$$
-$$B_j = \begin{cases}
-  \Lambda_j & \textrm{if }\phi \geq \Lambda_j \\
-  B_j = \Theta_j & \textrm{if }(B_j+\phi) = 0 \\
-  B_j + \phi & \textrm{else}
-\end{cases}$$
-
-Again, if $B_j=\Lambda_j$, we continue to stretch the buffer, this time in the
-$i$ dimension as $B$ equals $\Lambda$ in the $k$ and $j$ direction.
-
-\subsubsection{Increasing F1, F2 and F3 in the ith dimension}
-$$F_1 = \Omega_k\Theta_jB_i$$
-$$F_2 = \Theta_k\Omega_jB_i$$
-$$F_3 = \Omega_k\Omega_jB_i$$
-$$\Sigma = B_i(\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k)$$
-$$\Sigma \leq m \leftrightarrow B_i \leq \frac{m}{\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k}$$
-$$\phi = \lfloor \frac{m}{\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k} \rfloor$$
-
-$$B_i = \begin{cases}
-  \Theta_i & \textrm{if }\phi \geq \Theta_i \\
-  1 & \textrm{if }\phi = 0 \\
-  \phi & \textrm{else}
-\end{cases}$$
-
-If $B_i=\Theta_i$, we continue to stretch the buffer.
-
-\subsubsection{Keeping F4, F5, F6, F7}
-
-$$\begin{cases}
-  F_1 = \Omega_k\Theta_j\Theta_i \\
-  F_2 = \Theta_k\Omega_j\Theta_i \\
-  F_3 = \Omega_k\Omega_j\Theta_i \\
-  F_4 = \Theta_k\Theta_j\delta_i \\
-  F_5 = \Omega_k\Theta_j\delta_i \\
-  F_6 = \Theta_k\Omega_j\delta_i \\
-  F_7 = \Omega_k\Omega_j\delta_i \\
-  B_i = \Theta_i + \delta_i \\
-  B_j = \Lambda_j\\
-  B_k = \Lambda_k\\
-\end{cases}$$
-
-$$\Sigma = F_1 + n(F_2 + F_3) + N(F_4 + F_5 + F_6 + F_7) + B_iB_jB_k$$
-$$\Sigma = F_1 + n(F_2 + F_3) + N(F_4 + F_5 + F_6 + F_7) + (\Theta_i + \delta_i)\Lambda_j\Lambda_k$$
-$$\Sigma = \Theta_i(\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k) + (N+1)\delta_i\Lambda_j\Lambda_k$$
-
-$$\Sigma \leq m \leftrightarrow \delta_i \leq \frac{m-\Theta_i(\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k)}{(N+1)\Lambda_j\Lambda_k}$$
-$$\phi = \lfloor \frac{m-\Theta_i(\Omega_k\Theta_j + n\Omega_j\Lambda_k + \Lambda_j\Lambda_k)}{(N+1)\Lambda_j\Lambda_k} \rfloor$$
-
-$$B_i = \begin{cases}
-  \Lambda_i & \textrm{if }(B_i+\phi) \geq \Lambda_i \\
-  B_i = \Theta_i & \textrm{if }\phi = 0 \\
-  B_i+\phi & \textrm{else}
-\end{cases}$$
-
-The algorithm stops here, as if $B_i=\Lambda_i$, then the buffer has been
-successfully stretched to the input aggregate shape, $\Lambda$.
 
 \end{document}
