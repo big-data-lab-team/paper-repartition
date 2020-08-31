@@ -145,31 +145,31 @@ A re-partitioning algorithm reads the input blocks from disk, and writes the
 output blocks to disk.
 
 We present hereafter a general algorithm for the re-partition task.
-It first consists in defining two types of buffers: read and write buffers.
 
 A re-partioning algorithm (Algorithm~\ref{algo:generalrepartition}) takes a
 list of input blocks \texttt{inBlocks} of shape $I$, a list of output block
 definitions \texttt{outBlocks} of shape $O$ and the amount of memory \texttt{m}
 available for the algorithm.
-Subject to $m$, the algorithm first defines a list of buffer,
+Subject to $m$, the algorithm first defines a list of buffers, the
 \texttt{readBuffers}, to read from the input blocks (line 9).
-These buffers have the same optimal shape $B$.
-Then, the algorithm computes another list of buffers, \texttt{writeBuffers},
+These buffers have the same shape $B$.
+Then, the algorithm computes another list of buffers, the \texttt{writeBuffers},
 in which each buffer is a piece of data to be written at a time into an
 output file (line 10).
 In other words, the write buffers describe how each output file will be written.
-All readBuffers have the same shape $B$. On the contrary, writeBuffers can
+All readBuffers have the same shape $B$. On the contrary, the writeBuffers can
 have different shapes.
 Finally, the main loop of the algorithm (line 12) loads one readBuffer at a
 time (line 13), inserts it into a cache (line 14), and writes each writeBuffer
-as soon as its data is available in cache (line 16 to 18).
+as soon as its data is available in cache (lines 15 to 18).
 
 For simplicity, we require that all buffers in \texttt{readBuffers} have
-the same shape $B$. The cost function $\mathrm{seeks}$ would return the number
-of seeks incurred by the definition of the read and write buffers in the
-repartitioning algorithm. The repartitioning problem is those lists to minimize
-$\mathrm{seeks}$ subject to $m$. Solutions of this problem materialize as
-implementations of function \texttt{getReadBuffers} and \texttt{getWriteBuffers} in
+the same shape $B$. We define the cost function $\mathrm{seeks}$ as returning
+the number of seeks incurred by the repartitioning algorithm.
+The re-partitioning problem is therefore to find the best read and write buffers
+lists in order to minimize $\mathrm{seeks}$ subject to $m$.
+Solutions of this problem materialize as implementations of function
+\texttt{getReadBuffers} and \texttt{getWriteBuffers} in
 Algorithm~\ref{algo:generalrepartition}.
 
 A lower bound on the number of seeks for the repartitioning problem is
@@ -182,11 +182,11 @@ which requires a seek.
   \label{algo:generalrepartition}
   \begin{algorithmic}[1]
     \STATE \textbf{Inputs}
-    \STATE inBlocks: input chunk stored in one dedicated file or in one dataset of a HDF5 file.
+    \STATE inBlocks: input chunks stored in one dedicated file (or in one dataset of a HDF5 file).
     \STATE outBlocks: output chunks to be written, created as one empty file (/dataset of a HDF5 output file).
     \STATE $m$: memory available for one readBuffer or writeBuffer
-    \STATE $I$: shape of one input block
-    \STATE $O$: shape of one output block
+    \STATE $I$: shape of one input chunk
+    \STATE $O$: shape of one output chunk
     \STATE
     \STATE \textbf{Algorithm}
     \STATE B, readBuffers $\leftarrow$ getReadBuffers($I$,$O$,$m$)
@@ -252,106 +252,77 @@ repartitioning task.
 \subsection{Baseline solution}
 
 Our baseline algorithm for the repartitioning problem loads one input block
-at a time, that is, $B$=$I$ in
-Algorithm~\ref{algo:generalrepartition}, and directly writes it to the appropriate output blocks.
-For the basline algorithm, we assume that one input block fits in memory ($m \geq I_iI_jI_k$).
-As in Algorithm~\ref{algo:generalrepartition}, each buffer is loaded only once.
-
-The buffer order has no implication on the number of seeks, so let us set the buffer order arbitrarily
-to the storage order ($i \rightarrow j \rightarrow k$ in \texttt{C-order}).
+at a time, that is, $B$=$I$ in Algorithm~\ref{algo:generalrepartition},
+and directly writes it to the appropriate output blocks.
+The write buffers are therefore defined by the intersections between the input
+and output blocks.
+For the baseline algorithm, we assume that one input block fits in memory ($m \geq I_iI_jI_k$).
+As in Algorithm~\ref{algo:generalrepartition}, each buffer is only loaded once.
 
 The number of seeks $s$ induced by this baseline algorithm is the
 sum of the number of seeks done for each buffer, that is, the sum of:
 \begin{itemize}
-  \item the number of buffers (1 seek per input block)
-  \item the number of output blocks (1 seek to open each output block)
+  \item the number of input blocks (1 seek per read buffer)
+  \item the number of output blocks openings
   \item the number of seeks done by writing into the output blocks
 \end{itemize}
-To compute the last term, let us define $p_x$ the partition of $R_x$
-such that each element in $p_x$ is included in exactly one input block and in
-exactly one output block (see Figure~\ref{fig:p}). $p_x$ can be considered as
-the number of times $R$ is being cut by either an input or an output file in
-dimension $x$. $d_x$ is the number of elements in $p_x$.
-\begin{figure}[h]
-  \centering
-  \includegraphics[scale=0.15]{./figures/new/p.jpeg}
-  \caption{desc.}
-  \label{fig:p}
-  \end{figure}
 
-We say that there is a \emph{shape mismatch} in a given dimension $x$ if $I_x$
-isn't a multiple of $O_x$, and $O_x$ isn't a multiple of $I_x$.
+We say that there is a \emph{shape mismatch} in a given dimension $x$ if the
+border of an output block does not match the border of an input block, and
+vice versa.
+Considering a shape mismatch in the dimension $k$, we can represent it as a cut
+into the whole image of shape $R$ which will incur $R_iR_j$ seeks. Using the
+same reasoning, a cut in dimension $j$ will incur $R_i$ seeks and a cut in
+dimension $i$ will only incur 1 seek.
+It is also worth noticing that if there is a cut in dimension k and j, the seeks
+produced by the cut in $j$ will be included in the seeks produced in dimension $k$.
+The same reasoning applies to $i$ and $j$.
+From this observation we can compute the number of seeks $s$ produced as:
 
-Let us consider a given buffer (of shape $I$). In case of a mismatch in
-dimension $k$ the buffer is divided into two parts in dimension $k$ which results
-in  $2*I_i*I_j$ seeks. Any mismatch in dimension $i$ or $j$ would cut the
-buffer at the end of an output data column, and is therefore included in
-the number of seeks due to the mismatch in $k$. The same observation can be made
-between dimension $j$ and $i$: the seeks occuring from a mismatch in $i$ are
-included in the seeks occuring by a mismatch in $j$. Therefore, the number of
-seeks at write time is computed in one of three distinct cases:
-(1) $I_k \neq O_k$, (2) $I_k = O_k$ and $I_j \neq O_j$ and (3) $I_k = O_k$,
-$I_j = O_j$ but $I_i \neq O_i$. Equation~\ref{eq:1} gives the amount of seeks
-done by writing data in output files for the whole baseline algorithm.
-The case is indicated using $\alpha$, defined as: \\
-$$\alpha_x = \begin{cases}
-   1 & \mathrm{if} I_x \neq O_x \leftrightarrow d_x > 0 \\
-   0 & \mathrm{otherwise}
-\end{cases}$$
+\begin{equation} \label{eq:1}
+s = R_i R_j c_k + R_i c_j m_k + c_i m_j m_k + N
+\end{equation}
 
-\begin{multline} \label{eq:1}
-s_{write} = [(d_k+1)R_iR_j]\alpha_k \\ + [(d_j+1)R_i\frac{R_k}{I_k}](1-\alpha_k)\alpha_j \\ + [(d_i+1)\frac{R_j}{I_j}\frac{R_k}{I_k}](1-\alpha_k)(1-\alpha_j)\alpha_i
-\end{multline}
-
-The seeks for opening output files are included in Equation~\ref{eq:1}.
-In case of no shape mismatch, no seek occur when writing the data into the output
-files apart from opening the output files. However, no shape mismatch imply no
-repartition problem so we do not consider this case in $s$.
-
-Finally, an equation for $s$ is: $s = s_{write} + s_{read}$,
-with $s_{read} = \frac{R_i}{I_i} \frac{R_j}{I_j} \frac{R_k}{I_k}$, the number of
-input files a.k.a. buffers to read.
-
-
- \begin{table}[ht]
-  \centering
-  \caption{Shapes used for the experiment on the baseline seek model}
-
-   \begin{tabular}[t]{c c c c}
-   \hline
-   Mismatch & R & B=I & O \\
-     \hline\hline
-     k,j,i & (240,240,240) & (30,30,30) & (20,20,20) \\
-     \hline
-     j,i & (240,240,240) & (30,30,\textbf{20}) & (20,20,20) \\
-     \hline
-     i & (240,240,240) & (30,\textbf{20},\textbf{20}) & (20,20,20) \\
-     \hline
-   \end{tabular}
-
-   \label{tab:expseekmodel}
-
-\end{table}
-
-\begin{figure}[h]
-\centering
-\includegraphics[scale=0.55]{./figures/baseline_math_model.png}
-\caption{Experiment on the seek model of the baseline algorithm for repartitioning a 3D cubic array.
-The results show considerable seek reduction when removing one shape mismatch at a time.
-}
-\label{fig:baseline_math_model}
-\end{figure}
+With $c_x$ the number of cuts (shape mismatches) in dimension $x$, $m_x$ the
+number of shape matches. The first component corresponds to the seeks produced
+by the shape mismatches in $k$, the second component to those in $j$ and the last
+component by the mismatches in $i$. Finally, $N$ designates the number of input files.
 
 It seems from Equation~\ref{eq:1} that unless the dimensions of the input and
 output files match, a considerable amount of seeks will occur, the number of
-seeks being factors of $R_k$, $R_j$ and/or $R_i$. Also, a shape mismatch in the
+seeks being factors of $R_j$ and/or $R_i$. Also, a shape mismatch in the
 $k$ dimension should be more costly than a shape mismatch in the $j$ dimension,
 which is itself more costly than a mismatch in dimension $i$ (assuming that the
-files are stored in C-order). The seek model has been implemented to confirm
-these theories by an experiment on cubic shapes
-(Figure~\ref{fig:baseline_math_model}). The shapes used for the experiment are
-described in Table~\ref{tab:expseekmodel}. \tristan{All the experiments and results should be moved to the section on experiments and results.
-If the goal of this experiment is to validate the seek model, then the values predicted by the seek model should also appear on the graph.}
+files are stored in C-order).
+
+We implemented Equation~\ref{eq:1} and ran it on a cubic array to confirm these
+theories. One shape mismatch is added at a time in order to see the impact on
+the number of seeks. The setting and results of this simulation are summarized
+in table~\ref{tab:simseekmodel}.
+
+\begin{table}[ht]
+  \centering
+  \caption{Results of the simulation using the baseline algorithm's seek model}
+
+   \begin{tabular}[t]{c c c c c }
+   \hline
+   Mismatch & R & B=I & O & nb seeks \\
+     \hline\hline
+     k & (3500,3500,3500) & (500,500,875) & (500,500,500) & 73,500,000 \\
+     \hline
+     j & (3500,3500,3500) & (500,875,500) & (500,500,500) & 147,000 \\
+     \hline
+     i & (3500,3500,3500) & (875,500,500) & (500,500,500) & 294 \\
+     \hline
+     i,j & (3500,3500,3500) & (875,875,500) & (500,500,500) & 147,168 \\
+     \hline
+     i,j,k & (3500,3500,3500) & (875,875,875) & (500,500,500) & 73,584,096 \\
+     \hline
+   \end{tabular}
+
+   \label{tab:simseekmodel}
+
+\end{table}
 
 %----------------------------------------
 \section{The ``keep" algorithm}
