@@ -207,42 +207,43 @@ which requires a seek.
 \end{algorithm}
 
 \subsection{The multiple and clustered strategies}
-Special cases of the repartitioning problem occur when $I=R$ (``split'' problem)
+Special cases of the re-partitioning problem occur when $I=R$ (``split'' problem)
 or when $O=R$ (``merge'' problem). Two strategies were introduced
 in~\cite{seqalgorithms} to address these problems: the ``multiple" and the
 ``clustered" strategies. In these strategies, every loaded buffer is directly written to the
-destination output files. In terms of Algorithm~\ref{algo:generalrepartition}
-it is equivalent to having one writeBuffer of shape $O$ per output file.
+destination output files.
 The only difference between the multiple and the clustered strategies lies in
-the definition of the buffer shape $B$, hence the definition of the readBuffers.
+the selection of $B$.
 
-In the split problem studied in~\cite{seqalgorithms} $(I=R)$, a \texttt{naive}
-strategy defines readBuffers with the same shape than the output blocks
-($B$=$O$). The readBuffers are iteratively loaded from $R$ and entirely written
+In the split problem studied in~\cite{seqalgorithms} ($I=R$), a \texttt{naive}
+strategy defines the read buffers as having the same shape than the output blocks
+($B$=$O$). The read buffers are iteratively loaded from $R$ and entirely written
 to the appropriate output block (represented by a writeBuffer of shape $O$, too).
 The \texttt{clustered} strategy, however, loads as
 many contiguous data blocks of shape $O$ as possible to fit in $m$.
 $B$ is therefore a multiple of $O$.
-Depending on the amount of main memory available, data blocks may be loaded
+Depending on the amount of main memory available, the data blocks may be loaded
 individually, by entire block columns, or by entire block slabs.
 Although this strategy allows to write each output block in one seek
 (for opening the output file), the clustered strategy is limited by the fact
-that it does not optimize the reading step; it reads an output block no matter
-if (1) it is split in a lot of different input blocks or if (2) even if it is stored
-in one input block it will do a lot of seeks in case of a shape mismatch.
-In the case of the repartition task, one can expect the clustered strategy to
-perform poorly as these limits are exacerbated as there are more than one input or
-output file (as it is the case in the split/merge problems).
+that it does not optimize the reading step.
+In the case of the re-partition task, one can expect the clustered strategy to
+perform poorly as
+(1) it reads an output block no matter if it is split in a lot of different input blocks
+and (2) even if it is stored in one input block the algorithm will do a lot of seeks in
+case of a shape mismatch.
+These limits are exacerbated in the re-partition task as there are many input and
+output files.
 
 The \texttt{multiple} strategy used for the split problem in~\cite{seqalgorithms}
 aims at not doing any seek while reading \textit{and} writing;
 Both the input and the output blocks are read/written contiguously. In
-terms of Algorithm~\ref{algo:generalrepartition}, this means defining readBuffers as
-contiguous parts of the input array and writeBuffers as contiguous parts of
+terms of Algorithm~\ref{algo:generalrepartition}, this means defining read buffers as
+contiguous parts of the input array and write buffers as contiguous parts of
 the output arrays. It is equivalent to extending the buffer in the inverse of
 the storage order: $k \rightarrow j \rightarrow i$ in the case
 of the \texttt{C-order}. The tradeoff lies in switching between files
-at each buffer loading. Again, using this strategy for the repartition task would
+at each buffer loading. In this case too, using this strategy for the re-partition task would
 result in even more switches between input and output files which makes the limit
 even more important.
 
