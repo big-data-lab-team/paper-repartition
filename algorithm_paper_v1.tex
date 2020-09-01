@@ -6,10 +6,10 @@
 \usepackage{graphicx}
 \usepackage{textcomp}
 \usepackage{xcolor}
-\usepackage{subfig}
 \usepackage{multirow}
 \usepackage{algorithmic, algorithm}
-\usepackage{hyperref}
+\usepackage{caption}
+\usepackage{subcaption}
 \usepackage{hyperref} % makes cross-refs (biblio, figures, algos, ...) clickable
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
@@ -695,7 +695,53 @@ small (about 5.5MB).
 
 \subsection{Results}
 
+\begin{figure*}
+     \centering
+     \begin{subfigure}[b]{\textwidth}
+         \centering
+         \includegraphics[scale=0.5]{./figures/new/results_256.png}
+         \caption{$y=x$}
+         \label{fig:y equals x}
+     \end{subfigure}
+     \vfill
+     \begin{subfigure}[b]{\textwidth}
+         \centering
+         \includegraphics[scale=0.5]{./figures/new/results_8.png}
+         \caption{$y=3sinx$}
+         \label{fig:three sin x}
+     \end{subfigure}
+     \vfill
+     \begin{subfigure}[b]{\textwidth}
+         \centering
+         \includegraphics[scale=0.5]{./figures/new/results_4.png}
+         \caption{$y=3sinx$}
+         \label{fig:three sin x}
+     \end{subfigure}
+\end{figure*}
 
+\begin{figure*}
+     \centering
+     \begin{subfigure}[b]{\textwidth}
+         \centering
+         \includegraphics[scale=0.5]{./figures/new/results_seeks_256.png}
+         \caption{$y=x$}
+         \label{fig:y equals x}
+     \end{subfigure}
+     \vfill
+     \begin{subfigure}[b]{\textwidth}
+         \centering
+         \includegraphics[scale=0.5]{./figures/new/results_seeks_8.png}
+         \caption{$y=3sinx$}
+         \label{fig:three sin x}
+     \end{subfigure}
+     \vfill
+     \begin{subfigure}[b]{\textwidth}
+         \centering
+         \includegraphics[scale=0.5]{./figures/new/results_seeks_4.png}
+         \caption{$y=3sinx$}
+         \label{fig:three sin x}
+     \end{subfigure}
+\end{figure*}
 
 %----------------------------------------
 \section{Discussion}
