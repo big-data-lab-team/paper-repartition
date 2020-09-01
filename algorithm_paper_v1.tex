@@ -564,25 +564,54 @@ In particular, with $WB$ the write buffer shape,
 \section{Implementation}
 %----------------------------------------
 
+\subsection{Project repository and programming language}
+The baseline algorithm and the ``keep" algorithm have been implemented in plain
+Python 3.7.
+We call \emph{keep algorithm} the general re-partition algorithm with the
+implementation of getReadBuffers and getWriteBuffers following the keep
+strategy as explained above.
+The Python environment used was a conda environment, all packages used together
+with their version are available in a \texttt{requirements.txt} file.
+The instructions about how to install the dependencies in a virtual or conda
+environement are provided in the \texttt{README} file of the
+\href{https://github.com/GTimothee/repartition_experiments}{project's repository}.
+The code for all experiments can be found in the same repository as well.
 
+\subsection{Keep algorithm implementation details}
+When implementing the keep algorithm, we added some optimizations.
+First of all, instead of looping over all write buffers line 15 of
+Algorithm~\ref{algo:generalrepartition} we first compute a Python dictionary
+associating each buffer to the output files it crosses or includes.
+It allows to search only for the write buffers that write into the output files
+crossed by the read buffer loaded. When a write buffer has been written, it
+is also deleted from the list of write buffers which reduces even more the
+computation time.
+
+We encountered a tradeoff in the implementation of the keep algorithm which
+makes its processing time longer that it could be.
+Indeed, we had to implement the keep algorithm by passing data per value from
+the read buffers to the cache, instead of by address.
+This is due to our formulation of the re-partition problem which requires us to
+be able to predict the amount of memory consumed by our algorithm to ensure that
+the limit $m$ will be respected.
+Python uses a custom garbage collector which manages the release of our
+data structures and prevents us to force the release of some data parts.
+We found that copying the data to the cache enabled us to stay below the
+maximum memory consumption that we predicted at the buffer selection time.
+
+Finally, although we used the HDF5 file format for our experiments, the code
+uses an instance of a so-called ``file manager" so that using our code with
+another file format is as simple as implementing a new file manager object.
 
 %----------------------------------------
 \section{Experiments}
 %----------------------------------------
 
-
-
 \subsection{Experimental setting}
 The experiments have been executed under the same conditions, on a private
 cluster using \texttt{slurm} as workload manager. Each compute node has 256GB of
 RAM, 6 SSDs of size 480 GB and 32 cores. We only used 1 node and 1 SSD at a
-time. The Python environment used was a
-conda environment, all packages used together with their version are available
-in a \texttt{requirements.txt} file. The instructions about how to install the
-dependencies in a virtual or
-conda environement are provided in the \texttt{README} file of the
-\href{https://github.com/GTimothee/repartition_experiments}{project's repository}. The
-code for all experiments can be found in the same repository as well.
+time.
 
 \subsection{Results}
 
