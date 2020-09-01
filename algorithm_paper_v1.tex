@@ -645,6 +645,17 @@ The only input block shape for which only one output block shape has been tested
 is $R/20$, as using an output block smaller than $R/20$ would be unrealistically
 small (about 5.5MB).
 
+The experiment has been run on a cluster node with 256GB, 8GB and 4GB of
+available RAM for $m$.
+The reason for using different amounts of RAM is to benchmark the keep algorithm
+with different buffer shapes.
+The first amount of RAM corresponds to using all the
+available RAM from the compute node, whereas we chose 8 and 4GB of available RAM
+because all ideal buffer shapes incured a maximum memory consumption of less than
+16GB.
+The buffer shapes of each run for each amount of RAM available are summarized in
+Table~\ref{tab:buffer_shapes}.
+
 \begin{table}[ht]
   \centering
   \caption{Description of the different runs of the experiment, with $R=(3500,3500,3500)$}
@@ -692,6 +703,43 @@ small (about 5.5MB).
 
 \end{table}
 
+\begin{table}[ht]
+  \centering
+  \caption{Description of the different buffer shapes used for each run by the keep algorithm, depending on the amount of RAM available. The last column gives the maximum RAM consumption estimated by the keep algorithm before running (at buffer selection time).}
+
+   \begin{tabular}[t]{| c | c | c | c |}
+   \hline
+   $m$ & ref & buffer shape & maximum estimated (MB) \\
+   \hline
+   \multirow{2}{*}{256GB} & 0 & (875, 1750, 875) & 2,679.6875 \\
+   & 1 & (875, 875, 875) &  14,631.09375 \\
+   & 2 & (700, 700, 700) &  11,596.0 \\
+   & 3 & (350, 350, 350) &  5,255.75 \\
+   & 4 & (350, 350, 350) &  5,255.75 \\
+   & 5 & (700, 875, 700) &  10,920.0 \\
+   & 6 & (350, 875, 350) &  1,133.125 \\
+   \hline
+   \multirow{2}{*}{8GB} & 0 & (875, 1750, 875) & 2,679.6875 \\
+   & 1 & (700, 875, 875) &  1,715.0 \\
+   & 2 & (500, 700, 700) &  2,040.0 \\
+   & 3 & (350, 350, 350) &  5,255.75 \\
+   & 4 & (350, 350, 350) &  5,255.75 \\
+   & 5 & (500, 875, 700) &  962.5 \\
+   & 6 & (350, 875, 350) &  1,133.125 \\
+   \hline
+   \multirow{2}{*}{4GB} & 0 & (875, 1750, 875) & 2,679.6875 \\
+   & 1 & (700, 875, 875) &  1,715.0 \\
+   & 2 & (500, 700, 700) &  2,040.0 \\
+   & 3 & (250, 350, 350) &  430.0 \\
+   & 4 & (250, 350, 350) &  430.0 \\
+   & 5 & (500, 875, 700) &  962.5 \\
+   & 6 & (350, 875, 350) &  1,133.125 \\
+   \hline
+   \end{tabular}
+
+   \label{tab:buffer_shapes}
+
+\end{table}
 
 \subsection{Results}
 
@@ -736,7 +784,7 @@ We also remark that although the number of seeks have been reduced from millions
 to thousands of seeks for runs 1 to 5, the reduction in processing time does not
 follow linearly the reduction in the number of seeks.
 This is probably due to the fact that some seeks are more costly than others,
-which has not been taken into account in our problem formulation. 
+which has not been taken into account in our problem formulation.
 
 \begin{figure*}
      \centering
