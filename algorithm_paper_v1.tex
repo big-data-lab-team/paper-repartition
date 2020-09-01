@@ -7,6 +7,7 @@
 \usepackage{textcomp}
 \usepackage{xcolor}
 \usepackage{subfig}
+\usepackage{multirow}
 \usepackage{algorithmic, algorithm}
 \usepackage{hyperref}
 \usepackage{hyperref} % makes cross-refs (biblio, figures, algos, ...) clickable
@@ -613,7 +614,88 @@ cluster using \texttt{slurm} as workload manager. Each compute node has 256GB of
 RAM, 6 SSDs of size 480 GB and 32 cores. We only used 1 node and 1 SSD at a
 time.
 
+\subsection{Comparison of the baseline and the keep algorithms}
+In order to assess the keep algorithm performances, we implemented the baseline
+algorithm and ran it in the same conditions than the keep algorithm.
+The experiment consists in rechunking an array of shape $R=(3500,3500,3500)$, of
+type float16 i.e. with 2 bytes per voxel.
+We chose a cubic shape so that no dimension influences more the results than
+the other.
+Also, the sides of $R$ have been selected to be $3500$ as this number has a
+reasonable amount of divisors, which makes the experiment feasible, as
+$B$, $O$ and $I$ have to be divisors of $R$.
+In this experiment we monitored the processing time of both algorithms, for
+different amounts of main memory available.
+Indeed, the keep algorithm should be faster when it has more memory available.
+
+In order to test the algorithms in different conditions, we decided to try
+several input block shapes, and for each input block shape, two output blocks
+shapes have been tested. One output block shape such that $O>I$ and the other
+such that $O<I$. This is interesting because when $O>I$ the ideal buffer shape
+will be an input aggregate, whereas in the other case $\Lambda=I$.
+The different runs have been summarized in Table~\ref{tab:exp} and indexed by
+a number.
+The three first input blocks have been computed as $R/4$, $R/10$ and $R/20$
+(see Table~\ref{tab:exp_inblocks}).
+The last input block has a shape of $(350,875,350)$ in order to be of size
+approximately 100MB, as recommended by the \texttt{dask} Python package.
+With $R/4$, the first input block has a size of about 670MB.
+We tried those shapes as they seemed reasonable and can be found in practice.
+The only input block shape for which only one output block shape has been tested
+is $R/20$, as using an output block smaller than $R/20$ would be unrealistically
+small (about 5.5MB).
+
+\begin{table}[ht]
+  \centering
+  \caption{Description of the different runs of the experiment, with $R=(3500,3500,3500)$}
+
+   \begin{tabular}[t]{| c | c | c | c | c |}
+   \hline
+   $I$ & $O$ & ref \\
+   \hline
+   \multirow{2}{*}{(875,875,875)} & (875,1750,875) & 0 \\
+   & (700,875,700) & 1 \\
+   \hline
+   \multirow{2}{*}{(350,350,350)} & (500,500,500) & 2 \\
+   & (250,250,250) & 3 \\
+   \hline
+   \multirow{1}{*}{(175,175,175)} & (250,250,250) & 4 \\
+   \hline
+   \multirow{2}{*}{(350,875,350)} & (500,875,500) & 5 \\
+   & (350,500,350) & 6 \\
+   \hline
+   \end{tabular}
+
+   \label{tab:exp}
+
+\end{table}
+
+\begin{table}[ht]
+  \centering
+  \caption{Description of the different input block shapes, with $R=(3500,3500,3500)$}
+
+   \begin{tabular}[t]{| c | c | c | c | c |}
+   \hline
+   $I$ & size (MB) & $R/I$ \\
+   \hline
+   $(875,875,875)$ & 669.922 & (4,4,4) \\
+   \hline
+   $(350,350,350)$ & 42.875 & (10,10,10) \\
+   \hline
+   $(175,175,175)$ & 5.359 & (20,20,20) \\
+   \hline
+   $(350,875,350)$ & 107.188 & (10,4,10) \\
+   \hline
+   \end{tabular}
+
+   \label{tab:exp_inblocks}
+
+\end{table}
+
+
 \subsection{Results}
+
+
 
 %----------------------------------------
 \section{Discussion}
