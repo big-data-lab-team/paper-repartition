@@ -695,28 +695,75 @@ small (about 5.5MB).
 
 \subsection{Results}
 
+The results in terms of processing time are shown on
+Figure~\ref{fig:results}, whereas the results in terms of seeks are
+presented on Figure~\ref{fig:seeks_results}.
+
+Looking at Figure~\ref{fig:results}, we can see that
+the baseline algorithm performs surprisingly well compared to the keep algorithm
+when the main memory available is 256GB (all the node's available RAM).
+We can see that when the amount of RAM available decreases (8 and 4GB), the
+performances of the baseline algorithm decreases drastically.
+In particular, the keep algorithm is approximately 2 times faster for runs
+2, 3 and 4 on Figure~\ref{fig:results4}.
+From these observations we suppose that the baseline algorithm performs well
+with 256GB because it leverages the page cache.
+Indeed, apart from $m$ nothing changes for the baseline algorithm, the read
+buffers' shape stays $B=I$.
+
+Another factor for the baseline algorithm to perform well compared to the
+keep algorithm with 256GB is the time overhead of the keep algorithm which is
+very important as one can see on Figure~\ref{fig:results}.
+This is due to our implementation and the tradeoff presented in section
+``Implementation".
+Concretely, the time overhead is mainly due to making copies of the data from
+the read buffers to the cache.
+In terms of read/write processing time however, we can clearly see an
+important speedup by the keep algorithm compared to the baseline for
+runs 3 and 4 (Figure~\ref{fig:results}).
+One can also notice a non-negligible speedup for runs 1 to 5 for the experiment
+with 8 (Figure~\ref{fig:results8}) and 4GB (Figure~\ref{fig:results4}).
+
+Considering Figure~\ref{fig:seeks_results}, one can see that the number of
+seeks is drastically reduced by the keep algorithm, which is consistent with
+the results in terms of processing time.
+We remark that one needs to reduce significantly the amount of seeks produced
+by an algorithm to clearly see an impact on the processing time.
+Considering run 4 which shows the most important differences in terms of
+processing time, the amount of seeks have been reduced from about 100 millions
+seeks to thousands of seeks.
+We also remark that although the number of seeks have been reduced from millions
+to thousands of seeks for runs 1 to 5, the reduction in processing time does not
+follow linearly the reduction in the number of seeks.
+This is probably due to the fact that some seeks are more costly than others,
+which has not been taken into account in our problem formulation. 
+
 \begin{figure*}
      \centering
      \begin{subfigure}[b]{\textwidth}
          \centering
          \includegraphics[scale=0.5]{./figures/new/results_256.png}
-         \caption{$y=x$}
-         \label{fig:y equals x}
+         \caption{Processing times for $m=256$GB}
+         \label{fig:results256}
      \end{subfigure}
      \vfill
      \begin{subfigure}[b]{\textwidth}
          \centering
          \includegraphics[scale=0.5]{./figures/new/results_8.png}
-         \caption{$y=3sinx$}
-         \label{fig:three sin x}
+         \caption{Processing times for $m=8$GB}
+         \label{fig:results8}
      \end{subfigure}
      \vfill
      \begin{subfigure}[b]{\textwidth}
          \centering
          \includegraphics[scale=0.5]{./figures/new/results_4.png}
-         \caption{$y=3sinx$}
-         \label{fig:three sin x}
+         \caption{Processing times for $m=4$GB}
+         \label{fig:results4}
      \end{subfigure}
+
+     \caption{Results in terms of processing time for the keep and baseline algorithms. From top to bottom, the results are presented for 256, 8 and 4GB of available main memory.}
+     \label{fig:results}
+
 \end{figure*}
 
 \begin{figure*}
@@ -724,23 +771,26 @@ small (about 5.5MB).
      \begin{subfigure}[b]{\textwidth}
          \centering
          \includegraphics[scale=0.5]{./figures/new/results_seeks_256.png}
-         \caption{$y=x$}
-         \label{fig:y equals x}
+         \caption{Seek quantities for $m=256$GB}
+         \label{fig:seeks256}
      \end{subfigure}
      \vfill
      \begin{subfigure}[b]{\textwidth}
          \centering
          \includegraphics[scale=0.5]{./figures/new/results_seeks_8.png}
-         \caption{$y=3sinx$}
-         \label{fig:three sin x}
+         \caption{Seek quantities for $m=8$GB}
+         \label{fig:seeks8}
      \end{subfigure}
      \vfill
      \begin{subfigure}[b]{\textwidth}
          \centering
          \includegraphics[scale=0.5]{./figures/new/results_seeks_4.png}
-         \caption{$y=3sinx$}
-         \label{fig:three sin x}
+         \caption{Seek quantities for $m=4$GB}
+         \label{fig:seeks4}
      \end{subfigure}
+
+     \caption{Results in terms of seeks for the keep and baseline algorithms. From top to bottom, the results are presented for 256, 8 and 4GB of available main memory.}
+     \label{fig:seeks_results}
 \end{figure*}
 
 %----------------------------------------
