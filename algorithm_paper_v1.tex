@@ -845,38 +845,49 @@ which has not been taken into account in our problem formulation.
 \section{Discussion}
 %----------------------------------------
 
+\subsection{On the keep algorithm}
+The keep algorithm can reduce the number of seeks produced by a re-partition
+problem from millions to thousands of seeks, compared to the baseline algorithm.
+Even if the write time has been drastically reduced on the results shown on
+Figure~\ref{fig:results}, there is still margin for improvement in optimizing
+the read time.
+Finally, it could be interesting to try identifying the type of seeks that are
+more costly than the others and focus future implementations of the re-partition
+algorithm to reduce such costly seeks.
+
+Although the keep algorithm can be 2 times faster than the baseline algorithm in some cases, our implementation suffers from a tradeoff between optimizing the processing time and predicting the maximum amount of memory consumed.
+In some non-complex cases, the baseline algorithm can be as efficient as the keep algorithm. Moreover, the baseline algorithm seems to take advantage of the surplus of main memory available in the node, although in theory it is supposed to use only the size of one input block in bytes at a time.
+This does not seem to be the case of the keep algorithm for which the maximum amount of main memory consumed can be estimated before run.
+
+
 \subsection{The buffer ordering problem}
-The buffer ordering problem can be modeled as follows: We can represent the
-problem as a complete bidirectional graph in which each vertex is a buffer. At
-initialization, we must choose a first buffer as an entry point. Let us define
-a path in the graph as a visitation order of all buffers in the graph. One buffer
-cannot appear twice in the list. Finally, let us define a cache that contains
-the data currently in main memory. We define the buffer ordering problem as the
-problem of finding the optimal path such that the amount of memory used by the
-cache is kept minimal during the process. For each buffer, we load some data
-into the cache (reading the buffer) and free some of it (writing into output files).
-The amount of
-data released is different depending of the buffers previously visited and each
-buffer can only be visited once which can be represented by removing all edges
-pointing to a visited vertex except the one coming from the previously visited
-vertex. One may solve this problem by using a greedy algorithm or a shortest path
-algorithm but it would
-incur more infering at runtime and a potentially complex algorithm to run.
-We decided to keep things simple using a naive buffer order, the storage order,
-as the goal of this study was primarily to assess if the keep algorithm works.
+The buffer order is important when using the keep strategy, as it defines when
+a piece of data will be loaded and when a write buffer will be complete, hence
+ready to be written down and freed from the cache.
+Representing the read buffers by a complete bidirectional graph in which each
+vertex is a buffer, we can model the problem as kind of a complex shortest path
+problem.
+Indeed, for a given buffer shape $B$, we want to find the read buffers order
+that will keep the amount of memory used by the re-partition algorithm low.
+Solving this problem would incur more infering at runtime and a potentially
+complex algorithm to run.
+We decided to keep things simple using a naive buffer order, as the goal of
+this study was primarily to assess if the keep algorithm works.
 
 \subsection{ROI extraction problem}
-The Region Of Interest (ROI) extraction problem is a related problem that still needs
-to be adressed. A solution using chunking as been introduced in~\cite{optimal_chuking}. The authors
-define an array partitioned into chunks of equal shapes and then define a
-query as an arbitrary subarray of the input, chunked, array. They define the
-optimal chunking problem as finding the optimal chunk such that the expected
-number of chunks retrieved to answer the query is minimal. In our opinion, the
-solution in~\cite{optimal_chuking} is limited due to the need of historical or theoretical workload
-and the necessity to repartition the input array into an ``optimal" chunk shape. We
-would prefer letting the application choose the appropriate chunk shape
-regarding its needs and not needing to estimate the processing workload. We
-define the ROI extraction problem as follows: Finding an algorithm that takes
+The Region Of Interest (ROI) extraction problem is a related problem that still
+needs to be adressed.
+A solution using chunking as been introduced in~\cite{optimal_chuking}.
+The authors define an array partitioned into chunks of equal shapes and then
+define a query as an arbitrary subarray of the input, chunked, array.
+They define the optimal chunking problem as finding the optimal chunk such
+that the expected number of chunks retrieved to answer the query is minimal.
+In our opinion, the solution in~\cite{optimal_chuking} is limited due to the
+need of historical or theoretical workload and the necessity to repartition the
+input array into an ``optimal" chunk shape.
+We would prefer letting the application choose the appropriate chunk shape
+regarding its needs and not needing to estimate the processing workload.
+We define the ROI extraction problem as follows: Finding an algorithm that takes
 as input an arbitrary chunk shape and extract the ROI data from the chunks with
 the less number of seeks as possible.
 
@@ -892,15 +903,41 @@ buffer, the keep algorithm would keep it to try to read and write files in one
 seek. Not only the keep algorithm tries to limit seeking into the files but it
 also tries to limit switching between the files. It would be interesting to
 compare the two algorithms for the split/merge tasks to see if the keep
-implementation brings any kind of improvement.
+implementation brings similar results or any kind of improvement.
+
+\subsection{The dask Python package}
+\texttt{dask} is a popular Python package, part of the SciPy ecosystem, enabling
+parallel and out-of-core computations~\cite{matthew_rocklin-proc-scipy-2015}.
+It has an important scientific community which is likely to have the problem we
+try to solve in this paper, i.e. re-partitioning multidimensional array files.
+That is why we would find it interesting to implement our work as an optimization
+package for \texttt{dask}.
+In particular, we would focus on the \texttt{dask.array} collection, a data
+structure designed for multi-dimensional array processing using blocked
+algorithms.
+\texttt{dask} represents computations as task graphs that are dynamically executed by one
+of several schedulers including the single-threaded, the multi-threaded, the
+multi-process, and the distributed schedulers. Custom schedulers can also be
+implemented. \texttt{dask} graphs can be used out-of-the-box or through
+built-in APIs. A \texttt{dask} graph is implemented in plain Python as a
+dictionary with any hashable as keys and any object as values. More precisely,
+a ``Value" is any object different than a task and a ``Task" is a tuple with a
+callable as first element. Examples of APIs/collections include
+\texttt{dask.array}, a parallel and out-of-core
+Numpy clone, and \texttt{dask.dataframe}, a Pandas clone.
+Our first prototype of implementation of the keep algorithm is showing promising
+results in optimizing the computation graphs produced by \texttt{dask}.
 
 \subsection{Towards distributed systems}
-A future work would be to find distributed versions of the split/merge/repartition
-algorithms. Lots of scientists use HPC (High Performance Computing) clusters
-regularly which brings considerations about how to use such distributed
-algorithms with Lustre for example, a commonly used filesystem for HPC. \texttt{dask}
-also provides a distributed scheduler that seems to be quite efficient. It is
-now recommended for use, even on local computers (using one node).
+As most of the big data processing is now done on clusters, it could be interesting
+to find distributed versions of the split/merge/re-partition algorithms.
+Lots of scientists use HPC (High Performance Computing) clusters regularly which
+brings considerations about how to use such distributed algorithms with Lustre
+for example, a commonly used filesystem for HPC.
+
+\texttt{dask} also provides a distributed scheduler that seems to be quite
+efficient.
+It is now recommended for use, even on local computers (using one node).
 
 %----------------------------------------
 \section{Conclusion}
