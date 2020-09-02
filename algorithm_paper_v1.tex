@@ -855,10 +855,16 @@ Finally, it could be interesting to try identifying the type of seeks that are
 more costly than the others and focus future implementations of the re-partition
 algorithm to reduce such costly seeks.
 
-Although the keep algorithm can be 2 times faster than the baseline algorithm in some cases, our implementation suffers from a tradeoff between optimizing the processing time and predicting the maximum amount of memory consumed.
-In some non-complex cases, the baseline algorithm can be as efficient as the keep algorithm. Moreover, the baseline algorithm seems to take advantage of the surplus of main memory available in the node, although in theory it is supposed to use only the size of one input block in bytes at a time.
-This does not seem to be the case of the keep algorithm for which the maximum amount of main memory consumed can be estimated before run.
-
+Although the keep algorithm can be 2 times faster than the baseline algorithm
+in some cases, our implementation suffers from a tradeoff between optimizing
+the processing time and predicting the maximum amount of memory consumed.
+In some non-complex cases, the baseline algorithm can be as efficient as the
+keep algorithm.
+Moreover, the baseline algorithm seems to take advantage of the surplus of
+main memory available in the node, although in theory it is supposed to use
+only the size of one input block in bytes at a time.
+This does not seem to be the case of the keep algorithm for which the maximum
+amount of main memory consumed can be estimated before run.
 
 \subsection{The buffer ordering problem}
 The buffer order is important when using the keep strategy, as it defines when
@@ -882,6 +888,7 @@ The authors define an array partitioned into chunks of equal shapes and then
 define a query as an arbitrary subarray of the input, chunked, array.
 They define the optimal chunking problem as finding the optimal chunk such
 that the expected number of chunks retrieved to answer the query is minimal.
+
 In our opinion, the solution in~\cite{optimal_chuking} is limited due to the
 need of historical or theoretical workload and the necessity to repartition the
 input array into an ``optimal" chunk shape.
@@ -915,6 +922,7 @@ package for \texttt{dask}.
 In particular, we would focus on the \texttt{dask.array} collection, a data
 structure designed for multi-dimensional array processing using blocked
 algorithms.
+
 \texttt{dask} represents computations as task graphs that are dynamically executed by one
 of several schedulers including the single-threaded, the multi-threaded, the
 multi-process, and the distributed schedulers. Custom schedulers can also be
