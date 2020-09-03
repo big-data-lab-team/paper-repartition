@@ -21,7 +21,7 @@
 
 \begin{document}
 
-\title{Repartitioning large multi-dimensional arrays: a sequential algorithm and its implementation in Dask}
+\title{Repartitioning large multi-dimensional arrays: a sequential algorithm}
 
 \author{\IEEEauthorblockN{Timoth\'ee Gu\'edon, Val\'erie Hayot-Sasson, Tristan Glatard \\
   \IEEEauthorblockA{
@@ -332,16 +332,17 @@ in table~\ref{tab:simseekmodel}.
 \end{table}
 
 %----------------------------------------
-\section{The ``keep" strategy}
+\section{The ``keep" algorithm}
 %----------------------------------------
 
+\subsection{The keep strategy}
 As mentioned previously, like the split and merge strategies the baseline
 algorithm for the re-partition problem empties the cache at each iteration. In a
 split/merge/re-partition problem a lot of seeks occur in case of a shape mismatch,
 for example, when a data column loaded in memory is split between two output
-files or more. We propose to leverage the cache using a \texttt{keep strategy}
-to keep some data in the cache while it cannot be written contiguously in output
-files~\ref{fig:keepvsbaseline}.
+files. We propose to leverage the cache using a \texttt{keep strategy}
+to keep some data in the cache while it cannot be written contiguously in the
+output files (Figure~\ref{fig:keepvsbaseline}).
 
 \begin{figure}[h]
 \centering
@@ -352,7 +353,7 @@ files~\ref{fig:keepvsbaseline}.
 
 When loading a read buffer, we call \texttt{extra data} the data pieces that
 are not contiguous in their output file(s) of destination.
-The keep strategy tries to use read buffers of shape $B$ such that $B$ covers
+The keep strategy tries to find the shape $B$ of the read buffers such that $B$ covers
 at least one output file completely i.e. $B_x>O_x$ for all dimensions $x$.
 Such a buffer shape would allow to always have extra data in case of a shape
 mismatch, hence making the cache management possible to reduce the number of seeks.
@@ -364,41 +365,45 @@ shape as closed as possible from $\Lambda$.
 
 The implementation of the keep strategy for
 Algorithm~\ref{algo:generalrepartition} consists in implementing
-getReadBuffers and getWriteBuffers.
+getReadBuffers and getWriteBuffers. We call it the \emph{keep algorithm}.
 
 \subsection{Input aggregates}
 getReadBuffers finds the buffer shape $B$ that is the closest to the optimal buffer
 shape $\Lambda$, such that $\Lambda_x>O_x$ in any dimension $x$.
 If $I_x > O_x$, then $\Lambda_x$ can be set to $I_x$. If $I_x < O_x$ however,
-$Lambda_x$ must be a multiple of $I_x$ in order to keep reading each input
+$\Lambda_x$ must be a multiple of $I_x$ in order to keep reading each input
 block part in one seek (for opening the file).
+If $I_x < O_x$ and there is not enough memory available to ``extend"
+the buffer in dimension $x$ such that $B_x > I_x$, then $B_x$ is set to the
+biggest divisor of $R_x$ possible.
+
 We define an \texttt{input aggregate} as being the minimum aggregate of input
 files that covers one output file completely. In particular, $\Lambda$ is the
 input aggregate that covers the first output file (indexed $(0,0,0)$) in the
 original image being re-partitioned.
 
 \subsection{Searching for the optimal buffer in the inverse storage order}
-
+If $m$ is too small to get $B=\Lambda$, one needs to find in which dimension
+the buffer has to be bigger.
 For the \texttt{C-order} and given the analysis of the baseline algorithm,
 it seems better to have a buffer shape that stores extra data in the $k$
 dimension first, rather than in the $j$ or $i$ dimension.
 Therefore, if $m$ is too small to get $B=\Lambda$, one must try to get
-$B_k=\Lambda_k$ first, then $B_j=\Lambda_j$ and $B_i=\Lambda_i$, i.e. in the
-inverse of the storage order (the C-order: $i\rightarrow j\rightarrow k$).
+$B_k=\Lambda_k$ first, then $B_j=\Lambda_j$ and $B_i=\Lambda_i$, i.e. ``extend"
+the read buffer in the inverse of the storage order (the storage order being the
+C-order here: $i\rightarrow j\rightarrow k$).
 
-In practice, the buffer is initialized as $B=(1,1,\Lambda_k)$ which means
-that we can read one complete data column from an input block and keep the
-remainder in memory for the next buffer.
-Note that we assume that $m$ is large enough to store a buffer of shape
-(1,1,$\Lambda_k$).
+In practice, we assume that $m$ is large enough to store a buffer of shape
+$(1,1,\Lambda_k)$ which means that we can read one complete data column from an
+input block and keep the remainder in memory for the next buffer.
 If it was not the case the keep algorithm would not give a significant
 improvement in the number of seeks produced by the repartition task, compared
 to the baseline algorithm.
 
 \subsection{Bruteforce search of the read buffer shape}
-We found that stretching the buffer step by step in the $j$ and then in the
-$i$ dimension does not reduce $s$
-in a strictly decreasing way which mean we may go over local minima.
+We found that initializing the buffer to $(1,1,\Lambda_k)$ and stretching the
+buffer step by step in the $j$ and then in the $i$ dimension does not reduce
+$s$ in a strictly decreasing way which mean we may go over local minima.
 We therefore decided to compute the quantity of seeks produced for all the
 possible buffers together with their maximum RAM consumption.
 It is then possible to find the buffer shape producing the less seeks, subject
@@ -409,9 +414,9 @@ Firstly, the only possibilities for the buffer dimensions are the integer
 divisors of R, such that $B_i*B_j*B_k < m$. Indeed, the buffer dimensions must
 be integers and the buffer shape B must be a partition of R.
 Secondly, as it has been said in the previous subsection, we are only
-interested in buffer shapes following the inverse storage order. It implies that
-we are only interested in buffers that are of the form $(1,1,R_k)$,
-$(1,B_j,R_k)$ or $(B_i,R_j,R_k)$.
+interested in buffer shapes following the inverse storage order.
+It means that we are only interested in buffers that are of the form
+$(1,1,R_k)$, $(1,B_j,R_k)$ or $(B_i,R_j,R_k)$.
 
 \subsection{Impact of the buffer order on performance}
 Using the keep strategy, one may order the buffer loadings to reduce the maximum
@@ -420,16 +425,19 @@ For example, if the shape mismatches occur only in the $k$ axis, loading the
 buffers in this direction will enable recycling the extra data in cache,
 resulting in a smallest memory consumption over time.
 The memory saved thanks to a smart
-ordering could enable the storage of more overlaps in memory using the
-``keep strategy", further reducing the overall number of seeks.
+ordering could enable the storage of more extra data in memory using the
+keep strategy, further reducing the amount of seeks produced.
 
 As explained in the discussion, the buffer ordering problem is complex and does
 not seem easily solvable.
 This study uses a naive order which is, again, the inverse storage order.
+The reason for that order is that as it is more important to keep data in the
+$k$ dimension to save seeks and we assume that $B_k=\Lambda_k$, it seems
+reasonable to load the buffers in the $k$ dimension first.
 Note that using such
-an order allows recycling extra data in the $k$ dimension first, it is therefore
-most efficient when the biggest overlap between input and output files is in the
-$k$ dimension.
+an order recycles extra data in the $k$ dimension first; It is therefore
+more efficient when the biggest shape mismatch between the input and output
+blocks is in $k$.
 
 Thanksfully, the impact of the buffer ordering on performance can be
 mitigated. Indeed, the impact of the buffer ordering depends on the size of the
@@ -438,10 +446,8 @@ if the overlap between the input and output files is big with respect to their
 size, the area/volume of the overlap will be kept small.
 
 \subsection{Remainder volumes}
-
-getWriteBuffers defines the blocks of data that will be written at once in each
-output file.
-To find these buffers, we first need to define what a remainder volume is.
+To compute the maximum RAM consumption of the keep algorithm, given a
+buffer shape, we first need to define what a remainder volume is.
 
 A read buffer of shape $\Lambda$ can be divided in
 8 parts or ``volumes" (Figure~\ref{fig:nomenclature_overlaps}).
@@ -456,12 +462,12 @@ been written down previously.
 In other words the remainder volumes contain non contiguous parts of output blocks
 as opposed to the non-remainder volume which contains a contiguous part of
 an output block.
-For each buffer, each of volume
-is indexed following the buffer order $F_0$ to $F_7$, with $F_0$ being the
-non-remainder volume. If the buffer is smallest than the input aggregate or if
-there is no shape mismatch in a given dimension, it may be that a volume size
-is set to 0.
-Note that a single remainder volume can contain several output file parts.
+
+For read each buffer, each of volume
+is indexed following the buffer ordering from $F_0$ to $F_7$, with $F_0$ being the
+non-remainder volume. If the buffer is smallest than the input aggregate
+($B_x<\Lambda_x$) or if there is no shape mismatch in a given dimension,
+it may be that a volume size is set to 0.
 
 \begin{figure*}[h]
 \centering
@@ -471,9 +477,62 @@ order, 7 of which are remainder volumes.}
 \label{fig:nomenclature_overlaps}
 \end{figure*}
 
+\subsection{Maximum memory consumption}
+In order to perform the bruteforce search of the best read buffer shape $B$,
+we need a way to compute the maximum memory consumption of the algorithm using
+this shape.
+Having partitioned the buffers into remainder volumes, the maximum memory
+consumption can be computed by simulating the re-partition algorithm and
+computing, at each step, the cache size.
+
+Let us define $\Sigma$, the amount of data in RAM at a given time during the
+execution of the re-partition algorithm.
+
+In order to compute $\Sigma$, the volumes' sizes need to be computed using the
+following nomenclature (Figure~\ref{fig:nomenclature_overlaps}):
+Given a buffer shape $B$ and the output file shape $O$, we define $C_d(x)$ as
+the overlap length between the buffer and an overlaping output file in direction
+$d$ for the $x^{th}$ buffer. Let us define $\Omega$ and $\Theta$, that are used
+to define upper bounds in the volumes sizes formulas. $\Omega_d(x)$ is the
+equivalent of $C_d(x)$ if the buffer was of shape $\Lambda$, and $\Theta_k(x)$
+is the difference between $B_d$ and $\Omega_b$, with $B=\Lambda$.
+These metrics are computed as follows:
+$$C_d(x) = (x+1)B_d mod(O_d)$$
+$$\Omega_d(x) = (x+1)\Lambda_d mod(O_d)$$
+$$\Theta_d(x) = \Lambda_d - \Omega_d(x)$$
+
+\subsection{Seek estimation for the keep strategy}
+In order to compute the amount of seeks produced by the keep algorithm
+for a given read shape $B$, we sum of the amount of seeks caused by loading the
+read buffers $s_r$ and the amount of seeks caused by writing the write
+buffers $s_w$, such that $s=s_r+s_w$.
+
+When loading the read buffers, the seeks occur in case of a shape mismatch
+between a read buffer and the input blocks. It is the exact same problem than
+when computing the amount of seeks produced by the baseline algorithm when
+writing in the output files. Therefore, the baseline seek model presented
+before can be used to compute $s_r$.
+
+In order to compute the amount of seeks produced by the write buffers however,
+we did not find an elegant formula to solve the problem. We can compute $s_w$
+by first finding the write buffers, and then summing the amount of seeks done
+by each write buffer. Indeed, given a dimension $x$, a write buffer will seek
+if its length in the $x^{th}$ dimension is different than $O_x$.
+
+In particular, with $WB$ the write buffer shape,
+\begin{itemize}
+  \item $WB_k \neq O_k => WB_i*WB_j$ seeks.
+  \item $WB_j \neq O_j => WB_i$ seeks.
+  \item $WB_i \neq O_i => 1$ seeks.
+\end{itemize}
+
+\subsection{Write buffers}
+So far the process to define the read buffers has been described.
+getWriteBuffers defines the blocks of data that will be written at once in each
+output file.
 In the baseline algorithm, the write buffers are defined as the
 intersection between the read buffers and the output blocks.
-In the context of the keep strategy, some of the remainder volumes are kept
+In the context of the keep strategy, some of the remainder volumes are kept in cache
 to be written together with other remainder volume(s) contiguously in the output
 blocks.
 This is equivalent to initializing the write buffers with the same definition as
@@ -483,11 +542,11 @@ Table~\ref{tab:fusion}.
 
 \begin{table}[ht]
   \centering
-  \caption{Direction(s) in which to fuse the write buffers according to the keep strategy}
+  \caption{Direction(s) in which to fuse the remainder volumes according to the keep strategy, in order to define the write buffers.}
 
    \begin{tabular}[t]{c c }
    \hline
-   remainder index & direction to fuse \\
+   remainder volume's index & direction(s) for the fusion \\
      \hline\hline
      1 & k \\
      \hline
@@ -508,58 +567,6 @@ Table~\ref{tab:fusion}.
    \label{tab:fusion}
 
 \end{table}
-
-\subsection{Maximum memory consumption}
-
-In order to perform the bruteforce search of the best read buffer shape $B$,
-we need a way to compute the maximum memory consumption of the algorithm using
-this shape.
-Having partitioned the buffers into volumes, the maximum memory consumption can
-be computed by simulating the re-partition algorithm and computing, at each step,
-the cache size.
-
-Let us define $\Sigma$, the amount of data in RAM at a given time during the
-execution of the re-partition algorithm.
-
-In order to compute $\Sigma$, the volumes' sizes need to be computed using the
-following nomenclature (Figure~\ref{fig:nomenclature_overlaps}):
-Given a buffer shape $B$ and the output file shape $O$, we define $C_d(x)$ as
-the overlap length between the buffer and an overlaping output file in direction
-$d$ for the $x^{th}$ buffer. Let us define $\Omega$ and $\Theta$, that are used
-to define upper bounds in the volumes sizes formulas. $\Omega_d(x)$ is the
-equivalent of $C_d(x)$ if the buffer was of shape $\Lambda$, and $\Theta_k(x)$
-is the difference between $B_d$ and $\Omega_b$, with $B=\Lambda$.
-These metrics are computed as follows:
-$$C_d(x) = (x+1)B_d mod(O_d)$$
-$$\Omega_d(x) = (x+1)\Lambda_d mod(O_d)$$
-$$\Theta_d(x) = \Lambda_d - \Omega_d(x)$$
-
-\subsection{Seek estimation for the keep strategy}
-
-In order to compute the amount of seeks produced by running the re-partition
-algorithm using the keep strategy with a given read shape $B$, we computed this
-amount as the sum of the amount of seeks caused by loading the read buffers $s_r$
-and the amount of seeks caused by writing the write buffers $s_w$,
-such that $s=s_r+s_w$.
-
-When loading the read buffers, the seeks occur in case of a shape mismatch
-between a read buffer and the input files. It is the exact same problem than
-when computing the amount of seeks produced by the baseline algorithm when
-writing in the output files. Therefore, the baseline seek model presented
-before can be used to compute $s_r$.
-
-In order to compute the amount of seeks produced by the write buffers however,
-we did not find an elegant formula to solve the problem. We can compute $s_w$
-by first finding the write buffers, and then summing the amount of seeks done
-by each write buffer. Indeed, given a dimension $x$, a write buffer will seek
-if its length in the $x^{th}$ dimension is different than $O_x$.
-
-In particular, with $WB$ the write buffer shape,
-\begin{itemize}
-  \item $WB_k \neq O_k => WB_i*WB_j$ seeks.
-  \item $WB_j \neq O_j => WB_i$ seeks.
-  \item $WB_i \neq O_i => 1$ seeks.
-\end{itemize}
 
 %----------------------------------------
 \section{Implementation}
