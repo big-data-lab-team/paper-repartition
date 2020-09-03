@@ -635,25 +635,26 @@ maximum memory consumption that we predicted at the buffer selection time.
 %----------------------------------------
 
 \subsection{Experimental setting}
-The experiments have been executed under the same conditions, on a private
+The experiments have been executed on a private
 cluster using \texttt{slurm} as workload manager. Each compute node has 256GB of
 RAM, 6 SSDs of size 480 GB and 32 cores. We only used 1 node and 1 SSD at a
 time.
 
 \subsection{Comparison of the baseline and the keep algorithms}
-In order to assess the keep algorithm performances, we implemented the baseline
-algorithm and ran it in the same conditions than the keep algorithm.
-The experiment consists in rechunking an array of shape $R=(3500,3500,3500)$, of
-type float16 i.e. with 2 bytes per voxel.
+In order to assess the keep algorithm performances, we also implemented the
+baseline algorithm and ran it in the same conditions than the keep algorithm.
+We did one experiment consisting in rechunking an array of shape
+
+$R=(3500,3500,3500)$ and of type \texttt{float16} i.e. with 2 bytes per voxel.
 We chose a cubic shape so that no dimension influences more the results than
 the other.
 Also, the sides of $R$ have been selected to be $3500$ as this number has a
 reasonable amount of divisors, which makes the experiment feasible, as
 $B$, $O$ and $I$ have to be divisors of $R$.
+
 In this experiment we monitored the processing time of both algorithms, for
 different amounts of main memory available.
 Indeed, the keep algorithm should be faster when it has more memory available.
-
 In order to test the algorithms in different conditions, we decided to try
 several input block shapes, and for each input block shape, two output blocks
 shapes have been tested. One output block shape such that $O>I$ and the other
@@ -661,13 +662,14 @@ such that $O<I$. This is interesting because when $O>I$ the ideal buffer shape
 will be an input aggregate, whereas in the other case $\Lambda=I$.
 The different runs have been summarized in Table~\ref{tab:exp} and indexed by
 a number.
+
 The three first input blocks have been computed as $R/4$, $R/10$ and $R/20$
 (see Table~\ref{tab:exp_inblocks}).
 The last input block has a shape of $(350,875,350)$ in order to be of size
 approximately 100MB, as recommended by the \texttt{dask} Python package.
 With $R/4$, the first input block has a size of about 670MB.
-We tried those shapes as they seemed reasonable and can be found in practice.
-The only input block shape for which only one output block shape has been tested
+We tried those shapes as they seemed reasonable and can be found in real pipelines.
+The only input block shape for which only one output block shape has not been tested
 is $R/20$, as using an output block smaller than $R/20$ would be unrealistically
 small (about 5.5MB).
 
@@ -769,7 +771,7 @@ Table~\ref{tab:buffer_shapes}.
 
 \subsection{Results}
 
-The results in terms of processing time are shown on
+The results in terms of processing times are shown on
 Figure~\ref{fig:results}, whereas the results in terms of seeks are
 presented on Figure~\ref{fig:seeks_results}.
 
@@ -782,8 +784,9 @@ In particular, the keep algorithm is approximately 2 times faster for runs
 2, 3 and 4 on Figure~\ref{fig:results4}.
 From these observations we suppose that the baseline algorithm performs well
 with 256GB because it leverages the page cache.
-Indeed, apart from $m$ nothing changes for the baseline algorithm, the read
-buffers' shape stays $B=I$.
+It is counter-intuitive to see that the performances of the baseline algorithm
+differs for the different amount of RAM available, because apart from $m$
+nothing changes for the baseline algorithm; the read buffer shape stays $B=I$.
 
 Another factor for the baseline algorithm to perform well compared to the
 keep algorithm with 256GB is the time overhead of the keep algorithm which is
@@ -797,12 +800,18 @@ important speedup by the keep algorithm compared to the baseline for
 runs 3 and 4 (Figure~\ref{fig:results}).
 One can also notice a non-negligible speedup for runs 1 to 5 for the experiment
 with 8 (Figure~\ref{fig:results8}) and 4GB (Figure~\ref{fig:results4}).
+There are big differences in the benefits of using the keep algorithm instead of
+the baseline algorithm, depending on the different runs.
+This is due to the difference in complexity between the runs.
+The runs that are more complex (with more shape mismatches) are more optimized
+by the keep algorithm, hence producing a bigger speedup from the keep compared to
+the baseline.
 
 Considering Figure~\ref{fig:seeks_results}, one can see that the number of
 seeks is drastically reduced by the keep algorithm, which is consistent with
 the results in terms of processing time.
 We remark that one needs to reduce significantly the amount of seeks produced
-by an algorithm to clearly see an impact on the processing time.
+by a re-partition algorithm to clearly see an impact on the processing time.
 Considering run 4 which shows the most important differences in terms of
 processing time, the amount of seeks have been reduced from about 100 millions
 seeks to thousands of seeks.
