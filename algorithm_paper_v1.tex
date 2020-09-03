@@ -311,7 +311,7 @@ in table~\ref{tab:simseekmodel}.
   \centering
   \caption{Results of the simulation using the baseline algorithm's seek model}
 
-   \begin{tabular}[t]{c c c c c }
+   \begin{tabular}[t]{| c | c | c | c | c |}
    \hline
    Mismatch & R & B=I & O & nb seeks \\
      \hline\hline
@@ -544,7 +544,7 @@ Table~\ref{tab:fusion}.
   \centering
   \caption{Direction(s) in which to fuse the remainder volumes according to the keep strategy, in order to define the write buffers.}
 
-   \begin{tabular}[t]{c c }
+   \begin{tabular}[t]{ | c | c | }
    \hline
    remainder volume's index & direction(s) for the fusion \\
      \hline\hline
@@ -575,9 +575,6 @@ Table~\ref{tab:fusion}.
 \subsection{Project repository and programming language}
 The baseline algorithm and the ``keep" algorithm have been implemented in plain
 Python 3.7.
-We call \emph{keep algorithm} the general re-partition algorithm with the
-implementation of getReadBuffers and getWriteBuffers following the keep
-strategy as explained above.
 The Python environment used was a conda environment, all packages used together
 with their version are available in a \texttt{requirements.txt} file.
 The instructions about how to install the dependencies in a virtual or conda
@@ -585,16 +582,42 @@ environement are provided in the \texttt{README} file of the
 \href{https://github.com/GTimothee/repartition_experiments}{project's repository}.
 The code for all experiments can be found in the same repository as well.
 
-\subsection{Keep algorithm implementation details}
-When implementing the keep algorithm, we added some optimizations.
-First of all, instead of looping over all write buffers line 15 of
-Algorithm~\ref{algo:generalrepartition} we first compute a Python dictionary
-associating each buffer to the output files it crosses or includes.
+Finally, although we used the HDF5 file format for our experiments, the code
+uses an instance of a so-called ``file manager" so that using our code with
+another file format is as simple as implementing a new file manager object.
+
+\subsection{Optimizing the main processing loop}
+Instead of looping over all write buffers line 15 of
+Algorithm~\ref{algo:generalrepartition} we implemented an optimization in
+the keep algorithm:
+We first compute a Python dictionary associating each buffer to the output files
+it crosses or includes.
 It allows to search only for the write buffers that write into the output files
 crossed by the read buffer loaded. When a write buffer has been written, it
 is also deleted from the list of write buffers which reduces even more the
 computation time.
 
+\subsection{Optimizing the bruteforce search}
+One can note that when the read buffer shape $B$ is smaller than $\Lambda$,
+the overall number of buffers increases.
+It is therefore quicker to compute the number of seeks and the maximum
+quantity of memory to be used for the buffers close to $\Lambda$.
+On the contrary, it can take several seconds to compute theses metrics for
+small buffers, knowing that among the possible buffer shapes, it is not rare to
+see buffers like ($1,1,\Lambda_k$), which is the worst case.
+That is why we decided, instead of testing all possible buffer shapes, to start
+testing the shapes from the ideal ones ($\Lambda$) to the worst ones
+($1,1,\Lambda_k$ for example), reducing the buffer shape in the $j$ dimension
+first, and then in $i$.
+We only estimate the amount of seeks to be produced if the maximum quantity
+to be consumed is smaller than $m$.
+We also added a heuristic in order not to test all shapes when it is more
+probable that the best shapes are closer to $\Lambda$.
+In this spirit, we added a maximum number of iteration above which the search
+is stopped if no improvement in the number of seeks has been found.
+We set this limit to 10 buffers.
+
+\subsection{Limit to our implementation}
 We encountered a tradeoff in the implementation of the keep algorithm which
 makes its processing time longer that it could be.
 Indeed, we had to implement the keep algorithm by passing data per value from
@@ -606,10 +629,6 @@ Python uses a custom garbage collector which manages the release of our
 data structures and prevents us to force the release of some data parts.
 We found that copying the data to the cache enabled us to stay below the
 maximum memory consumption that we predicted at the buffer selection time.
-
-Finally, although we used the HDF5 file format for our experiments, the code
-uses an instance of a so-called ``file manager" so that using our code with
-another file format is as simple as implementing a new file manager object.
 
 %----------------------------------------
 \section{Experiments}
