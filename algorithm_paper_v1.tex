@@ -32,11 +32,30 @@
 \maketitle
 
 \begin{abstract}
-Todo.
+
+Multidimensional array chunking is a routine for scientists nowadays.
+That is why efficiently processing such arrays is of major importance in the big data era.
+Splitting and merging arrays has been successfully done, we therefore attempted
+to solve the next step: the re-partitioning problem.
+This problem consists in efficiently re-writing a chunked array to change the
+blocks shape.
+In this study we define the repartitioning problem and propose two algorithms to
+solve it: a baseline algorithm and the keep algorithm.
+With the keep algorithm, we try to reduce the number of seeks produced by the
+re-partitioning problem in the hope of reducing the processing time.
+We benchmark the performances of both algorithms on two cubic arrays of shape
+(3500,3500,3500) and (8000,8000,8000), with different resolutions and different
+amounts of available main memory.
+Our results show that the re-partitioning problem can be optimized.
+The baseline algorithm can perform surprisingly well under certain conditions
+by leveraging the page cache instead of reducing the number of seeks. The keep
+algorithm however, can be significantly faster than baseline when the amount of
+memory available is smaller than the array size.
+
 \end{abstract}
 
 \begin{IEEEkeywords}
-multidimensional, array, split, merge, resplit, IO, processing, Dask, Python
+multidimensional, array, split, merge, re-partition, rechunk, IO, seek, processing, Python
 \end{IEEEkeywords}
 
 %----------------------------------------
@@ -986,9 +1005,40 @@ It is now recommended for use, even on local computers (using one node).
 \section{Conclusion}
 %----------------------------------------
 
+Multidimensional array chunking is a routine for scientists nowadays.
+That is why efficiently processing such arrays is of major importance in the big data era.
+
+Splitting and merging arrays has been successfully done, we therefore attempted
+to solve the next step: the re-partitioning problem.
+This problem consists in efficiently re-writing a chunked array to change the blocks shape.
+We think that solving this problem could enable us to solve the ROI (region of interest)
+extraction problem in the future, which is also a very common problem for scientists.
+We formally defined the re-partitioning problem together with a \emph{baseline algorithm} to solve it.
+We also presented the \emph{keep algorithm} to reduce the number of seeks produced during
+the re-partitioning and hopefully reduce the processing time of such task.
+The keep algorithm reduces the number of seeks by
+(1) constraining the read buffers shape to minimize the read time, and
+(2) leveraging a ``cache" to minimize the write time.
+
+Although the re-partitioning problem is more complex than splitting/merging chunks,
+we proved that it can be optimized and that it is possible to reduce the
+processing time significantly.
+Surprisingly however, the baseline algorithm has been found to perform pretty
+well when there is a lot of memory available as it leverages the page cache to
+speedup computations without reducing the number of seeks.
+For now, the keep algorithm may be more interesting than the baseline algorithm
+only when the memory constraint is important ($m$ small compared to the array size).
+
+In the future, the algorithm performances may be improved by finding a variant
+to the keep algorithm that also reduce the read time significantly,
+identifying and focusing on reducing the most expensive seeks,
+and finally, finding parrallel and/or distributive versions of the keep algorithm.
+
 %----------------------------------------
 \section{Acknowledgments}
 %----------------------------------------
+
+The computing platform was obtained with funding from the Canada Foundation for Innovation.
 
 \bibliography{Bibliography}
 \bibliographystyle{ieeetr}
