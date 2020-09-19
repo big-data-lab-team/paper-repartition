@@ -77,46 +77,67 @@ The source code, data, and/or other artifacts have been made available at \url{\
 \section{Introduction}
 %----------------------------------------
 
-\tristan{start intro on high-res multi-dimensional arrays and imaging, not big data in general. Mention ndstore, microscopy, space-filling curves.}
-% big data challenges
-With the improvement of acquisition methods and the growth in the amount of data
-available in several scientific domains such as health
-sciences~\cite{bigdata_health}~\cite{Amunts1472}, geology~\cite{big_data_geology}
-and astrophysics~\cite{biguniverse}, new big data challenges have emerged related
-to the processing of large amounts of data and ultra-high resolution
-images. Big Brain, for instance, a human brain model providing microscopic data (20 micrometers) for
-modeling and simulation~\cite{Amunts1472} is an ultra high resolution
-image from the neuroscience field.
 
-\tristan{Add a paragraph to summarize the goal of the paper, explaining the problem of seeks. Refer to the numpy paper.}
+% Multidimensional arrays are important
+Multidimensional arrays are key data structures for scientific computing,
+used in various disciplines to store signals or other types of
+data~\cite{numpynature}. In neuroimaging, our main application area, arrays
+commonly hold 2D, 3D or 3D+t brain images acquired from histology, magnetic
+resonance imaging (MRI), or other modalities. Due to the improvement of
+acquisition methods, it is now common for such images to exceed the amount
+of working memory available on typical computers, requiring their
+partitioning in blocks stored in independent files or in multiple HDF5
+sections. Big Brain~\cite{Amunts1472}, for instance, is a human brain model
+providing microscopic data at the resolution of 20 micrometers that comes
+in the form of many 3D blocks. Partitioning large arrays enables efficient
+queries, flexibility in adding new data~\cite{optimal_chuking}, granular
+transfers, and parallel processing with frameworks such as
+Dask~\cite{matthew_rocklin-proc-scipy-2015}. Applications may adopt
+different block geometries depending on their processing requirements. For
+instance, images may be processed in 2D slices or in 3D
+blocks of different sizes.
 
-\subsection{Data storage on disk}
-% use of chunking
-Scientific data is often represented as multidimensional arrays stored in
-chunks to facilitate processing and storage. Among other advantages, chunking
-allows for efficient queries, flexibility in adding new
-data~\cite{optimal_chuking}, parallel processing, and out-of-core
-computations through block algorithms~\cite{matthew_rocklin-proc-scipy-2015}.
+% Seeks create performance issues
+Manipulating large multidimensional arrays, however, comes with performance
+challenges related to the ordering and organization of array elements on
+storage devices. Reading many elements scattered in different disk
+locations, for instance, can generate millions to billions of \emph{seeks},
+the processes by which storage drives move to a different location, which leads
+to important penalties for both SSD and HDD drives. The ultimate goal of our research is to minimize
+the number of seeks required when manipulating large multi-dimensional
+arrays.
 
-% explain storage order
-Previous work focused on optimizing the data storage by looking for an optimal
-chunk shape that would reduce the expected number of chunks to be retrieved by
-any query~\cite{optimal_chuking} or by optimizing the ordering of the chunks
-using space filling curves for example~\cite{optimal_chuking, openconnectomecluster}.
-Instead, our approach is to leave the choice of the
-data storage to the application as much as possible, as in~\cite{seqalgorithms}.
-We therefore assume that the chunk shape and the data ordering in files are
-arbitrary but known.
+% Existing work
+The main current approach to this problem is to adapt the ordering of array
+elements on storage devices to the type of queries done by applications.
+For instance, the ndstore platform~\cite{ndstore} stores 3D image voxels
+according to Morton space-filling curves~\cite{morton}, so that nearby
+voxels in the 3D space are stored at nearby disk addresses with high
+probability, limiting the number of seeks required to read 3D blocks. Other works determine a
+block shape to minimize the expected number of seeks required
+any query, based on the query history~\cite{optimal_chuking}\tristan{Timothée, pls check that}.
+While such approaches are efficient, they also require that data
+be converted to a storage format specific to the application, which is
+impractical and hampers data sharing. Instead, we are looking for
+algorithmic approaches where applications minimize seeks
+while accessing data.
 
-For the sake of clarity and without loss of generality,
- we assume in this study that files are written in row-major order (a.k.a
-``C" order), where the fastest moving dimension in the file is the last
-dimension in the array, and the slowest moving dimension in the file is the first
-dimension in the array. For example a 3D array with dimensions $i$, $j$ and $k$
-would be written on disk by writing the complete columns in the k dimension first
-(see Figure~\ref{fig:seeks_and_rowmajor} (a)).
-Our experiments use the HDF5~\cite{hdf5} file format as it is commonly used in the
-scientific community and it is written in \texttt{C-order} by default.
+% Goal
+This paper presents an algorithm to repartition large 3D images in
+arbitrary numbers of blocks. The algorithm leverages a memory cache to read
+and write data as contiguously as possible, similarly to the "clustered"
+and "multiple" algorithms described in~\cite{seqalgorithms}.
+
+% Assumptions
+Consistently with our goal, the storage order of array elements on disk is
+assumed be known to the application, but unconstrained. Implementations
+based on our algorithm could therefore use arbitrary file formats. We focus
+on sequential algorithms assuming that arrays are stored on a single device
+with single-threaded I/Os. Although in practice seek times depend on
+various factors, such as the distance between the initial and target drive
+positions, we focus on minimizing seek \emph{numbers}, for simplicity.
+Similarly, the effects of I/O optimizations such as page caching or
+readahead will be discussed experimentally, but not modeled.
 
 \begin{figure*}[h]
   \centering
@@ -128,19 +149,15 @@ scientific community and it is written in \texttt{C-order} by default.
   \label{fig:seeks_and_rowmajor}
 \end{figure*}
 
-
-
-\subsection{Multidimensional array chunking}
-
-% need for tools to repartition
-Using chunked multidimensional arrays requires tools to efficiently split,
-merge, and ``resplit" or ``repartition" data files. Previous work in~\cite{seqalgorithms}
-showed that naive algorithms to split an array into several chunks or merge
-array chunks into one output file do not perform well due to millions of seeks
-occurring on disk. The present study is focused on sequential algorithms for
-repartitioning multidimensional arrays, letting the parallel and distributed
-cases as future work, although they are relevant, too. To the best of our
-knowledge, the repartition problem has not been extensively studied.
+% % need for tools to repartition
+% Using chunked multidimensional arrays requires tools to efficiently split,
+% merge, and ``resplit" or ``repartition" data files. Previous work in~\cite{seqalgorithms}
+% showed that naive algorithms to split an array into several chunks or merge
+% array chunks into one output file do not perform well due to millions of seeks
+% occurring on disk. The present study is focused on sequential algorithms for
+% repartitioning multidimensional arrays, letting the parallel and distributed
+% cases as future work, although they are relevant, too. To the best of our
+% knowledge, the repartition problem has not been extensively studied.
 
 % why subarray extraction incurs seeks
 Retrieving sub-arrays from an array stored on disk incurs seeks in two
@@ -150,10 +167,6 @@ contiguous piece of data. For a 3D cuboid of shape $C = (C_i, C_j, C_k)$ stored
 in row-major order, each column of data in the k dimension is contiguously
 stored. There are therefore $C_j \times C_i$ data columns that all require a
 seek (see Figure~\ref{fig:seeks_and_rowmajor} (b)).
-Although the seek time depends on various parameters such as the distance
-in bytes between two data columns, we assume that all seeks incur the same time
-overhead for the sake of simplicity. Therefore our problem will be to minimize
-the number of seeks required to access data.
 
 Not only extracting a subarray from a chunk incurs seeks on disk, but also
 accessing any piece of data from a chunk results in loading the whole chunk in
@@ -167,18 +180,26 @@ relative to chunking and suggests a chunk size greater than 100 MB, although
 remainding that the chunk shape selection is highly dependent on the
 application~\cite{rocklin_bourbeau_2019}.
 
-\subsection{Contributions}
-This paper makes the following contributions:
+In summary, this paper makes the following contributions:
 \begin{itemize}
   \item The definition of the re-partition problem for multidimensional arrays
   \item The proposition of a sequential algorithm to efficiently
   re-partition multidimensional arrays
   \item An open implementation of this algorithm on Github
 \end{itemize}
+\tristan{outline}
 
-\tristan{Tristan to rewrite the intro from this material}
+\section{Problem definition and baselines}\tristan{Tristan to rewrite the intro from this material}
 
-\section{Problem definition and baseline}
+For the sake of clarity and without loss of generality, we assume that
+ files are written in row-major order (Fig~\ref{fig:seeks_and_rowmajor},
+ a.k.a ``C" order), where the fastest moving dimension in the file is the
+ last dimension in the array, and the slowest moving dimension in the file
+ is the first dimension in the array. This convention is for instance the
+ one used in the HDF5 format ~\cite{hdf5}. For example a 3D array with
+ dimensions $i$, $j$ and $k$ would be written on disk by writing the
+ complete columns in the k dimension first.
+
 \subsection{The re-partitioning problem}
 We focus on 3D arrays for simplicity. Consider a 3D array of shape $A =
 (A_i, A_j, A_k)$, partitioned as evenly-shaped input blocks of shape $I = (I_i,
@@ -233,10 +254,10 @@ n_o$, with $n_i$ the number of input files and $n_o$ the number of output
 files. Indeed, input and output files all have to be accessed at least
 once, which requires a seek.
 
-For simplicity, we require that all buffers in \texttt{readBlocks} have
+For simplicity, we require that all blocks in \texttt{readBlocks} have
 the same shape $R$ \tristan{justify that better}. We also equate the size of an
 array in memory as its number of elements.
-
+\tristan{we assume that input and output blocks fit in memory}
 
 \begin{algorithm}
   \caption{General re-partitioning algorithm}
@@ -246,6 +267,9 @@ array in memory as its number of elements.
     \STATE inBlocks: input blocks of shape $I$, stored on disk
     \STATE outBlocks: output blocks of shape $O$, to be written
     \STATE $m$: memory available
+    \STATE
+    \STATE \textbf{Outputs}
+    \STATE none (outBlocks are written)
     \STATE
     \STATE \textbf{Algorithm}
     \STATE readBlocks, writeBlocks $\leftarrow$ getReadWriteBlocks($I$, $O$, $m$)
@@ -271,7 +295,7 @@ array in memory as its number of elements.
 Special cases of the re-partitioning problem occur when $I=A$ (``split'' problem)
 or when $O=A$ (``merge'' problem). Two strategies were introduced
 in~\cite{seqalgorithms} to address these problems: the ``multiple" and the
-``clustered" strategies. In these strategies, every loaded buffer is directly written to the
+``clustered" strategies. In these strategies, every read block is directly written to the
 destination output files, that is, \texttt{readBlocks} and \texttt{writeBlocks} are identical, .
 The only difference between the multiple and the clustered strategies lies in
 the selection of $R$.
@@ -298,7 +322,7 @@ aims at not doing any seek while reading \textit{and} writing;
 Both the input and the output blocks are read/written contiguously. In
 terms of Algorithm~\ref{algo:generalrepartition}, it means defining read blocks as
 contiguous parts of the input array and write blocks as contiguous parts of
-the output arrays. It is equivalent to extending the buffer \trustan{read blocks or write blocks?} in the inverse of
+the output arrays. It is equivalent to extending the buffer \tristan{read blocks or write blocks?} in the inverse of
 the storage order: $k \rightarrow j \rightarrow i$ in the case
 of the \texttt{C-order}. Although the multiple strategy does not seek while reading or writing, it 
 requires many switches between output blocks, which also requires seeking. 
@@ -311,25 +335,25 @@ repartitioning task \tristan{maybe comment more}.
 Our baseline algorithm for the repartitioning problem loads one input block
 at a time, that is, $R$=$I$,
 and directly writes it to the appropriate output blocks.
-The write buffers are therefore defined as the intersections between the input
+The write blocks are therefore defined as the intersections between the input
 and output blocks.
 For the baseline algorithm, we assume that input block fit in memory ($m \geq I_iI_jI_k$).
 
 The number of seeks $s$ induced by this baseline algorithm is the
-sum of the number of seeks done for each buffer, that is, the sum of:
+sum of the number of seeks done for each read block, that is, the sum of:
 \begin{itemize}
-  \item the number of input blocks (1 seek per read buffer)
+  \item the number of input blocks (1 seek per read block)
   \item the number of output blocks openings
   \item the number of seeks done by writing into the output blocks
 \end{itemize}
 
 We say that there is a \emph{shape mismatch} in a given dimension $x$ if
 input and output blocks are not aligned in dimension $x$. \tristan{make sure that Fig 1 shows i,j,k} A shape mismatch
-in dimension $k$, incurs $A_iA_j$ seeks in the output blocks, whereas a
-shape mismatch in dimension $j$ incurs only $A_i$ seeks and a shape
-mismatch in dimension $i$ incurs 1 seek. It should also be noted that if
+in dimension $k$, generates $A_iA_j$ seeks in the output blocks, whereas a
+shape mismatch in dimension $j$ generates only $A_i$ seeks and a shape
+mismatch in dimension $i$ generates a single seek. It should also be noted that if
 there are shape mismatches in two dimensions, for instance $k$ and $j$,
-then the seeks incurred in dimention $j$ are included in the seeks incurred
+then the seeks generated in dimension $j$ are included in the seeks generated
 in dimension $k$, resulting in $A_iA_j$ seeks in total. From this
 observation we can compute the number of seeks $s$ produced by the naive
 strategy as:
@@ -344,12 +368,12 @@ number of shape matches in dimension $x$, and $N$ is the number of input blocks.
 by the shape mismatches in $k$, the second term to those in $j$ and the last
 term to the mismatches in $i$.
 
-As can be seen in Equation~\ref{eq:1} shape mismatches incur a considerable
+As can be seen in Equation~\ref{eq:1} shape mismatches generate a considerable
  amount of seeks for large arrays $A$. Moreover, a shape mismatch in
  dimension $k$  is more costly than in  dimension $j$, which is itself more
  costly than in dimension $i$ (assuming that the files are stored in
  C-order). For instance, assuming an array of shape $A=(3500, 3500, 3500)$,
- the number of seeks incurred by the baseline algorithm is 73,500,000 for a shape mismatch in dimension $k$, 
+ the number of seeks generated by the baseline algorithm is 73,500,000 for a shape mismatch in dimension $k$, 
  147,000 for a shape mismatch in dimension $j$, and 294 for a shape mismatch in dimension $i$.
 
 % We implemented Equation~\ref{eq:1} and ran it on a cubic array to confirm these
@@ -382,19 +406,17 @@ As can be seen in Equation~\ref{eq:1} shape mismatches incur a considerable
 % \end{table}
 
 %----------------------------------------
-\section{The ``keep" algorithm}
+\section{The keep heuristic}
 %----------------------------------------
 
 \tristan{explain the main idea of the algorithm: brute force, ...}
 
 \subsection{The keep strategy}
-As mentioned previously, similar to the split and merge strategies, the baseline
-algorithm for the re-partition problem empties the cache at each iteration. In a
-split/merge/re-partition problem a lot of seeks occur in case of a shape mismatch,
-for example, when a data column loaded in memory is split between two output
-files. We propose to leverage the cache using a \texttt{keep strategy}
-to keep some data in the cache while it cannot be written contiguously in the
-output files (Figure~\ref{fig:keepvsbaseline}).
+As mentioned previously, the baseline, split and merge strategies empty the
+cache at each iteration, which generates many seeks in case of a shape
+mismatch between the input and output blocks. Instead, the proposed "keep"
+strategy aims at maintaining data in the cache when it cannot be written contiguously
+to the output blocks (Figure~\ref{fig:keepvsbaseline}).
 
 \begin{figure}[h]
 \centering
@@ -403,31 +425,100 @@ output files (Figure~\ref{fig:keepvsbaseline}).
 \label{fig:keepvsbaseline}
 \end{figure}
 
-When loading a read buffer, we call \texttt{extra data} the data pieces that
-are not contiguous in their output file(s) of destination.
-The keep strategy tries to find the shape $B$ of the read buffers such that $B$ covers
-at least one output file completely i.e. $B_x>O_x$ for all dimensions $x$.
-Such a buffer shape would allow to always have extra data in case of a shape
-mismatch, hence making the cache management possible to reduce the number of seeks.
-Indeed, it would allow to store the extra data into the cache in order to write
-an output file only when all its data has been loaded.
-We call this ideal read buffer shape $\Lambda$.
-If $m$ is too small, then the keep strategy will find a buffer
-shape as closed as possible from $\Lambda$.
+\begin{algorithm}
+  \caption{Keep heuristic (implements \texttt{getReadWriteBlocks})}
+  \label{algo:keep}
+  \begin{algorithmic}[1]
+    \STATE \textbf{Inputs}
+    \STATE inBlocks: input blocks of shape $I$, stored on disk
+    \STATE outBlocks: output blocks of shape $O$, to be written
+    \STATE $m$: memory available
+    \STATE
+    \STATE \textbf{Outputs}
+    \STATE readBlocks: a list of read blocks
+    \STATE writeBlocks: a list of write blocks
+    \STATE
+    \STATE \textbf{Algorithm}
+    \STATE candidates = getCandidateReadShapes($I$, $O$)
+    \STATE minSeeks = None
+    \FOR{readShape in candidates}
+      \STATE writeBlocks = intersection(readBlocks, outBlocks)
+      \STATE m' = consumedMemory(readShape, writeBlocks)
+      \IF{m' > m}
+      \STATE \textbf{continue}
+      \ENDIF
+      \STATE s' = generatedSeeks(readShape, writeBlocks, $I$, $O$)
+      \IF{minSeeks == None or s' < minSeeks}
+      \STATE minSeeks, bestReadShape = s', readShape
+      \ENDIF
+    \ENDFOR
+    \STATE writeBlocks = mergeWriteBlocks(writeBlocks, $O$, $m$)
+    \STATE readBlocks = blocks(readShape)
+    \RETURN readBlocks, writeBlocks
+  \end{algorithmic}
+\end{algorithm}
+The keep heuristic (Alg.~\ref{algo:keep}) implements a brute-force approach
+from a list of candidate read shapes (line 11).  
+For each candidate read shape, it determines the list of write blocks (line
+14),  
+the memory consumption of the resulting solution (line 15), and provided that the
+memory constraint is repsected, the number of seeks done by the solution (line
+19). The read shape leading to the lowest number of seeks is selected (line
+20-22). Finally, write blocks are merged as much as allowed by memory constraint (line 24) \tristan{rephrase that when I understand
+this part.}, a list of read blocks is generated from the read shape (line
+24), and the algorithm returns.
 
-The implementation of the keep strategy for
-Algorithm~\ref{algo:generalrepartition} consists in implementing
-getReadBuffers and getWriteBuffers. We call it the \emph{keep algorithm}.
+\subsection{Generation of candidate read shapes}
 
-\subsection{Input aggregates}
-getReadBuffers finds the buffer shape $B$ that is the closest to the optimal buffer
+To generate candidate read shapes, we first define a shape $\Lambda$ such
+that in each dimension $x$, $\Lambda_x$ is the smallest multiple of $I_x$
+that is larger or equal to $O_x$. Using $\Lambda$ as read shape obviously
+minimizes the seeks in the input blocks, as in this situation each
+iteration reads input blocks completely, requiring 1 seek per input block.
+However, seeks are generated when write blocks don't align with output
+blocks. \tristan{stopped here}
+
+% # Cas optimal
+% # read blocks = Lambda
+% # write blocks = output blocks 
+% # estime mémoire 
+
+% Si ca fitte pas:
+% # read blocks = (1, 1, Lambda_k)
+% # write blocks = output blocks inter read buffers
+
+% # Ensuite, étend le read block 
+% # Le write block est défini à partir de l'intersection 
+% # 
+
+
+When loading a read block, we call \emph{extra data} the array parts that
+are not stored contiguously in the output blocks. The keep strategy
+searches for a read block shape $R$ such that $R$ covers at least one
+output block completely, i.e., $B_x>O_x$ in all dimensions. It ensures to
+always have extra data in case of a shape mismatch, hence making cache
+management possible to reduce the number of seeks. We call this ideal read
+buffer shape $\Lambda$ \tristan{add to notations / figure}. If $m$ is too
+small \tristan{for what?}, then the keep strategy will find a buffer shape
+as closed as possible to $\Lambda$. The keep strategy is implemented in
+function \texttt{getReadWriteBlocks} called from
+Algorithm~\ref{algo:generalrepartition}.
+
+We define the \emph{input aggregate} as the minimum set of input blocks required to 
+cover an output block. We call $\Lambda$ the size of the input aggregate. 
+For any dimension $x$, if $I_x \geq O_x$, then $\Lambda_x$ is $I_x$. If $I_x < O_x$, then
+$\Lambda_x$ is the smallest multiple of $I_x$ which is larger than $O_x$. 
+
+
+getReadBuffers finds the read block shape $R$ that is the closest to the optimal
 shape $\Lambda$, such that $\Lambda_x>O_x$ in any dimension $x$.
-If $I_x > O_x$, then $\Lambda_x$ can be set to $I_x$. If $I_x < O_x$ however,
-$\Lambda_x$ must be a multiple of $I_x$ in order to keep reading each input
-block part in one seek (for opening the file).
+
+
+
+
 If $I_x < O_x$ and there is not enough memory available to ``extend"
-the buffer in dimension $x$ such that $B_x > I_x$, then $B_x$ is set to the
-biggest divisor of $R_x$ possible.
+the buffer in dimension $x$ such that $R_x > I_x$, then $R_x$ is set to the
+largest possible divisor of $A_x$ .
 
 We define an \texttt{input aggregate} as being the minimum aggregate of input
 files that covers one output file completely. In particular, $\Lambda$ is the
@@ -451,6 +542,8 @@ input block and keep the remainder in memory for the next buffer.
 If it was not the case the keep algorithm would not give a significant
 improvement in the number of seeks produced by the repartition task, compared
 to the baseline algorithm.
+
+\subsection{Consumed memory and generated seeks}
 
 \subsection{Bruteforce search of the read buffer shape}
 We found that initializing the buffer to $(1,1,\Lambda_k)$ and stretching the
@@ -578,7 +671,7 @@ In particular, with $WB$ the write buffer shape,
   \item $WB_i \neq O_i => 1$ seeks.
 \end{itemize}
 
-\subsection{Write buffers}
+\subsection{Merging of write blocks}
 So far the process to define the read buffers has been described.
 getWriteBuffers defines the blocks of data that will be written at once in each
 output file.
@@ -931,6 +1024,7 @@ which has not been taken into account in our problem formulation.
 %----------------------------------------
 \section{Discussion}
 %----------------------------------------
+\tristan{From discussion with Valerie, mention practical considerations related to page cache and readahead}
 
 \subsection{On the keep algorithm}
 The keep algorithm can reduce the number of seeks produced by a re-partition
