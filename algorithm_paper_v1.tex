@@ -101,11 +101,12 @@ scientific community and it is written in \texttt{C-order} by default.
 
 \begin{figure*}[h]
   \centering
-  \includegraphics[scale=0.35]{./figures/new/seeks_and_rowmajor.jpeg}
-  \caption{Illustration of the r\texttt{C-order} in files. The left subfigure
-  shows how the data is written on disk, with each cube representing a voxel. The
-  right subfigure shows how reading or writing only one part of a cuboid written
-  in the \texttt{C-order} can produce seeks. Each cross represents a seek.}
+  \includegraphics[scale=0.35]{./figures/new/figure_1.png}
+  \caption{Illustration of the \texttt{C-order} in files. The left subfigure
+  shows how the data is written on disk, with each cube representing a voxel.
+  The green block is the first block in the C-order while the red one represents the last block.
+  The right subfigure shows how reading or writing only one part of a cuboid written
+  in the \texttt{C-order} can produce seeks. Each red voxel is a voxel producing a seek.}
   \label{fig:seeks_and_rowmajor}
 \end{figure*}
 
@@ -365,8 +366,14 @@ output files (Figure~\ref{fig:keepvsbaseline}).
 
 \begin{figure}[h]
 \centering
-\includegraphics[scale=0.25]{./figures/new/naive_vs_keep.jpeg}
-\caption{desc.}
+\includegraphics[scale=0.4]{./figures/new/figure_2.png}
+\caption{This figure illustrates the difference between the keep and the baseline algorithm.
+The first read buffer (on top, grey) is divided in parts by its intersections with output blocks.
+While the baseline algorithm writes every part of the read buffer into the appropriate output
+blocks (blue cubes are written directly), the keep algorithm writes only the output block
+that is complete, and leave the rest in cache until the other parts of the output blocks have been
+loaded (red cubes stay in cache). In this figure, $B=\Lambda$.
+}
 \label{fig:keepvsbaseline}
 \end{figure}
 
@@ -490,9 +497,9 @@ it may be that a volume size is set to 0.
 
 \begin{figure*}[h]
 \centering
-\includegraphics[scale=0.4]{./figures/new/nomenclature_overlaps.png}
-\caption{Division of a buffer into 8 parts indexed according to the storage
-order, 7 of which are remainder volumes.}
+\includegraphics[scale=0.4]{./figures/new/figure_3.png}
+\caption{Illustration of an input aggregate (left) and its division into indexed remainder volumes (right).
+Each remainder volume is a part of an output block.}
 \label{fig:nomenclature_overlaps}
 \end{figure*}
 
