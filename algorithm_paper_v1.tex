@@ -8,6 +8,7 @@
 \usepackage{algorithmic, algorithm}
 \usepackage{caption}
 \usepackage{subcaption}
+\usepackage{xspace}
 \usepackage{hyperref} % makes cross-refs (biblio, figures, algos, ...) clickable
 
 %% The following content must be adapted for the final version
@@ -30,6 +31,7 @@
 \newcommand{\writing}[1]{\color{green}\textbf{Writing:}#1\color{black}}
 \newcommand{\tristan}[1]{\color{orange}\textbf{From Tristan:}#1\color{black}}
 \newcommand{\timothee}[1]{\color{blue}\textbf{From Timothée:}#1\color{black}}
+\newcommand{\keep}[0]{\textsc{keep}\xspace}
 
 \begin{document}
 
@@ -40,7 +42,7 @@
 \affiliation{Department of Computer Science and Software Engineering\\Concordia University, Montreal, Canada}
 
 \begin{abstract}
-
+\tristan{Tristan to reword the abstract}
 Multidimensional array chunking is a routine for scientists nowadays.
 That is why efficiently processing such arrays is of major importance in the big data era.
 Splitting and merging arrays has been successfully done, we therefore attempted
@@ -63,7 +65,6 @@ memory available is smaller than the array size.
 \end{abstract}
 
 \maketitle
-
 
 %%% do not modify the following VLDB block %%
 %%% VLDB block start %%%
@@ -98,65 +99,93 @@ The source code, data, and/or other artifacts have been made available at \url{\
 
 
 % Multidimensional arrays are important
-Multidimensional arrays are key data structures for scientific computing,
-used in various disciplines to store signals or other types of
-data~\cite{numpynature}. In neuroimaging, our main application area, arrays
-commonly hold 2D, 3D or 3D+t brain images acquired from histology, magnetic
+Multidimensional arrays are
+used in many scientific disciplines as the main data structure~\cite{numpynature}. In neuroimaging, our main application area, arrays
+commonly store 2D, 3D or 3D+t brain images acquired from histology, magnetic
 resonance imaging (MRI), or other modalities. Due to the improvement of
 acquisition methods, it is now common for such images to exceed the amount
 of working memory available on typical computers, requiring their
 partitioning in blocks stored in independent files or in multiple HDF5
-sections. Big Brain~\cite{Amunts1472}, for instance, is a human brain model
+sections. BigBrain~\cite{Amunts1472}, for instance, is a human brain model
 providing microscopic data at the resolution of 20 micrometers that comes
 in the form of many 3D blocks. Partitioning large arrays enables efficient
-queries, flexibility in adding new data~\cite{optimal_chuking}, granular
+queries, flexibility in adding new data~\cite{optimal_chuking}, granular data
 transfers, and parallel processing with frameworks such as
 Dask~\cite{matthew_rocklin-proc-scipy-2015}. Applications may adopt
-different block geometries depending on their processing requirements. For
-instance, images may be processed in 2D slices or in 3D
-blocks of different sizes.
+different block geometries depending on their processing requirements, such
+as 2D slices or 3D blocks for images.
 
 % Seeks create performance issues
 Manipulating large multidimensional arrays, however, comes with performance
 challenges related to the ordering and organization of array elements on
-storage devices. Reading many elements scattered in different disk
-locations, for instance, can generate millions to billions of \emph{seeks},
-the processes by which storage drives move to a different location, which leads
-to important penalties for both SSD and HDD drives. The ultimate goal of our research is to minimize
-the number of seeks required when manipulating large multi-dimensional
-arrays.
+storage devices. For instance, reading elements scattered in different
+disk locations can generate millions to billions of \emph{seeks}, the
+processes by which storage drives move to a different location, resulting
+in important penalties on both SSD and HDD drives. The ultimate goal of our
+research is to minimize the number of seeks required when manipulating
+large multi-dimensional arrays.
 
 % Existing work
-The main current approach to this problem is to adapt the ordering of array
+Currently, the main approach to this problem is to adapt the ordering of array
 elements on storage devices to the type of queries done by applications.
-For instance, the ndstore platform~\cite{ndstore} stores 3D image voxels
-according to Morton space-filling curves~\cite{morton}, so that nearby
+For instance, the ndstore platform~\cite{ndstore} stores voxels of 3D images
+in an order defined from Morton space-filling curves~\cite{morton}, so that nearby
 voxels in the 3D space are stored at nearby disk addresses with high
-probability, limiting the number of seeks required to read 3D blocks. Other works determine a
-block shape to minimize the expected number of seeks required
-any query, based on the query history~\cite{optimal_chuking}\tristan{Timothée, pls check that}.
+probability, limiting the number of seeks required to read 3D blocks. Other works determine from past queries a
+block shape that minimizes the expected number of seeks required
+by queries~\cite{optimal_chuking}\tristan{Timothée, pls check that}.
 While such approaches are efficient, they also require that data
 be converted to a storage format specific to the application, which is
 impractical and hampers data sharing. Instead, we are looking for
-algorithmic approaches where applications minimize seeks
-while accessing data.
+algorithmic approaches where applications control their I/Os to reduce seeking.
 
 % Goal
-This paper presents an algorithm to repartition large 3D images in
-arbitrary numbers of blocks. The algorithm leverages a memory cache to read
-and write data as contiguously as possible, similarly to the "clustered"
-and "multiple" algorithms described in~\cite{seqalgorithms}.
+This paper presents the "\keep heuristic", an algorithm to reduce the
+number of seeks created when repartitioning large 3D images in blocks of
+arbitrary shape. Repartitioning may be triggered by applications, when they
+require blocks of specific shapes, or for performance reasons, to improve
+memory usage and I/O efficiency. For instance, the Python HDF5 library
+\texttt{h5py} recommends a chunk size ``between 10 KiB and 1
+MiB"~\cite{collette_2014}, while the Dask parallel processing framework
+~\cite{matthew_rocklin-proc-scipy-2015} suggests a chunk size greater than
+100 MB~\cite{rocklin_bourbeau_2019}.
 
-% Assumptions
-Consistently with our goal, the storage order of array elements on disk is
-assumed be known to the application, but unconstrained. Implementations
-based on our algorithm could therefore use arbitrary file formats. We focus
-on sequential algorithms assuming that arrays are stored on a single device
-with single-threaded I/Os. Although in practice seek times depend on
-various factors, such as the distance between the initial and target drive
-positions, we focus on minimizing seek \emph{numbers}, for simplicity.
-Similarly, the effects of I/O optimizations such as page caching or
-readahead will be discussed experimentally, but not modeled.
+The \keep heuristic leverages a memory cache to read and write data as
+contiguously as possible, similarly to the "clustered" and "multiple"
+algorithms described in~\cite{seqalgorithms}. The storage order of array
+elements on disk is assumed be known to the application, but unconstrained.
+Implementations based on our algorithm could therefore use arbitrary file
+formats. We focus on sequential algorithms, assuming that arrays are stored
+on a single device and accessed by single-threaded I/Os. Extensions to parallel
+environments are part of our future work. Although in practice seek times
+depend on various factors, such as the distance between the initial and
+target drive positions, we focus on minimizing seek \emph{numbers}, for
+simplicity. Likewise, the effects of I/O optimizations such as page caching
+or readahead will be discussed experimentally but not modeled.
+
+In summary, the paper makes the following contributions:
+\begin{itemize}
+  \item We define the repartitioning problem for data arrays;
+  \item We propose the \keep heuristic to the re-partitioning problem;
+  \item We provide an open implementation on Github;
+  \item We evaluate the heuristic on the BigBrain dataset.
+\end{itemize}
+The remainder defines the re-partitioning problem, presents the \keep heurstic and implementation, 
+and reports experimental evaluation results.
+
+% % need for tools to repartition
+% Using chunked multidimensional arrays requires tools to efficiently split,
+% merge, and ``resplit" or ``repartition" data files. Previous work in~\cite{seqalgorithms}
+% showed that naive algorithms to split an array into several chunks or merge
+% array chunks into one output file do not perform well due to millions of seeks
+% occurring on disk. The present study is focused on sequential algorithms for
+% repartitioning multidimensional arrays, letting the parallel and distributed
+% cases as future work, although they are relevant, too. To the best of our
+% knowledge, the repartition problem has not been extensively studied.
+
+
+
+\section{Problem definition and baselines}\tristan{Tristan to rewrite the intro from this material}
 
 \begin{figure*}[h]
   \centering
@@ -169,56 +198,20 @@ readahead will be discussed experimentally, but not modeled.
   \label{fig:seeks_and_rowmajor}
 \end{figure*}
 
-% % need for tools to repartition
-% Using chunked multidimensional arrays requires tools to efficiently split,
-% merge, and ``resplit" or ``repartition" data files. Previous work in~\cite{seqalgorithms}
-% showed that naive algorithms to split an array into several chunks or merge
-% array chunks into one output file do not perform well due to millions of seeks
-% occurring on disk. The present study is focused on sequential algorithms for
-% repartitioning multidimensional arrays, letting the parallel and distributed
-% cases as future work, although they are relevant, too. To the best of our
-% knowledge, the repartition problem has not been extensively studied.
-
-% why subarray extraction incurs seeks
-Retrieving sub-arrays from an array stored on disk incurs seeks in two
-situations: (1) when an array block is opened for reading or writing, and (2)
-when the reading or writing process moves within the block to access a
-contiguous piece of data. For a 3D cuboid of shape $C = (C_i, C_j, C_k)$ stored
-in row-major order, each column of data in the k dimension is contiguously
-stored. There are therefore $C_j \times C_i$ data columns that all require a
-seek (see Figure~\ref{fig:seeks_and_rowmajor} (b)).
-
-Not only extracting a subarray from a chunk incurs seeks on disk, but also
-accessing any piece of data from a chunk results in loading the whole chunk in
-memory. Chunking must therefore be used with care as it can be detrimental for
-performance. The Python library \texttt{h5py} for manipulating HDF5 files
-recommends a chunk size ``between 10 KiB and 1 MiB" and more for larger
-datasets~\cite{collette_2014}. \texttt{dask}, a popular Python package, part of
-the SciPy ecosystem, enabling parallel and out-of-core
-computations~\cite{matthew_rocklin-proc-scipy-2015} also mentions the issues
-relative to chunking and suggests a chunk size greater than 100 MB, although
-remainding that the chunk shape selection is highly dependent on the
-application~\cite{rocklin_bourbeau_2019}.
-
-In summary, this paper makes the following contributions:
-\begin{itemize}
-  \item The definition of the re-partition problem for multidimensional arrays
-  \item The proposition of a sequential algorithm to efficiently
-  re-partition multidimensional arrays
-  \item An open implementation of this algorithm on Github
-\end{itemize}
-\tristan{outline}
-
-\section{Problem definition and baselines}\tristan{Tristan to rewrite the intro from this material}
-
 For the sake of clarity and without loss of generality, we assume that
  files are written in row-major order (Fig~\ref{fig:seeks_and_rowmajor},
  a.k.a ``C" order), where the fastest moving dimension in the file is the
- last dimension in the array, and the slowest moving dimension in the file
- is the first dimension in the array. This convention is for instance the
- one used in the HDF5 format ~\cite{hdf5}. For example a 3D array with
- dimensions $i$, $j$ and $k$ would be written on disk by writing the
- complete columns in the k dimension first.
+ last dimension of the array, and the slowest moving dimension in the file
+ is the first dimension of the array. This convention is for instance the
+ one used in the HDF5 format ~\cite{hdf5}. 
+
+Accessing data from an array stored on disk generates seeks in two
+situations: (1) when an array block is opened for reading or writing, and (2)
+when the reading or writing process moves within the block. 
+\tristan{update when figure-right is updated) For a 3D cuboid of shape $C = (C_i, C_j, C_k)$ stored
+in row-major order, each column of data in the k dimension is contiguously
+stored. There are therefore $C_j \times C_i$ data columns that all require a
+seek (see Figure~\ref{fig:seeks_and_rowmajor} (b)).
 
 \subsection{The re-partitioning problem}
 We focus on 3D arrays for simplicity. Consider a 3D array of shape $A =
@@ -426,7 +419,7 @@ As can be seen in Equation~\ref{eq:1} shape mismatches generate a considerable
 % \end{table}
 
 %----------------------------------------
-\section{The keep heuristic}
+\section{The \keep heuristic}
 %----------------------------------------
 
 \tristan{explain the main idea of the algorithm: brute force, ...}
@@ -1192,6 +1185,9 @@ and finally, finding parrallel and/or distributive versions of the keep algorith
 %----------------------------------------
 
 The computing platform was obtained with funding from the Canada Foundation for Innovation.
+
+\tristan{Timothée, make sure that all references have a title, date, and venue (journal or conference name). 
+Check capitalization of words like HDF5, etc}
 
 \bibliography{Bibliography}
 \bibliographystyle{ieeetr}
