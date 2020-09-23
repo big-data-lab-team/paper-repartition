@@ -31,36 +31,34 @@
 \newcommand{\writing}[1]{\color{green}\textbf{Writing:}#1\color{black}}
 \newcommand{\tristan}[1]{\color{orange}\textbf{From Tristan:}#1\color{black}}
 \newcommand{\timothee}[1]{\color{blue}\textbf{From Timothée:}#1\color{black}}
+\newcommand{\todo}[1]{\color{red}\textbf{TODO:}#1\color{black}}
 \newcommand{\keep}[0]{\textsc{keep}\xspace}
 
 \begin{document}
 
-\title{A sequential algorithm to repartition large multi-dimensional arrays}
+\title{A heuristic to repartition large multi-dimensional arrays with reduced disk seeking}
 
-\author{Timoth\'ee Gu\'edon, Val\'erie Hayot-Sasson, Tristan Glatard}
+\author{Timoth\'ee Gu\'edon$^{1,2}$, Val\'erie Hayot-Sasson$^1$, Tristan Glatard$^1$}
 
-\affiliation{Department of Computer Science and Software Engineering\\Concordia University, Montreal, Canada}
+\affiliation{$^1$ Department of Computer Science and Software Engineering, Concordia University, Montreal, Canada\\
+             $^2$ ESIEA \tristan{Timothée, add complete ESIEA affiliation}}
 
 \begin{abstract}
-\tristan{Tristan to reword the abstract}
-Multidimensional array chunking is a routine for scientists nowadays.
-That is why efficiently processing such arrays is of major importance in the big data era.
-Splitting and merging arrays has been successfully done, we therefore attempted
-to solve the next step: the re-partitioning problem.
-This problem consists in efficiently re-writing a chunked array to change the
-blocks shape.
-In this study we define the repartitioning problem and propose two algorithms to
-solve it: a baseline algorithm and the keep algorithm.
-With the keep algorithm, we try to reduce the number of seeks produced by the
-re-partitioning problem in the hope of reducing the processing time.
-We benchmark the performances of both algorithms on two cubic arrays of shape
-(3500,3500,3500) and (8000,8000,8000), with different resolutions and different
-amounts of available main memory.
-Our results show that the re-partitioning problem can be optimized.
-The baseline algorithm can perform surprisingly well under certain conditions
-by leveraging the page cache instead of reducing the number of seeks. The keep
-algorithm however, can be significantly faster than baseline when the amount of
-memory available is smaller than the array size.
+Multi-dimensional arrays have become the main scientific data structures,
+but their manipulation raises performance issues when they exceed memory
+capacity. In particular, accessing specific array regions can require
+millions to billions of disk seek operations, with important consequences
+on I/O performance. While traditional approaches to address this problem focus on
+file format optimizations, we are searching for algorithmic solutions where
+I/O initiated by applications are controlled to reduce seeking. In this
+paper, we propose the \keep heuristic to minimize the number of seeks
+required for the repartitioning of large multi-dimensional arrays. The
+\keep heuristic uses a memory cache to reconstruct contiguous data
+sections in memory. We evaluate it on arrays ranging from \todo{X} to
+\todo{Y} GB, and with memory amounts ranging from \todo{A} to \todo{B} GB.
+Repartitioning time is reduced by a factor of up to \todo{x}, and
+seeking is reduced by a factor of \todo{k}. \tristan{Add a conclusion sentence.}
+
 
 \end{abstract}
 
@@ -120,7 +118,7 @@ Manipulating large multidimensional arrays, however, comes with performance
 challenges related to the ordering and organization of array elements on
 storage devices. In particular, reading or writing elements scattered in different
 disk regions can generate millions to billions of \emph{seeks}, the
-processes by which storage drives move to a different location, resulting
+operations by which storage drives move to a different location, resulting
 in important penalties on both SSD and HDD drives. The ultimate goal of our
 research is to minimize the number of seeks required when manipulating
 large multi-dimensional arrays.
@@ -128,8 +126,8 @@ large multi-dimensional arrays.
 % Existing work
 Currently, the main approach to this problem is to adapt the ordering of array
 elements on storage devices to the type of queries done by applications.
-For instance, the ndstore platform~\cite{ndstore} stores voxels of 3D images
-in an order defined from Morton space-filling curves~\cite{morton}, so that nearby
+For instance, the ndstore platform~\cite{lillaney2018building} stores voxels of 3D images
+in an order defined from Morton space-filling curves~\cite{morton} \tristan{Timothée, pls add ref}, so that nearby
 voxels in the 3D space are stored at nearby disk addresses with high
 probability, limiting the number of seeks required to read 3D blocks. Other works determine from past queries a
 block shape that minimizes the expected number of seeks required
@@ -221,7 +219,7 @@ the block.
 
     &\\
     \multicolumn{2}{c}{\cellcolor{black!25}Square capitals are used for block shapes}\\
-    A = ($A_0$, $A_1$, $A_2$) & shape of \texttt{array}\\
+    A = ($A_0$, $A_1$, $A_2$) & shape of \texttt{A}\\
     I = ($I_0$, $I_1$, $I_2$)& shape of input blocks\\
     O = ($O_0$, $O_1$, $O_2$) & shape of output blocks\\
     R = ($R_0$, $R_1$, $R_2$) & shape of read blocks\\
@@ -229,10 +227,10 @@ the block.
     &\\
     \multicolumn{2}{c}{\cellcolor{black!25}Round capitals are used for block end coordinates}\\
 
-    $\mathcal{I}$ = ($\mathcal{I}_0$, $\mathcal{I}_1$, $\mathcal{I}_2$), \enskip $\mathcal{I}_d \subset \mathbb{N} $ & coordinates of input block endings \\
-    $\mathcal{O}$ = ($\mathcal{O}_0$, $\mathcal{O}_1$, $\mathcal{O}_2$), \enskip $\mathcal{O}_d \subset \mathbb{N} $ & coordinates of output block endings\\
-    $\mathcal{R}$ = ($\mathcal{R}_0$, $\mathcal{R}_1$, $\mathcal{R}_2$), \enskip $\mathcal{R}_d \subset \mathbb{N} $ & coordinates of read block endings\\
-    $\mathcal{W}$ = ($\mathcal{W}_0$, $\mathcal{W}_1$, $\mathcal{W}_2$), \enskip $\mathcal{W}_d \subset \mathbb{N} $ & coordinates of write block endings\\
+    $\mathcal{I}$ = ($\mathcal{I}_0$, $\mathcal{I}_1$, $\mathcal{I}_2$), \enskip $\mathcal{I}_d \subset \mathbb{N} $ & input block end coordinates \\
+    $\mathcal{O}$ = ($\mathcal{O}_0$, $\mathcal{O}_1$, $\mathcal{O}_2$), \enskip $\mathcal{O}_d \subset \mathbb{N} $ & output block end coordinates\\
+    $\mathcal{R}$ = ($\mathcal{R}_0$, $\mathcal{R}_1$, $\mathcal{R}_2$), \enskip $\mathcal{R}_d \subset \mathbb{N} $ & read block end coordinates\\
+    $\mathcal{W}$ = ($\mathcal{W}_0$, $\mathcal{W}_1$, $\mathcal{W}_2$), \enskip $\mathcal{W}_d \subset \mathbb{N} $ & write block end coordinates\\
     &
   \end{tabular}
   \caption{Summary of notations}
