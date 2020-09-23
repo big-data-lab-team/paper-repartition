@@ -185,8 +185,7 @@ and reports experimental evaluation results.
 
 
 
-\section{Problem definition and baselines}\tristan{Tristan to rewrite the intro from this material}
-
+\section{Problem definition and baseline}
 \begin{figure*}[h]
   \centering
   \includegraphics[scale=0.35]{./figures/new/figure_1.png}
@@ -208,7 +207,7 @@ For the sake of clarity and without loss of generality, we assume that
 Accessing data from an array stored on disk generates seeks in two
 situations: (1) when an array block is opened for reading or writing, and (2)
 when the reading or writing process moves within the block. 
-\tristan{update when figure-right is updated) For a 3D cuboid of shape $C = (C_i, C_j, C_k)$ stored
+\tristan{update when figure-right is updated} For a 3D cuboid of shape $C = (C_i, C_j, C_k)$ stored
 in row-major order, each column of data in the k dimension is contiguously
 stored. There are therefore $C_j \times C_i$ data columns that all require a
 seek (see Figure~\ref{fig:seeks_and_rowmajor} (b)).
@@ -343,51 +342,65 @@ requires many switches between output blocks, which also requires seeking.
 To the best of our knowledge, no algorithm has been proposed for the
 repartitioning task \tristan{maybe comment more}.
 
-\subsection{Baseline solution}
+\subsection{Baseline}
 
 Our baseline algorithm for the repartitioning problem loads one input block
-at a time, that is, $R$=$I$,
-and directly writes it to the appropriate output blocks.
-The write blocks are therefore defined as the intersections between the input
-and output blocks.
-For the baseline algorithm, we assume that input block fit in memory ($m \geq I_iI_jI_k$).
+at a time ($R$=$I$), and directly writes it to the appropriate output
+blocks ($W$=$R$). It assumes that input blocks fit in memory. The number of
+seeks $s$ created by the baseline depends on how write blocks overlap with
+output blocks in each dimension (Fig\ref{fig:cuts} \tristan{Timothee, faire une figure 
+qui represente les deux plans (X0, X1) et (X1, X2) en utilisant les notations ci-dessous}). We define
+$\mathcal{W}_d$ and $\mathcal{O}_d$ the sets of write and output block end
+coordinates in dimension $d$:
+\[
+  \forall d \in \llbracket 1, 3 \rrbracket,
+\]
+\[
+  \mathcal{W}_d = \Big\{ iW_d, i \in \llbracket 1, A_d/W_d \rrbracket \Big\} \quad \mathrm{and} \quad
+  \mathcal{O}_d = \Big\{ iO_d, i \in \llbracket 1, A_d/O_d \rrbracket \Big\} 
+\]
+We then define the \emph{cuts} of the $i^{th}$ output block along dimension
+$d$ as follows:
+\[
+  \forall i \in \llbracket 1, A_d/O_d \rrbracket,
+\]
+\[
+  C_{i, d} = \Big\{ w \in \mathcal{W}_d, (i-1)O_d < w < iO_d \Big\}
+\]
+The number of output block pieces along dimension $d$ is then:
+\[
+  c_d = \sum_{i=1}^{A_d/O_d} \vert C_{i, d} \vert + 1 - \delta_{\vert C_{i, d} \vert, 0}
+\]
+where $\vert$ . $\vert$ is the cardinality operator and $\delta$ is the Kronecker delta. 
+The number of matching endings is:
+\[
+  m_d = \vert \mathcal{W}_d \cup  \mathcal{O}_d \vert  - c_d
+  \]
+Finally, the number of seeks created by the baseline algorithm is:
+\[
+  s = A_0 A_1 c_2 + A_0 c_1 m_2 + c_0 m_1 m_2 + n_i + n_o
+\]
 
-The number of seeks $s$ induced by this baseline algorithm is the
-sum of the number of seeks done for each read block, that is, the sum of:
-\begin{itemize}
-  \item the number of input blocks (1 seek per read block)
-  \item the number of output blocks openings
-  \item the number of seeks done by writing into the output blocks
-\end{itemize}
+As can be seen from this equation, cuts along dimension 2 generate $\mathcal{O}(A_0 A_1)}$
+seeks, cuts along dimension 1 generate $\mathcal{O}(A_0)$ seeks and cuts in
+dimension 0 generate $\mathcal{O}(1)$ seeks. The \keep heuristic described
+in the next section aims at avoiding seeks primarily in dimension 2, and if
+possible in dimension 1 and 0. An experimental verification of the model will be provided in 
+Section ~\ref{sec:experiments}.
 
-We say that there is a \emph{shape mismatch} in a given dimension $x$ if
-input and output blocks are not aligned in dimension $x$. \tristan{make sure that Fig 1 shows i,j,k} A shape mismatch
-in dimension $k$, generates $A_iA_j$ seeks in the output blocks, whereas a
-shape mismatch in dimension $j$ generates only $A_i$ seeks and a shape
-mismatch in dimension $i$ generates a single seek. It should also be noted that if
-there are shape mismatches in two dimensions, for instance $k$ and $j$,
-then the seeks generated in dimension $j$ are included in the seeks generated
-in dimension $k$, resulting in $A_iA_j$ seeks in total. From this
-observation we can compute the number of seeks $s$ produced by the naive
-strategy as:
+\begin{table}
+  \begin{tabular}{ll}
+    $\mathcal{A}$: & 3D array to repartition \\
+    A: & shape of $\mathcal{A}$: A = ($A_1$, $A_2$, $A_3$)\\
+    I: & shape of input blocks: I = ($I_1$, $I_2$, $I_3$)\\
+    O: & shape of output blocks: O = ($O_1$, $O_2$, $O_3$)\\
+    R: & shape of read blocks: R = ($R_1$, $R_2$, $R_3$)\\
+    W: & shape of write blocks: W = ($W_1$, $W_2$, $W_3$)\\
 
-\begin{equation} \label{eq:1}
-s = A_i A_j c_k + A_i c_j m_k + c_i m_j m_k + N
-\end{equation}
+  \end{tabular}
+  \caption{Summary of notations}
+\end{table}
 
-With $c_x$ the number of shape mismatches in dimension $x$, $m_x$ is the
-number of shape matches in dimension $x$, and $N$ is the number of input blocks. \tristan{why do you need to introduce mx? is it a way to count only the mismatches}.
- The first term corresponds to the seeks produced
-by the shape mismatches in $k$, the second term to those in $j$ and the last
-term to the mismatches in $i$.
-
-As can be seen in Equation~\ref{eq:1} shape mismatches generate a considerable
- amount of seeks for large arrays $A$. Moreover, a shape mismatch in
- dimension $k$  is more costly than in  dimension $j$, which is itself more
- costly than in dimension $i$ (assuming that the files are stored in
- C-order). For instance, assuming an array of shape $A=(3500, 3500, 3500)$,
- the number of seeks generated by the baseline algorithm is 73,500,000 for a shape mismatch in dimension $k$, 
- 147,000 for a shape mismatch in dimension $j$, and 294 for a shape mismatch in dimension $i$.
 
 % We implemented Equation~\ref{eq:1} and ran it on a cubic array to confirm these
 % theories. One shape mismatch is added at a time in order to see the impact on
@@ -425,10 +438,10 @@ As can be seen in Equation~\ref{eq:1} shape mismatches generate a considerable
 \tristan{explain the main idea of the algorithm: brute force, ...}
 
 \subsection{The keep strategy}
-As mentioned previously, the baseline, split and merge strategies empty the
+As mentioned previously, the baseline, split, and merge strategies empty the
 cache at each iteration, which generates many seeks in case of a shape
-mismatch between the input and output blocks. Instead, the proposed "keep"
-strategy aims at maintaining data in the cache when it cannot be written contiguously
+mismatch between the input and output blocks. Instead, the proposed
+strategy tries to maintain data in the cache when it cannot be written contiguously
 to the output blocks (Figure~\ref{fig:keepvsbaseline}).
 
 \begin{figure}[h]
@@ -445,7 +458,7 @@ loaded (red cubes stay in cache). In this figure, $B=\Lambda$.
 \end{figure}
 
 \begin{algorithm}
-  \caption{Keep heuristic (implements \texttt{getReadWriteBlocks})}
+  \caption{\keep heuristic (implements \texttt{getReadWriteBlocks})}
   \label{algo:keep}
   \begin{algorithmic}[1]
     \STATE \textbf{Inputs}
@@ -461,31 +474,157 @@ loaded (red cubes stay in cache). In this figure, $B=\Lambda$.
     \STATE candidates = getCandidateReadShapes($I$, $O$)
     \STATE minSeeks = None
     \FOR{readShape in candidates}
-      \STATE writeBlocks = intersection(readBlocks, outBlocks)
-      \STATE m' = consumedMemory(readShape, writeBlocks)
+      \STATE writeBlocks, m' = intersection(readBlocks, outBlocks)
       \IF{m' > m}
       \STATE \textbf{continue}
       \ENDIF
+      \STATE writeBlocks = mergeWriteBlocks(writeBlocks, $O$, $m$)
       \STATE s' = generatedSeeks(readShape, writeBlocks, $I$, $O$)
       \IF{minSeeks == None or s' < minSeeks}
       \STATE minSeeks, bestReadShape = s', readShape
       \ENDIF
     \ENDFOR
-    \STATE writeBlocks = mergeWriteBlocks(writeBlocks, $O$, $m$)
     \STATE readBlocks = blocks(readShape)
     \RETURN readBlocks, writeBlocks
   \end{algorithmic}
 \end{algorithm}
-The keep heuristic (Alg.~\ref{algo:keep}) implements a brute-force approach
+The \keep heuristic (Alg.~\ref{algo:keep}) implements a brute-force approach
 from a list of candidate read shapes (line 11).  
-For each candidate read shape, it determines the list of write blocks (line
-14),  
-the memory consumption of the resulting solution (line 15), and provided that the
-memory constraint is repsected, the number of seeks done by the solution (line
-19). The read shape leading to the lowest number of seeks is selected (line
-20-22). Finally, write blocks are merged as much as allowed by memory constraint (line 24) \tristan{rephrase that when I understand
-this part.}, a list of read blocks is generated from the read shape (line
+For each candidate read shape, it initializes the list of write blocks and memory consumption of the resulting solution (line
+14), and provided that the
+memory constraint is respected, merges write blocks as much as allowed by the memory 
+constraint (line 18), computes 
+the number of seeks created by the solution (line
+19), and selects the read shape that minimizes the number of seeks (line
+20-22). Finally, a list of read blocks is generated from the  selected read shape (line
 24), and the algorithm returns.
+
+\subsection{Algorithm for computing the number of seeks (keep)}
+The amount of seeks produced by the keep algorithm for a given read buffer shape
+$B$ is computed as follows:
+$$s = s_o + s_i$$
+$s_i$ corresponds to the number of seeks produced while reading the input blocks and
+$s_o$ corresponds to the number of seeks produced by writing into the output blocks.
+In the baseline algorithm, for each read buffer of shape $B=I$, we write the
+content into fixed shape outblocks that intersect the read buffer.
+In the reading part of the keep algorithm, we do the exact inverse process:
+reading a fixed buffer of data from one or more input block(s).
+We therefore compute $n_i$ using the same methodology than for the baseline
+algorithm.
+For the writing part of the keep algorithm however, the write buffer's shape is
+not fixed so we cannot use the same methodology.
+The amount of seeks is computed directly from the list of write buffers.
+Consider one output block.
+There is a set of write buffers describing how the output block
+will be written.
+These write buffers are a partition of the output block, and therefore do not
+cross the output block and are of maximum size the size of the output block.
+This leads us to a simple observation which is that in a given dimension, if a write
+buffer shape is smaller than the output block shape, then writing the write buffer
+will produce seeks (Figure~\ref{fig:seeks_and_rowmajor}).
+From this obervation, we can say that for a given write buffer shape $WB$:
+\begin{itemize}
+  \item $WB_k \neq O_k => WB_i*WB_j$ seeks.
+  \item $WB_j \neq O_j => WB_i$ seeks.
+  \item $WB_i \neq O_i => 1$ seeks.
+\end{itemize}
+Again, the seeks in dimension $k$ include the seeks in dimension $j$ and the ones
+produced in $j$ include the seeks produced in $i$.
+Algorithm~\ref{algo:write_seeks_keep_algorithm} describes the computation of $n_o$.
+\begin{algorithm}
+  \caption{Number of seeks produced by the write step of the keep algorithm}
+  \label{algo:write_seeks_keep_algorithm}
+  \begin{algorithmic}[1]
+    \STATE \textbf{Inputs}
+    \STATE writeBuffers: list of the write buffers created by the keep algorithm.
+    \STATE
+    \STATE \textbf{Algorithm}
+    \STATE $n_o \leftarrow \textrm{length(writeBuffers)}$ // number of file openings
+    \FOR{writeBuffer in writeBuffers}
+      \STATE $WB \leftarrow \textrm{shapeOf(writeBuffer)}$
+      \IF{$WB_k \neq O_k$}
+        \STATE $n_o += WB_i*WB_j$
+      \ELSIF{$WB_k \neq O_k$}
+        \STATE $n_o += WB_i$
+      \ELSIF{$WB_k \neq O_k$}
+        \STATE $n_o += 1$
+      \ENDIF
+    \ENDFOR
+    \RETURN $n_o$
+  \end{algorithmic}
+\end{algorithm}
+
+
+  \subsection{Algorithm for computing the max memory consumption (keep)}
+Algorithm~\ref{algo:max_mem_keep_algorithm} describes how we compute the
+maximum amount of memory consumed by the keep algorithm given a read buffer shape $B$.
+Given the buffer order $k\rightarrow j\leftarrow i$, the algorithm computing
+the maximum memory consumption of the keep algorithm comes from the following
+observation:
+At a maximum, the keep algorithm keeps 1 remainder of type $F_1$,
+$n_k$ times $F_2$ and $F_3$ in the $j$ dimension and $n_k*n_j$ times $F_4$, $F_5$,
+$F_6$ and $F_7$, with $n_x$ the number of buffers in dimension $x$.
+For example if a first $F_1$ remainder is loaded by the first read buffer it
+will be written down by the second read buffer, which will also load another $F_1$
+volume.
+The same observation applies to remainders in the $j$ and $i$ dimensions.
+Therefore, at each buffer loading, the amount of memory in RAM is the sum of the
+new buffer that has just been loaded and the amount of memory in cache from
+previous buffers.
+At any step of the algorithm, there is one buffer being loaded, the amount of
+memory $mem$ is therefore initialized to the size of a read buffer line 7 of
+Algorithm~\ref{algo:max_mem_keep_algorithm}.
+At the beginning of the algorithm, the remainder lists are empty which is why
+for the first buffer the memory used is just the read buffer size.
+We therefore initialized $maxMem$ to $mem$ line 8.
+In order to track the amount of memory in cache, we initialize three empty lists
+(line 9): $list_k$, $list_j$ and $list_i$ of respective size of 1, $n_k$ and $n_k*n_j$.
+We then simulate the keep algorithm process, computing the amount of RAM consumed at
+each step.
+For each read buffer, some remainder volumes are replaced: some are written
+while others (of the same type) are being loaded.
+We therefore remove the size of the remainders being written from $mem$ (line 20)
+and we add the size of the new remainders instead (line 25).
+Note that when processing buffer n°$i$ the final amount of memory $mem$ tested
+line 27 is the amount of memory used after loading buffer $i+1$.
+\begin{algorithm}
+  \caption{Estimation of the maximum memory consumption of the keep algorithm}
+  \label{algo:max_mem_keep_algorithm}
+  \begin{algorithmic}[1]
+    \STATE \textbf{Inputs}
+    \STATE readBuffers: list of the read buffers created by the keep algorithm.
+    \STATE $B$: read buffer shape
+    \STATE $R$: shape of reconstructed image
+    \STATE
+    \STATE \textbf{Algorithm}
+    \STATE $mem = B_k*B_j*B_i$
+    \STATE $memMax = mem$
+    \STATE $list_k, list_j, list_i = list(), list(), list()$
+    \STATE
+    \FOR{readBuffer in readBuffers}
+      \STATE $F_1$, $F_2$, ..., $F_7= getRemainders(readBuffer)$
+      \STATE $remainders_k = size(F_1)$
+      \STATE $remainders_j = size(F_2+F_3)$
+      \STATE $remainders_i = size(F_4+F_5+F_6+F7)$
+      \STATE $index3D = getPosition(readBuffer,R)$
+      \STATE
+      \STATE $index_j = index3D_k$
+      \STATE $index_i = index3D_j*length(list_j) + index3D_k$
+      \STATE $mem \mathrel{-}= (list_k[0] + list_j[index_j] + list_i[index_i])$
+      \STATE
+      \STATE $list_k[0] = remainders_k$
+      \STATE $list_j[index_j] = remainders_j$
+      \STATE $list_i[index_i] = remainders_i$
+      \STATE $mem \mathrel{+}= (list_k[0] + list_j[index_j] + list_i[index_i])$
+      \STATE
+      \IF{$mem>memMax$}
+        \STATE $memMax\leftarrow mem$
+      \ENDIF
+    \ENDFOR
+    \RETURN $memMax$
+  \end{algorithmic}
+\end{algorithm}
+
 
 \subsection{Generation of candidate read shapes}
 
@@ -797,6 +936,11 @@ maximum memory consumption that we predicted at the buffer selection time.
 %----------------------------------------
 \section{Experiments}
 %----------------------------------------
+\label{sec:experiments}
+\subsection{Seek model validation}
+
+\tristan{generate 1,000 random shapes, compute number of seeks with models for baseline and keep, 
+check that implementation makes the same number}
 
 \subsection{Experimental setting}
 The experiments have been executed on a private
