@@ -21,11 +21,11 @@
 \newcommand\vldbyear{2020}
 % should be fine as it is
 \newcommand\vldbauthors{\authors}
-\newcommand\vldbtitle{\shorttitle} 
+\newcommand\vldbtitle{\shorttitle}
 % leave empty if no availability url should be set
 \newcommand\vldbavailabilityurl{http://vldb.org/pvldb/format_vol14.html}
 % whether page numbers should be shown or not, use 'plain' for review versions, 'empty' for camera ready
-\newcommand\vldbpagestyle{plain} 
+\newcommand\vldbpagestyle{plain}
 
 \newcommand{\logic}[1]{\color{red}\textbf{Logic/flow:}#1\color{black}}
 \newcommand{\writing}[1]{\color{green}\textbf{Writing:}#1\color{black}}
@@ -168,7 +168,7 @@ In summary, the paper makes the following contributions:
   \item We provide an open implementation on Github;
   \item We evaluate the heuristic on the BigBrain dataset.
 \end{itemize}
-The remainder of this paper defines the re-partitioning problem, presents the \keep heurstic and its implementation, 
+The remainder of this paper defines the re-partitioning problem, presents the \keep heurstic and its implementation,
 and reports experimental evaluation results.
 
 % % need for tools to repartition
@@ -186,7 +186,7 @@ and reports experimental evaluation results.
 \section{Problem definition and baseline}
 \begin{figure*}[h]
   \centering
-  \includegraphics[scale=0.35]{./figures/new/figure_1.png}
+  \includegraphics[scale=0.35]{./figures/figure_1.png}
   \caption{Illustration of the \texttt{C-order} in files. The left subfigure
   shows how the data is written on disk, with each cube representing a voxel.
   The green block is the first block in the C-order while the red one represents the last block.
@@ -200,7 +200,7 @@ For the sake of clarity and without loss of generality, we assume that
  a.k.a ``C" order), where the fastest moving dimension in the file is the
  last dimension of the array, and the slowest moving dimension in the file
  is the first dimension of the array. This convention is for instance the
- one used in the HDF5 format ~\cite{hdf5}. 
+ one used in the HDF5 format ~\cite{hdf5}.
 
 Accessing data from an array stored on disk generates seeks in two
 situations: (1) when an array block is opened for reading or writing, and
@@ -289,11 +289,11 @@ then writing write blocks requires more than one seek. Input, output, read
 and write blocks all form a partition of the 3D array of shape $A$. The
 main loop of the algorithm (line 12) loads one read block at a time (line
 13), inserts it into a cache (line 14), and writes write blocks from the
-cache when they are complete (lines 15 -- 20). 
+cache when they are complete (lines 15 -- 20).
 
 It should be noted that blocks are passed to the algorithm by reference,
 not by data. Only variables \texttt{data} (lines 13, 17) and \texttt{cache}
-(line 14) hold actual data, contributing to the consumed memory. 
+(line 14) hold actual data, contributing to the consumed memory.
 
 Since read and write blocks both represent a partition of $A$, all the
 elements in \texttt{inBlocks} are read exactly once, and written exactly once too. Other
@@ -305,10 +305,10 @@ Our goal is to minimize the number of seeks done by the algorithm, which
 occur during reads (line 13) and writes (line 18). The re-partitioning
 problem is therefore to find \texttt{readBlocks} and \texttt{writeBlocks} that
 minimize \textsc{seeks}, the objective function that returns the number of
-seeks done by the algorithm, subject to the memory constraint $m$. 
+seeks done by the algorithm, subject to the memory constraint $m$.
 
 % Problem: re-partitioning of multi-dimensional arrays
-% Find: readBlocks and writeBlocks 
+% Find: readBlocks and writeBlocks
 % Subject to: m
 % Such that: seeks is minimal
 % \tristan{formalize problem definition}.
@@ -333,7 +333,7 @@ at a time ($R$=$I$), and directly writes it to the appropriate output
 blocks ($W$=$R$). It assumes that input blocks fit in memory. The number of
 generatd seeks $s_b$
 depends on how write blocks overlap with
-output blocks in each dimension (Fig.\ref{fig:cuts} \tristan{Timothee, faire une figure 
+output blocks in each dimension (Fig.\ref{fig:cuts} \tristan{Timothee, faire une figure
 qui represente les deux plans (X0, X1) et (X1, X2) en utilisant les notations ci-dessous}). To compute $s_b$, we define
 $\mathcal{W}_d$ and $\mathcal{O}_d$ the sets of write and output block end
 coordinates in dimension $d$:
@@ -357,14 +357,14 @@ The number of output block pieces along dimension $d$ is then:
   c_d = c_d\left(  \mathcal{W}_d, \mathcal{O}_d \right) =
                \sum_{i=1}^{A_d/O_d} \vert C_{i, d}\left(  \mathcal{W}_d, \mathcal{O}_d \right) \vert + 1 - \delta_{\vert C_{i, d}\left(  \mathcal{W}_d, \mathcal{O}_d \right) \vert, 0}
 \]
-where $\vert$ . $\vert$ is the cardinality operator and $\delta$ is the Kronecker delta. 
+where $\vert$ . $\vert$ is the cardinality operator and $\delta$ is the Kronecker delta.
 The number of matching endings is:
 \[
   m_d = m_d\left(  \mathcal{W}_d, \mathcal{O}_d \right) = \vert \mathcal{W}_d \cup  \mathcal{O}_d \vert  - c_d
   \]
 Finally, the number of seeks created by the baseline algorithm is:
 \begin{equation}
-  s_b = A_0 A_1 c_2 + 
+  s_b = A_0 A_1 c_2 +
       A_0 c_1 m_2 +
       c_0 m_1 m_2
        + n_i + n_o \label{eq:seeks-baseline}
@@ -375,7 +375,7 @@ As can be seen from Equation~\ref{eq:seeks-baseline}, cuts along dimension 2 gen
 seeks, which is prohibitive when \texttt{A} is large, cuts along dimension 1 generate $\mathcal{O}(A_0)$ seeks and cuts in
 dimension 0 generate $\mathcal{O}(1)$ seeks. The \keep heuristic described
 in the next section aims at avoiding cuts primarily in dimension 2, and if
-possible in dimension 1 and 0. An experimental verification of the model will be provided in 
+possible in dimension 1 and 0. An experimental verification of the model will be provided in
 Section ~\ref{sec:experiments}.
 
 
@@ -418,12 +418,12 @@ As mentioned previously, the baseline, split, and merge strategies empty
 the cache at each iteration, which generates many seeks in case of a shape
 mismatch between the input and output blocks. Instead, the proposed
 \keep heuristic tries to maintain data in the cache when it cannot be written
-contiguously to the output blocks. 
+contiguously to the output blocks.
 
 % (Figure~\ref{fig:keepvsbaseline})
 % \begin{figure}[h]
 % \centering
-% \includegraphics[scale=0.4]{./figures/new/figure_2.png}
+% \includegraphics[scale=0.4]{./figures/figure_2.png}
 % \caption{This figure illustrates the difference between the keep and the baseline algorithm.
 % The first read buffer (on top, grey) is divided in parts by its intersections with output blocks.
 % While the baseline algorithm writes every part of the read buffer into the appropriate output
@@ -472,11 +472,11 @@ contiguously to the output blocks.
   \end{algorithmic}
 \end{algorithm}
 The \keep heuristic (Alg.~\ref{algo:keep}) is a brute-force search
-of the best read shape among a list of candidates (line 11).  
+of the best read shape among a list of candidates (line 11).
 For each candidate read shape, it initializes a list of write blocks (line
 14), determines the memory consumed by this solution (line 15), and provided that the
-memory constraint is respected, merges write blocks as much as allowed by the memory 
-constraint (line 19), computes 
+memory constraint is respected, merges write blocks as much as allowed by the memory
+constraint (line 19), computes
 the number of seeks created by the solution (line
 20), and selects the read shape that minimizes the number of seeks (line
 21-23). Finally, a list of read blocks is generated from the  selected read shape (line
@@ -523,14 +523,14 @@ The third coordinate of all read shapes is set to $\Lambda_2$, to guarantee
 that no cuts along dimension 2 will be made during reads. This assumes that
 $m > \Lambda_2$, i.e., a block of shape (1, 1, $\Lambda_k$) fits in
 memory. The other two coordinates are set to divisors of $A_0$ and $A_1$ which are
-less than or equal to $\Lambda_0$ and $\Lambda_1$. 
+less than or equal to $\Lambda_0$ and $\Lambda_1$.
 
 The candidate shapes are sorted such that $\Lambda$ is first.
 While $\Lambda$ is the optimal read shape, leading to a single seek per
 input or output block, there is no obvious relation between the other
 candidate shapes and the number of seeks that they generate, since this
 number depends on how input, read, write, and output block shapes are
-arranged. For this reason, the \keep heuristic returns if $\Lambda$ respects 
+arranged. For this reason, the \keep heuristic returns if $\Lambda$ respects
 the memory constraint (line 20), but it otherwise evaluates all the other read shapes.
 
 \subsection{Splitting read blocks by output blocks}
@@ -539,7 +539,7 @@ At each iteration, the read blocks are split by output blocks to initialize
 the write blocks (\texttt{split}, line 14 in Alg~\ref{algo:keep}). It means that when a
 read block covers more than a single output block, a write block is defined
 for each output block, as the intersection between the output block and the
-read block. 
+read block.
 
 \subsection{Consumed memory}
 \tristan{Tristan to reformulate this section, needs discussion with Timothée}
@@ -660,7 +660,7 @@ it may be that a volume size is set to 0.
 
 \begin{figure*}[h]
 \centering
-\includegraphics[scale=0.4]{./figures/new/figure_3.png}
+\includegraphics[scale=0.4]{./figures/figure_3.png}
 \caption{Illustration of an input aggregate (left) and its division into indexed remainder volumes (right).
 Each remainder volume is a part of an output block.}
 \label{fig:nomenclature_overlaps}
@@ -755,8 +755,8 @@ where the first term represents the number of seeks required to read input
 
 \subsection{Implementation}
 
-\tristan{Timothée, I would feel better if you could use the implementation 
-of function seek in seek\_tristan.py in your implementation. It should be giving the same results as yours, 
+\tristan{Timothée, I would feel better if you could use the implementation
+of function seek in seek\_tristan.py in your implementation. It should be giving the same results as yours,
 but probably faster.}
 
 We implemented the baseline and \keep heuristic in Python 3.7. The
@@ -789,7 +789,7 @@ probable that the best shapes are closer to $\Lambda$.
 In this spirit, we added a maximum number of iteration above which the search
 is stopped if no improvement in the number of seeks has been found.
 We set this limit to 10 buffers \tristan{This heuristic should either be removed (preferred)
-or explained in details}. 
+or explained in details}.
 
 %----------------------------------------
 \section{Experiments}
@@ -797,7 +797,7 @@ or explained in details}.
 \label{sec:experiments}
 \subsection{Seek model validation}
 
-\tristan{generate 1,000 random shapes, compute number of seeks with models for baseline and keep, 
+\tristan{generate 1,000 random shapes, compute number of seeks with models for baseline and keep,
 check that implementation makes the same number}
 
 \subsection{Experiment conditions}
@@ -808,7 +808,7 @@ SSD at a time \tristan{is it true for the large image?}. The cluster was
 accessed through the SLURM batch manager.
 
 We repartitioned an array of shape $A=(3500,3500,3500)$ and of type
-\texttt{float16} (2 bytes per array element \tristan{the block sizes in Table 3 correspond to 
+\texttt{float16} (2 bytes per array element \tristan{the block sizes in Table 3 correspond to
 1 byte per array element, please check.}), representing \todo{X}~GB,
 using the input and output block shapes in Table~\ref{tab:exp}.
 \tristan{Was compression used?} \tristan{Describe the other, larger array.}
@@ -947,21 +947,21 @@ which has not been taken into account in our problem formulation.
      \centering
      \begin{subfigure}[b]{\textwidth}
          \centering
-         \includegraphics[scale=0.5]{./figures/new/results_256.png}
+         \includegraphics[scale=0.5]{./figures/results_256.png}
          \caption{Processing times for $m=256$GB}
          \label{fig:results256}
      \end{subfigure}
      \vfill
      \begin{subfigure}[b]{\textwidth}
          \centering
-         \includegraphics[scale=0.5]{./figures/new/results_8.png}
+         \includegraphics[scale=0.5]{./figures/results_8.png}
          \caption{Processing times for $m=8$GB}
          \label{fig:results8}
      \end{subfigure}
      \vfill
      \begin{subfigure}[b]{\textwidth}
          \centering
-         \includegraphics[scale=0.5]{./figures/new/results_4.png}
+         \includegraphics[scale=0.5]{./figures/results_4.png}
          \caption{Processing times for $m=4$GB}
          \label{fig:results4}
      \end{subfigure}
@@ -975,21 +975,21 @@ which has not been taken into account in our problem formulation.
      \centering
      \begin{subfigure}[b]{\textwidth}
          \centering
-         \includegraphics[scale=0.5]{./figures/new/results_seeks_256.png}
+         \includegraphics[scale=0.5]{./figures/results_seeks_256.png}
          \caption{Seek quantities for $m=256$GB}
          \label{fig:seeks256}
      \end{subfigure}
      \vfill
      \begin{subfigure}[b]{\textwidth}
          \centering
-         \includegraphics[scale=0.5]{./figures/new/results_seeks_8.png}
+         \includegraphics[scale=0.5]{./figures/results_seeks_8.png}
          \caption{Seek quantities for $m=8$GB}
          \label{fig:seeks8}
      \end{subfigure}
      \vfill
      \begin{subfigure}[b]{\textwidth}
          \centering
-         \includegraphics[scale=0.5]{./figures/new/results_seeks_4.png}
+         \includegraphics[scale=0.5]{./figures/results_seeks_4.png}
          \caption{Seek quantities for $m=4$GB}
          \label{fig:seeks4}
      \end{subfigure}
@@ -1073,8 +1073,8 @@ terms of Algorithm~\ref{algo:generalrepartition}, it means defining read blocks 
 contiguous parts of the input array and write blocks as contiguous parts of
 the output arrays. It is equivalent to extending the buffer \tristan{read blocks or write blocks?} in the inverse of
 the storage order: $k \rightarrow j \rightarrow i$ in the case
-of the \texttt{C-order}. Although the multiple strategy does not seek while reading or writing, it 
-requires many switches between output blocks, which also requires seeking. 
+of the \texttt{C-order}. Although the multiple strategy does not seek while reading or writing, it
+requires many switches between output blocks, which also requires seeking.
 
 \subsection{Impact of the buffer order on performance}
 Using the keep strategy, one may order the buffer loadings to reduce the maximum
@@ -1223,7 +1223,7 @@ and finally, finding parrallel and/or distributive versions of the keep algorith
 
 The computing platform was obtained with funding from the Canada Foundation for Innovation.
 
-\tristan{Timothée, make sure that all references have a title, date, and venue (journal or conference name). 
+\tristan{Timothée, make sure that all references have a title, date, and venue (journal or conference name).
 Check capitalization of words like HDF5, etc}
 
 \bibliography{Bibliography}
