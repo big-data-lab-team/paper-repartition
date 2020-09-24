@@ -209,6 +209,7 @@ the block.
 
 \subsection{The re-partitioning problem}
 \begin{table}
+  \caption{Notations}
   \begin{tabular}{ll}
     \multicolumn{2}{c}{\cellcolor{black!25}Mono-space fonts are used for array partitions}\\
     \texttt{A} & 3D array to repartition \\
@@ -233,7 +234,6 @@ the block.
     $\mathcal{W}$ = ($\mathcal{W}_0$, $\mathcal{W}_1$, $\mathcal{W}_2$), \enskip $\mathcal{W}_d \subset \mathbb{N} $ & write block end coordinates\\
     &
   \end{tabular}
-  \caption{Summary of notations}
   \label{table:notations}
 \end{table}
 \begin{algorithm}
@@ -255,7 +255,8 @@ the block.
       \STATE data $\leftarrow$ read(readBlock, inBlocks)
       \STATE cache.insert(data)
       \FOR{writeBlock in writeBlocks}
-        \IF{cache.isComplete(writeBlock)}
+        \IF{$\mathrm{readBlock} \cap \mathrm{writeBlock} \neq \emptyset$ \\
+             \quad \textbf{and} cache.isComplete(writeBlock)}
           \STATE data $\leftarrow$ cache.pop(writeBlock)
           \STATE write(data, outBlocks)
         \ENDIF
@@ -288,7 +289,7 @@ then writing write blocks requires more than one seek. Input, output, read
 and write blocks all form a partition of the 3D array of shape $A$. The
 main loop of the algorithm (line 12) loads one read block at a time (line
 13), inserts it into a cache (line 14), and writes write blocks from the
-cache when they are complete (lines 15 -- 20).
+cache when they are complete (lines 15 -- 20). 
 
 It should be noted that blocks are passed to the algorithm by reference,
 not by data. Only variables \texttt{data} (lines 13, 17) and \texttt{cache}
@@ -752,43 +753,29 @@ where the first term represents the number of seeks required to read input
 
  \tristan{Validate seek model, see implementation of function seek in seek\_tristan.py}
 
+\subsection{Implementation}
 
+\tristan{Timothée, I would feel better if you could use the implementation 
+of function seek in seek\_tristan.py in your implementation. It should be giving the same results as yours, 
+but probably faster.}
 
-%----------------------------------------
-\section{Implementation}
-%----------------------------------------
+We implemented the baseline and \keep heuristic in Python 3.7. The
+\href{https://github.com/GTimothee/repartition_experiments}{project's
+repository} \tristan{Move to big-data-lab-team} includes documentation on
+how to install the package and its dependencies. The code used in the
+experiments is also available in the same repository \tristan{is it still
+the case?}.
 
-\subsection{Project repository and programming language}
-The baseline algorithm and the ``keep" algorithm have been implemented in plain
-Python 3.7.
-The Python environment used was a conda environment, all packages used together
-with their version are available in a \texttt{requirements.txt} file.
-The instructions about how to install the dependencies in a virtual or conda
-environement are provided in the \texttt{README} file of the
-\href{https://github.com/GTimothee/repartition_experiments}{project's repository}.
-The code for all experiments can be found in the same repository as well.
+The implementation supports the HDF5 file format, but the code is modular
+enough to support other formats in the future.
 
-Finally, although we used the HDF5 file format for our experiments, the code
-uses an instance of a so-called ``file manager" so that using our code with
-another file format is as simple as implementing a new file manager object.
-
-\subsection{Optimizing the main processing loop}
-Instead of looping over all write buffers line 15 of
-Algorithm~\ref{algo:generalrepartition} we implemented an optimization in
-the keep algorithm:
-We first compute a Python dictionary associating each buffer to the output files
-it crosses or includes.
-It allows to search only for the write buffers that write into the output files
-crossed by the read buffer loaded. When a write buffer has been written, it
-is also deleted from the list of write buffers which reduces even more the
-computation time.
-
-\subsection{Optimizing the bruteforce search}
+% \subsection{Optimizing the bruteforce search}
+\tristan{Tristan to reword this paragraph when the comments are clarified}
 One can note that when the read buffer shape $B$ is smaller than $\Lambda$,
 the overall number of buffers increases.
 It is therefore quicker to compute the number of seeks and the maximum
 quantity of memory to be used for the buffers close to $\Lambda$.
-On the contrary, it can take several seconds to compute theses metrics for
+On the contrary, it can take several seconds to compute theses metrics \tristan{seeks should be really fast with the model} for
 small buffers, knowing that among the possible buffer shapes, it is not rare to
 see buffers like ($1,1,\Lambda_k$), which is the worst case.
 That is why we decided, instead of testing all possible buffer shapes, to start
@@ -796,25 +783,13 @@ testing the shapes from the ideal ones ($\Lambda$) to the worst ones
 ($1,1,\Lambda_k$ for example), reducing the buffer shape in the $j$ dimension
 first, and then in $i$.
 We only estimate the amount of seeks to be produced if the maximum quantity
-to be consumed is smaller than $m$.
+to be consumed is smaller than $m$ \tristan{redundant with algorithm 2}.
 We also added a heuristic in order not to test all shapes when it is more
 probable that the best shapes are closer to $\Lambda$.
 In this spirit, we added a maximum number of iteration above which the search
 is stopped if no improvement in the number of seeks has been found.
-We set this limit to 10 buffers.
-
-\subsection{Limit to our implementation}
-We encountered a tradeoff in the implementation of the keep algorithm which
-makes its processing time longer that it could be.
-Indeed, we had to implement the keep algorithm by passing data per value from
-the read buffers to the cache, instead of by address.
-This is due to our formulation of the re-partition problem which requires us to
-be able to predict the amount of memory consumed by our algorithm to ensure that
-the limit $m$ will be respected.
-Python uses a custom garbage collector which manages the release of our
-data structures and prevents us to force the release of some data parts.
-We found that copying the data to the cache enabled us to stay below the
-maximum memory consumption that we predicted at the buffer selection time.
+We set this limit to 10 buffers \tristan{This heuristic should either be removed (preferred)
+or explained in details}. 
 
 %----------------------------------------
 \section{Experiments}
@@ -825,102 +800,53 @@ maximum memory consumption that we predicted at the buffer selection time.
 \tristan{generate 1,000 random shapes, compute number of seeks with models for baseline and keep, 
 check that implementation makes the same number}
 
-\subsection{Experimental setting}
-The experiments have been executed on a private
-cluster using \texttt{slurm} as workload manager. Each compute node has 256GB of
-RAM, 6 SSDs of size 480 GB and 32 cores. We only used 1 node and 1 SSD at a
-time.
+\subsection{Experiment conditions}
+The experiments were run on a node of a private cluster with 256~GB of RAM,
+6 SSDs of size 480~GB and 32~cores \tristan{report SSD and CPU models,
+Linux distribution, kernel version, file system}. We only used 1 node and 1
+SSD at a time \tristan{is it true for the large image?}. The cluster was
+accessed through the SLURM batch manager.
 
-\subsection{Comparison of the baseline and the keep algorithms}
-In order to assess the keep algorithm performances, we also implemented the
-baseline algorithm and ran it in the same conditions than the keep algorithm.
-We did one experiment consisting in rechunking an array of shape
+We repartitioned an array of shape $A=(3500,3500,3500)$ and of type
+\texttt{float16} (2 bytes per array element \tristan{the block sizes in Table 3 correspond to 
+1 byte per array element, please check.}), representing \todo{X}~GB,
+using the input and output block shapes in Table~\ref{tab:exp}.
+\tristan{Was compression used?} \tristan{Describe the other, larger array.}
 
-$R=(3500,3500,3500)$ and of type \texttt{float16} i.e. with 2 bytes per voxel.
-We chose a cubic shape so that no dimension influences more the results than
-the other.
-Also, the sides of $R$ have been selected to be $3500$ as this number has a
-reasonable amount of divisors, which makes the experiment feasible, as
-$B$, $O$ and $I$ have to be divisors of $R$.
 
-In this experiment we monitored the processing time of both algorithms, for
-different amounts of main memory available.
-Indeed, the keep algorithm should be faster when it has more memory available.
-In order to test the algorithms in different conditions, we decided to try
-several input block shapes, and for each input block shape, two output blocks
-shapes have been tested. One output block shape such that $O>I$ and the other
-such that $O<I$. This is interesting because when $O>I$ the ideal buffer shape
-will be an input aggregate, whereas in the other case $\Lambda=I$.
-The different runs have been summarized in Table~\ref{tab:exp} and indexed by
-a number.
+We measured repartitioning time for $m$=256~GB, 8~GB and 4~GB. The memory
+was controlled through SLURM's cgroup-based memory requirement, which means
+that $m$ was the total amount of RAM allocated to the repartitioning task,
+including anonymous memory and cache. Swapping was disabled.
 
-The three first input blocks have been computed as $R/4$, $R/10$ and $R/20$
-(see Table~\ref{tab:exp_inblocks}).
-The last input block has a shape of $(350,875,350)$ in order to be of size
-approximately 100MB, as recommended by the \texttt{dask} Python package.
-With $R/4$, the first input block has a size of about 670MB.
-We tried those shapes as they seemed reasonable and can be found in real pipelines.
-The only input block shape for which only one output block shape has not been tested
-is $R/20$, as using an output block smaller than $R/20$ would be unrealistically
-small (about 5.5MB).
-
-The experiment has been run on a cluster node with 256GB, 8GB and 4GB of
-available RAM for $m$. \tristan{explain how you reduced the RAM, and the impact on page cache}
-The reason for using different amounts of RAM is to benchmark the keep algorithm
-with different buffer shapes.
-The first amount of RAM corresponds to using all the
-available RAM from the compute node, whereas we chose 8 and 4GB of available RAM
-because all ideal buffer shapes incured a maximum memory consumption of less than
-16GB.
 The buffer shapes of each run for each amount of RAM available are summarized in
-Table~\ref{tab:buffer_shapes}.
+Table~\ref{tab:buffer_shapes} \tristan{I don't get what this buffer shape is.
+is it the best read shape found by the keep algo? If so, these are results, not experiment conditions.}.
 
 \begin{table}[ht]
   \centering
-  \caption{Description of the different runs of the experiment, with $R=(3500,3500,3500)$}
-
-   \begin{tabular}[t]{| c | c | c | c | c |}
+  \caption{Input and output block shapes for $A=(3500,3500,3500)$.}
+   \begin{tabular}{c|cc|cc}
+   \rowcolor{black!25}
+          & \multicolumn{2}{c|}{\texttt{inBlocks}} & \multicolumn{2}{c}{\texttt{outBlocks}} \\
+    \rowcolor{black!25}
+     \#     & $I$ & size (MB) & $O$ & size (MB)  \\
    \hline
-   $I$ & $O$ & ref \\
-   \hline
-   \multirow{2}{*}{(875,875,875)} & (875,1750,875) & 0 \\
-   & (700,875,700) & 1 \\
-   \hline
-   \multirow{2}{*}{(350,350,350)} & (500,500,500) & 2 \\
-   & (250,250,250) & 3 \\
-   \hline
-   \multirow{1}{*}{(175,175,175)} & (250,250,250) & 4 \\
-   \hline
-   \multirow{2}{*}{(350,875,350)} & (500,875,500) & 5 \\
-   & (350,500,350) & 6 \\
-   \hline
+   0 & (875,875,875) & 670 & (875,1750,875) & 1340 \\
+   1 &               &     & (700,875,700)  & 429 \\
+   \rowcolor{black!10}
+   2 & (350,350,350) & 43  & (500,500,500)  & 125 \\
+   \rowcolor{black!10}
+   3 &               &     & (250,250,250)  & 16  \\
+   4 & (175,175,175) &  5  & (250,250,250)  & 16 \\
+   \rowcolor{black!10}
+   5 & (350,875,350) & 107 & (500,875,500)  & 219 \\
+   \rowcolor{black!10}
+   6 &               &     & (350,500,350)  & 61 \\
    \end{tabular}
-
    \label{tab:exp}
-
 \end{table}
 
-\begin{table}[ht]
-  \centering
-  \caption{Description of the different input block shapes, with $R=(3500,3500,3500)$}
-
-   \begin{tabular}[t]{| c | c | c | c | c |}
-   \hline
-   $I$ & size (MB) & $R/I$ \\
-   \hline
-   $(875,875,875)$ & 669.922 & (4,4,4) \\
-   \hline
-   $(350,350,350)$ & 42.875 & (10,10,10) \\
-   \hline
-   $(175,175,175)$ & 5.359 & (20,20,20) \\
-   \hline
-   $(350,875,350)$ & 107.188 & (10,4,10) \\
-   \hline
-   \end{tabular}
-
-   \label{tab:exp_inblocks}
-
-\end{table}
 
 \begin{table}[ht]
   \centering
@@ -1144,9 +1070,6 @@ the storage order: $k \rightarrow j \rightarrow i$ in the case
 of the \texttt{C-order}. Although the multiple strategy does not seek while reading or writing, it 
 requires many switches between output blocks, which also requires seeking. 
 
-
-
-
 \subsection{Impact of the buffer order on performance}
 Using the keep strategy, one may order the buffer loadings to reduce the maximum
 quantity of extra data stored in memory, hence, reducing the amount of seeks.
@@ -1240,6 +1163,20 @@ for example, a commonly used filesystem for HPC.
 \texttt{dask} also provides a distributed scheduler that seems to be quite
 efficient.
 It is now recommended for use, even on local computers (using one node).
+
+\subsection{Limit to our implementation}
+We encountered a tradeoff in the implementation of the keep algorithm which
+makes its processing time longer that it could be.
+Indeed, we had to implement the keep algorithm by passing data per value from
+the read buffers to the cache, instead of by address.
+This is due to our formulation of the re-partition problem which requires us to
+be able to predict the amount of memory consumed by our algorithm to ensure that
+the limit $m$ will be respected.
+Python uses a custom garbage collector which manages the release of our
+data structures and prevents us to force the release of some data parts.
+We found that copying the data to the cache enabled us to stay below the
+maximum memory consumption that we predicted at the buffer selection time.
+
 
 %----------------------------------------
 \section{Conclusion}
