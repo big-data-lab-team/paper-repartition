@@ -583,10 +583,7 @@ je ne comprends pas comment on peut avoir des seeks en sortie car on va recréer
   \centering
   \includegraphics[scale=0.4]{./figures/figure_3.png}
   \caption{Illustration of an input aggregate (left) and its division into indexed remainder volumes (right).
-  Each remainder volume is a part of an output block. \tristan{Timothée,
-  update figure as discussed}\tristan{Comment peux-tu supposer que les
-  origines du read block et de l'output block sont superposées et qu'il n'y
-  a donc pas de chute "avant" F0 ?}}
+  Each remainder volume is a part of an output block.}
   \label{fig:nomenclature_overlaps}
   \end{figure*}
 
@@ -753,8 +750,6 @@ on a different SSD.
 \end{table}
 
 \subsection{Results}
-\tristan{Reword to start with the main result, then describe the details}
-\timothee{put new figure results small array + figure results big array}
 
 \subsubsection{Results on the small array}
 
@@ -802,44 +797,12 @@ Table~\ref{tab:buffer_shapes}.
 \end{table}
 
 The results in terms of processing times are shown on
-Figure~\ref{fig:results}, whereas the results in terms of seeks are
-presented on Figure~\ref{fig:seeks_results}.
+Figure~\ref{fig:time_3500}, whereas the results in terms of seeks are
+presented on Figure~\ref{fig:seeks_3500}.
 
-Looking at Figure~\ref{fig:results}, we can see that
-the baseline algorithm performs surprisingly well compared to the keep algorithm
-when the main memory available is 256GB (all the node's available RAM).
-We can see that when the amount of RAM available decreases (8 and 4GB), the
-performances of the baseline algorithm decreases drastically.
-In particular, the keep algorithm is approximately 2 times faster for runs
-2, 3 and 4 on Figure~\ref{fig:results4}.
-From these observations we suppose that the baseline algorithm performs well
-with 256GB because it leverages the page cache.
-It is counter-intuitive to see that the performances of the baseline algorithm
-differs for the different amount of RAM available, because apart from $m$
-nothing changes for the baseline algorithm; the read buffer shape stays $B=I$.
-
-Another factor for the baseline algorithm to perform well compared to the
-keep algorithm with 256GB is the time overhead of the keep algorithm which is
-very important as one can see on Figure~\ref{fig:results}.
-This is due to our implementation and the tradeoff presented in section
-``Implementation".
-Concretely, the time overhead is mainly due to making copies of the data from
-the read buffers to the cache.
-In terms of read/write processing time however, we can clearly see an
-important speedup by the keep algorithm compared to the baseline for
-runs 3 and 4 (Figure~\ref{fig:results}).
-One can also notice a non-negligible speedup for runs 1 to 5 for the experiment
-with 8 (Figure~\ref{fig:results8}) and 4GB (Figure~\ref{fig:results4}).
-There are big differences in the benefits of using the keep algorithm instead of
-the baseline algorithm, depending on the different runs.
-This is due to the difference in complexity between the runs.
-The runs that are more complex (with more shape mismatches) are more optimized
-by the keep algorithm, hence producing a bigger speedup from the keep compared to
-the baseline.
-
-Considering Figure~\ref{fig:seeks_results}, one can see that the number of
+Considering Figure~\ref{fig:seeks_3500}, one can see that the number of
 seeks is drastically reduced by the keep algorithm, which is consistent with
-the results in terms of processing time.
+the results in terms of processing time (Figure~\ref{fig:time_3500}).
 We remark that one needs to reduce significantly the amount of seeks produced
 by a re-partition algorithm to clearly see an impact on the processing time.
 Considering run 4 which shows the most important differences in terms of
@@ -851,66 +814,99 @@ follow linearly the reduction in the number of seeks.
 This is probably due to the fact that some seeks are more costly than others,
 which has not been taken into account in our problem formulation.
 
-\begin{figure*}
-     \centering
-     \begin{subfigure}[b]{\textwidth}
-         \centering
-         \includegraphics[scale=0.5]{./figures/results_256.png}
-         \caption{Processing times for $m=256$GB}
-         \label{fig:results256}
-     \end{subfigure}
-     \vfill
-     \begin{subfigure}[b]{\textwidth}
-         \centering
-         \includegraphics[scale=0.5]{./figures/results_8.png}
-         \caption{Processing times for $m=8$GB}
-         \label{fig:results8}
-     \end{subfigure}
-     \vfill
-     \begin{subfigure}[b]{\textwidth}
-         \centering
-         \includegraphics[scale=0.5]{./figures/results_4.png}
-         \caption{Processing times for $m=4$GB}
-         \label{fig:results4}
-     \end{subfigure}
+Looking at Figure~\ref{fig:time_3500}, we can see that
+the baseline algorithm performs surprisingly well compared to the keep algorithm
+when the main memory available is 256GB (all the node's available RAM).
+We can see that when the amount of RAM available decreases (8 and 4GB), the
+performances of the baseline algorithm decreases drastically.
+In particular, the keep algorithm is approximately 2 times faster for runs
+2, 3 and 4 on Figure~\ref{fig:time_3500}.
+From these observations we suppose that the baseline algorithm performs well
+with 256GB because it leverages the page cache.
+It is counter-intuitive to see that the performances of the baseline algorithm
+differs for the different amount of RAM available, because apart from $m$
+nothing changes for the baseline algorithm; the read buffer shape stays $B=I$.
 
-     \caption{Results in terms of processing time for the keep and baseline algorithms. From top to bottom, the results are presented for 256, 8 and 4GB of available main memory.}
-     \label{fig:results}
+Another factor for the baseline algorithm to perform well compared to the
+keep algorithm with 256GB is the time overhead of the keep algorithm which is
+very important as one can see on Figure~\ref{fig:time_3500}.
+This is due to our implementation and the tradeoff presented in section
+``Implementation".
+Concretely, the time overhead is mainly due to making copies of the data from
+the read buffers to the cache.
+In terms of read/write processing time however, we can clearly see an
+important speedup by the keep algorithm compared to the baseline for
+runs 3 and 4.
+One can also notice a non-negligible speedup for runs 1 to 5 for the experiment
+with 8 and 4GB.
+There are big differences in the benefits of using the keep algorithm instead of
+the baseline algorithm, depending on the different runs.
+This is due to the difference in complexity between the runs.
+The runs that are more complex (with more shape mismatches) are more optimized
+by the keep algorithm, hence producing a bigger speedup from the keep compared to
+the baseline.
 
+\begin{figure*}[h]
+  \centering
+  \includegraphics[scale=0.36]{./figures/time_3500.png}
+  \caption{Results in terms of processing time for the keep and baseline algorithms. From left to right, the results are presented for 256, 8 and 4GB of available main memory.}
+  \label{fig:time_3500}
 \end{figure*}
 
-\begin{figure*}
-     \centering
-     \begin{subfigure}[b]{\textwidth}
-         \centering
-         \includegraphics[scale=0.5]{./figures/results_seeks_256.png}
-         \caption{Seek quantities for $m=256$GB}
-         \label{fig:seeks256}
-     \end{subfigure}
-     \vfill
-     \begin{subfigure}[b]{\textwidth}
-         \centering
-         \includegraphics[scale=0.5]{./figures/results_seeks_8.png}
-         \caption{Seek quantities for $m=8$GB}
-         \label{fig:seeks8}
-     \end{subfigure}
-     \vfill
-     \begin{subfigure}[b]{\textwidth}
-         \centering
-         \includegraphics[scale=0.5]{./figures/results_seeks_4.png}
-         \caption{Seek quantities for $m=4$GB}
-         \label{fig:seeks4}
-     \end{subfigure}
-
-     \caption{Results in terms of seeks for the keep and baseline algorithms. From top to bottom, the results are presented for 256, 8 and 4GB of available main memory.}
-     \label{fig:seeks_results}
-\end{figure*}
+\begin{figure*}[h]
+    \centering
+    \includegraphics[scale=0.36]{./figures/seeks_3500.png}
+    \caption{Results in terms of seeks for the keep and baseline algorithms. From left to right, the results are presented for 256, 8 and 4GB of available main memory.}
+    \label{fig:seeks_3500}
+  \end{figure*}
 
 \subsubsection{Results on the big array}
 
-We then computed the results for the big array.
 Given the 250~GB RAM available, the read buffer shapes tested were always equal to
-the input aggregates.
+the input aggregates' shapes.
+Globally, one can see on Figure~\ref{fig:time_8000} that apart from run 2 the \keep
+strategy and baseline are pretty equivalent, and for 5 runs over 8 the \keep
+strategy is slightly faster.
+There is no important improvement however, which is mainly due to 3 bottlenecks:
+\begin{itemize}
+  \item the overhead time
+  \item the preprocessing time
+  \item the read time
+\end{itemize}
+
+It seems logical to get an overhead time that explodes, especially in run 2, as
+it was already important on the small array. As it is mostly due to cache manipulations,
+a bigger array implies bigger data transfered during these cache manipulations.
+
+Interestingly, the preprocessing time can be very large.
+The preprocessing time includes the computation of the write buffers and the
+computation of a Python dictionary associating each buffer with the output blocks
+it interects. The latter operation can be very expensive when there are a lot
+of buffers.
+
+The experiment on a big array was worth it as it clearly shows a limit
+of the \keep strategy: We can see on Figure~\ref{fig:time_8000} that for runs
+2 to 4, the write time (in green) has been tremendously reduced, but at the
+cost of an increase in read time.
+
+Finally, one can see on Figure~\ref{fig:seeks_8000} that in this experiment, too,
+the \keep strategy succeeded in reducing the number of seeks significantly. Once
+again, the reduction in processing time is also non linear with the reduction in
+seeking.  
+
+\begin{figure*}[h]
+  \centering
+  \includegraphics[scale=0.36]{./figures/time_8000.png}
+  \caption{Results in terms of processing time for the keep and baseline algorithms. From left to right, the results are presented for 256, 8 and 4GB of available main memory.}
+  \label{fig:time_8000}
+\end{figure*}
+
+\begin{figure*}[h]
+    \centering
+    \includegraphics[scale=0.36]{./figures/seeks_8000.png}
+    \caption{Results in terms of seeks for the keep and baseline algorithms. From left to right, the results are presented for 256, 8 and 4GB of available main memory.}
+    \label{fig:seeks_8000}
+\end{figure*}
 
 %----------------------------------------
 \section{Discussion}
@@ -922,7 +918,7 @@ the input aggregates.
 The keep algorithm can reduce the number of seeks produced by a re-partition
 problem from millions to thousands of seeks, compared to the baseline algorithm.
 Even if the write time has been drastically reduced on the results shown on
-Figure~\ref{fig:results}, there is still margin for improvement in optimizing
+Figure~\ref{fig:time_3500}, there is still margin for improvement in optimizing
 the read time.
 Finally, it could be interesting to try identifying the type of seeks that are
 more costly than the others and focus future implementations of the re-partition
