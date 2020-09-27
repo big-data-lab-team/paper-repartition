@@ -892,7 +892,7 @@ cost of an increase in read time.
 Finally, one can see on Figure~\ref{fig:seeks_8000} that in this experiment, too,
 the \keep strategy succeeded in reducing the number of seeks significantly. Once
 again, the reduction in processing time is also non linear with the reduction in
-seeking.  
+seeking.
 
 \begin{figure*}[h]
   \centering
@@ -971,17 +971,14 @@ individually, by entire block columns, or by entire block slabs.
 Although this strategy allows to write each output block in one seek, the clustered strategy is limited by the fact
 that it does not optimize the reading step.
 In the general re-partitioning problem, one can expect the clustered strategy to
-perform poorly as
-(1) it reads an output block regardless of its spread among input blocks
-and (2) even if it is stored in one input block the algorithm will do a lot of seeks in
-case of a shape mismatch \tristan{I dont get (2), to be clarified}.
+perform poorly as it reads an output block regardless of its spread among input blocks.
 
 The multiple strategy
 aims at not doing any seek while reading \textit{and} writing:
 both the input and the output blocks are read/written contiguously. In
 terms of Algorithm~\ref{algo:generalrepartition}, it means defining read blocks as
 contiguous parts of the input array and write blocks as contiguous parts of
-the output arrays. It is equivalent to extending the buffer \tristan{read blocks or write blocks?} in the inverse of
+the output arrays. It is equivalent to extending the read buffer in the inverse of
 the storage order: $k \rightarrow j \rightarrow i$ in the case
 of the \texttt{C-order}. Although the multiple strategy does not seek while reading or writing, it
 requires many switches between output blocks, which also requires seeking.
@@ -1132,9 +1129,6 @@ and finally, finding parrallel and/or distributive versions of the keep algorith
 %----------------------------------------
 
 The computing platform was obtained with funding from the Canada Foundation for Innovation.
-
-\tristan{Timothée, make sure that all references have a title, date, and venue (journal or conference name).
-Check capitalization of words like HDF5, etc}
 
 \bibliography{Bibliography}
 \bibliographystyle{ieeetr}
