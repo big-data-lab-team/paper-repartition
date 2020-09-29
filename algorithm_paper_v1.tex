@@ -550,12 +550,12 @@ in Table~\ref{tab:fusion}. \tristan{Timothée, pourrais-tu expliquer ici ou dans
    \label{tab:fusion}
 \end{table}
 
-\begin{figure*}[h]
+\begin{figure}
   \centering
   \includegraphics[scale=0.4]{./figures/figure_3.png}
-  \caption{Sub-blocks used in the merging of write blocks.}
+  \caption{Sub-blocks defined for the merging of write blocks}
   \label{fig:nomenclature_overlaps}
-  \end{figure*}
+  \end{figure}
 
 \subsection{Peak memory}
 \tristan{Timothée, in Fig 3, explain what is F0 and what is the union of Fi blocks}
@@ -846,6 +846,10 @@ the \keep strategy succeeded in reducing the number of seeks significantly. Once
 again, the reduction in processing time is also non linear with the reduction in
 seeking.
 
+\tristan{Timothée, pourrais-tu exporter toutes les figures en pdf plutot qu'en png ? Les formats bitmap 
+causent de l'aliasing quand on change l'échelle.}
+
+\tristan{pourrais-tu ajouter une grille verticale sur la Figure 4, pour qu'on puisse mieux voir les valeurs ?}
 \begin{figure*}[h]
   \centering
   \includegraphics[scale=0.36]{./figures/time_8000.png}
@@ -866,26 +870,75 @@ seeking.
 \tristan{Tristan to refocus the discussion and conclusion}
 \tristan{From discussion with Valerie, mention practical considerations related to page cache and readahead}
 
+%
+The \keep heuristic can reduce the number of seeks in a re-partition
+problem from millions to thousands of seeks compared to the baseline
+algorithm. As a result, the write time is drastically reduced and speed-up
+factors of up to \todo{x} were observed in our experiments. The speed-up
+provided by the \keep heursitic compared to baseline is expected to
+increase with the size of the repartitioned array, as in 3D it is
+proportional to $A_0$$A_1$ when enough memory is available to avoid cuts in
+dimension 2. Speed-up is also expected to increase with the dimension of
+the repartitioned array, as in dimension $d$ speed-up would be proportional
+to the product of the first d-1 $A_i$ when enough memory is available.  
+Therefore, the \keep heuristic is adapted to the repartitioning of large
+multi-dimensional arrays in the current context of growing data volumes.
+
+% Memory
+Allocating only reasonable amounts of working memory, 4.3~GiB for an array
+of 85.75~GiB in our experiments, seem to be sufficient to remove most of
+the seeks required for the repartitioning. This is consistent with the fact
+that the \keep heuristic only stores partial output blocks in cache, until
+they can be combined into complete output blocks. In the future, it would
+be interesting to derive an upper bound of the peak memory consumption, to 
+generalize this observation beyond the particular input and output block shapes 
+tested in our experiments.
+
+% Page cache
+The memory page cache available in the Linux kernel plays a significant
+role in the repartitioning problem when the amount of memory increases.
+When repartitioning a 85.75~GiB array with 275~GiB of working memory, all
+the data is written to memory and asynchronously flushed to disk, bringing
+the baseline algorithm on par with the \keep heuristic. This is not
+surprising given the importance of page cache for I/O intensive
+applications~\cite{hayot2019performance}. In the future, it would be
+interesting to develop a repartitioning algorithm that leverages it.
+
+% Parallelization and clusters
+Most applications would process large multi-dimensional arrays in parallel,
+on a multi-core computer or on an HPC cluster. The \keep heuristic is
+directly applicable to multi-core environments, assuming sequential I/Os.
+The case of HPC clusters, however, requires an extension as network data
+transfers have to be considered. In addition, HPC clusters would most
+likely store input blocks on a parallel file system such as Lustre where 
+files are striped across multiple disks and nodes. An extended formulation of the 
+repartitioning problem would be required in this context. 
+
+% Dask
+
+% Split and merge
+
+% ROIs
+
 \subsection{On the keep algorithm}
-The keep algorithm can reduce the number of seeks produced by a re-partition
-problem from millions to thousands of seeks, compared to the baseline algorithm.
-Even if the write time has been drastically reduced on the results shown on
-Figure~\ref{fig:time_3500}, there is still margin for improvement in optimizing
-the read time.
+
+\tristan{Timothée, you wrote this: "there is still margin for improvement in optimizing
+the read time.". Could you explain why?}
+
 Finally, it could be interesting to try identifying the type of seeks that are
 more costly than the others and focus future implementations of the re-partition
 algorithm to reduce such costly seeks.
 
-Although the keep algorithm can be 2 times faster than the baseline algorithm
-in some cases, our implementation suffers from a tradeoff between optimizing
-the processing time and predicting the maximum amount of memory consumed.
-In some non-complex cases, the baseline algorithm can be as efficient as the
-keep algorithm.
-Moreover, the baseline algorithm seems to take advantage of the surplus of
-main memory available in the node, although in theory it is supposed to use
-only the size of one input block in bytes at a time.
-This does not seem to be the case of the keep algorithm for which the maximum
-amount of main memory consumed can be estimated before run.
+% Although the keep algorithm can be 2 times faster than the baseline algorithm
+% in some cases, our implementation suffers from a tradeoff between optimizing
+% the processing time and predicting the maximum amount of memory consumed.
+% In some non-complex cases, the baseline algorithm can be as efficient as the
+% keep algorithm.
+% Moreover, the baseline algorithm seems to take advantage of the surplus of
+% main memory available in the node, although in theory it is supposed to use
+% only the size of one input block in bytes at a time.
+% This does not seem to be the case of the keep algorithm for which the maximum
+% amount of main memory consumed can be estimated before run.
 
 \subsection{The buffer ordering problem}
 The buffer order is important when using the keep strategy, as it defines when
@@ -1017,13 +1070,6 @@ callable as first element. Examples of APIs/collections include
 Numpy clone, and \texttt{dask.dataframe}, a Pandas clone.
 Our first prototype of implementation of the keep algorithm is showing promising
 results in optimizing the computation graphs produced by \texttt{dask}.
-
-\subsection{Towards distributed systems}
-As most of the big data processing is now done on clusters, it could be interesting
-to find distributed versions of the split/merge/re-partition algorithms.
-Lots of scientists use HPC (High Performance Computing) clusters regularly which
-brings considerations about how to use such distributed algorithms with Lustre
-for example, a commonly used filesystem for HPC.
 
 \texttt{dask} also provides a distributed scheduler that seems to be quite
 efficient.
