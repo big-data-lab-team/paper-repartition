@@ -8,6 +8,7 @@
 \usepackage{algorithmic, algorithm}
 \usepackage{caption}
 \usepackage{subcaption}
+\usepackage{marginnote}
 \usepackage{xspace}
 \usepackage{hyperref} % makes cross-refs (biblio, figures, algos, ...) clickable
 
@@ -23,13 +24,13 @@
 \newcommand\vldbauthors{\authors}
 \newcommand\vldbtitle{\shorttitle}
 % leave empty if no availability url should be set
-\newcommand\vldbavailabilityurl{http://vldb.org/pvldb/format_vol14.html}
+\newcommand\vldbavailabilityurl{}%http://vldb.org/pvldb/format_vol14.html}
 % whether page numbers should be shown or not, use 'plain' for review versions, 'empty' for camera ready
 \newcommand\vldbpagestyle{plain}
 
 \newcommand{\logic}[1]{\color{red}\textbf{Logic/flow:}#1\color{black}}
 \newcommand{\writing}[1]{\color{green}\textbf{Writing:}#1\color{black}}
-\newcommand{\tristan}[1]{\color{orange}\textbf{From Tristan:}#1\color{black}}
+\newcommand{\tristan}[1]{\marginnote{\small \color{orange}\textbf{From Tristan:}#1\color{black}}[3cm]}
 \newcommand{\timothee}[1]{\color{blue}\textbf{From Timothée:}#1\color{black}}
 \newcommand{\todo}[1]{\color{red}\textbf{TODO:}#1\color{black}}
 \newcommand{\keep}[0]{\textsc{keep}\xspace}
@@ -48,22 +49,21 @@ Multi-dimensional arrays have become the main scientific data structures,
 but their manipulation raises performance issues when they exceed memory
 capacity. In particular, accessing specific array regions can require
 millions to billions of disk seek operations, with important consequences
-on I/O performance. While traditional approaches to address this problem focus on
-file format optimizations, we are searching for algorithmic solutions where
-I/O initiated by applications are controlled to reduce seeking. In this
-paper, we propose the \keep heuristic to minimize the number of seeks
-required for the repartitioning of large multi-dimensional arrays. The
-\keep heuristic uses a memory cache to reconstruct contiguous data
-sections in memory. We evaluate it on arrays ranging from 85.7~GB to
-1~TB, and with memory amounts ranging from 4 to 250~GB.
-Repartitioning time is reduced by a factor of up to 3, and
-seeking can be reduced by a factor of 100,000. The keep heuristic proves to be
-efficient by reducing the number of seeks especially when the array size is
-big compared to the amount of memory available. In the other case, using our baseline
-algorithm seems sufficient due to page cache and other io optimizations not
-taken into account in our solution. This study shows the main issues of the
-repartitioning task and that this task can be significantly accelerated.
-
+on I/O performance. While traditional approaches to address this problem
+focus on file format optimizations, we are searching for algorithmic
+solutions where applications control I/O to reduce
+seeking. In this paper, we propose the \keep heuristic to minimize the
+number of seeks required for the repartitioning of large multi-dimensional
+arrays. The \keep heuristic uses a memory cache to reconstruct contiguous
+data sections in memory. We evaluate it on arrays ranging from 85.7~GiB to
+1~TiB, and with memory amounts ranging from 4 to 275~GiB. Repartitioning
+time is reduced by a factor of up to 3, and seeking is reduced by a factor
+of up to 100,000 \tristan{Les valeurs mentionnées dans le résumé doivent être mentionnées dans les
+résultats}. Due to the effect of asynchronous writes to memory page cache
+enabled by the Linux kernel, speed up is only observed for arrays that
+exceed the size of working memory. The \keep heuristic could be applied in
+platforms that manipulate large data arrays, as is commonly the case in
+scientific imaging.
 \end{abstract}
 
 \maketitle
@@ -73,7 +73,7 @@ repartitioning task and that this task can be significantly accelerated.
 \pagestyle{\vldbpagestyle}
 \begingroup\small\noindent\raggedright\textbf{PVLDB Reference Format:}\\
 \vldbauthors. \vldbtitle. PVLDB, \vldbvolume(\vldbissue): \vldbpages, \vldbyear.\\
-\href{https://doi.org/\vldbdoi}{doi:\vldbdoi}
+%\href{https://doi.org/\vldbdoi}{doi:\vldbdoi}
 \endgroup
 \begingroup
 \renewcommand\thefootnote{}\footnote{\noindent
@@ -95,6 +95,7 @@ The source code, data, and/or other artifacts have been made available at \url{\
 %%% VLDB block end %%%
 
 
+\vspace*{-0.3cm}
 %----------------------------------------
 \section{Introduction}
 %----------------------------------------
@@ -123,19 +124,18 @@ challenges related to the ordering and organization of array elements on
 storage devices. In particular, reading or writing elements scattered in different
 disk regions can generate millions to billions of \emph{seeks}, the
 operations by which storage drives move to a different location, resulting
-in important penalties on both SSD and HDD drives. The ultimate goal of our
-research is to minimize the number of seeks required when manipulating
+in important penalties on both SSD and HDD drives. Our goal is to minimize the number of seeks required when manipulating
 large multi-dimensional arrays.
 
 % Existing work
 Currently, the main approach to this problem is to adapt the order of array
 elements on storage devices to the type of queries done by applications.
-For instance, the ndstore platform~\cite{lillaney2018building} stores voxels of 3D images
-in an order defined from Morton space-filling curves~\cite{morton1966computer}, so that nearby
-voxels in the 3D space are stored at nearby disk addresses with high
-probability, limiting the number of seeks required to read 3D blocks. Other works determine from past queries a
-block shape that minimizes the expected number of seeks required
-by queries~\cite{optimal_chuking}.
+For instance, the NDStore platform~\cite{lillaney2018building} orders voxels of 3D images
+using Morton space-filling curves~\cite{morton1966computer}, so that nearby
+voxels are stored at nearby disk addresses with high
+probability. Other works determine from historical queries a
+block shape that minimizes seeking
+in future queries~\cite{optimal_chuking}.
 While such approaches are efficient, they also require that data
 be converted to a storage format specific to the application, which is
 impractical and hampers data sharing. Instead, we are looking for
@@ -143,14 +143,13 @@ algorithmic approaches where applications control their I/Os to reduce seeking.
 
 % Goal
 This paper presents the \keep heuristic, an algorithm to reduce the
-number of seeks created when repartitioning large 3D images in blocks of
-arbitrary shape. Repartitioning may be triggered by applications, when they
-require blocks of specific shapes, or for performance reasons, to improve
+number of seeks created when repartitioning large multi-dimensional arrays in blocks of
+arbitrary shape. Repartitioning may be triggered either by application requirements
+ or for performance reasons, to improve
 memory usage and I/O efficiency. For instance, the Python HDF5 library
-\texttt{h5py} recommends a chunk size ``between 10 KiB and 1
-MiB"~\cite{collette_2014}, while the Dask parallel processing framework
+\texttt{h5py} recommends a chunk size ``between 10~KiB and 1~MiB"~\cite{collette_2014}, while the Dask parallel processing framework
 ~\cite{matthew_rocklin-proc-scipy-2015} suggests a chunk size greater than
-100 MB~\cite{rocklin_bourbeau_2019}.
+100~MB~\cite{rocklin_bourbeau_2019}.
 
 The \keep heuristic leverages a memory cache to read and write data as
 contiguously as possible, similarly to the "clustered" and "multiple"
@@ -169,11 +168,10 @@ In summary, the paper makes the following contributions:
 \begin{itemize}
   \item We define the repartitioning problem for data arrays;
   \item We propose the \keep heuristic to the re-partitioning problem;
-  \item We provide an open implementation on Github;
-  \item We evaluate the heuristic on the BigBrain dataset.
+  \item We evaluate it for various memory amounts and data sizes.
 \end{itemize}
-The remainder of this paper defines the re-partitioning problem, presents the \keep heurstic and its implementation,
-and reports experimental evaluation results.
+The remainder of this paper presents these contributions and discusses the
+validity and implications of our results.
 
 % % need for tools to repartition
 % Using chunked multidimensional arrays requires tools to efficiently split,
@@ -185,19 +183,16 @@ and reports experimental evaluation results.
 % cases as future work, although they are relevant, too. To the best of our
 % knowledge, the repartition problem has not been extensively studied.
 
-
-
-\section{Problem definition and baseline}
-\begin{figure}[h]
+\begin{figure}
   \centering
   \includegraphics[scale=0.32]{./figures/figure_1.png}
-  \caption{Illustration of the \texttt{C-order} in files. The left subfigure
-  shows how the data is written on disk, with each cube representing a voxel.
-  The green block is the first block in the C-order while the red one represents the last block.
-  The right subfigure shows how reading or writing only one part of a cuboid written
-  in the \texttt{C-order} can produce seeks. Each red voxel is a voxel producing a seek.}
+  \caption{Ordering of 3D array elements in files in C-order. The first stored element is colored in green, 
+  the last one is in blue. Seeking to the red elements is required when extracting the 3D block with plain borders.}
   \label{fig:seeks_and_rowmajor}
 \end{figure}
+
+\section{Problem definition and baseline}
+
 
 For the sake of clarity and without loss of generality, we assume that
  files are written in row-major order (Fig.~\ref{fig:seeks_and_rowmajor},
@@ -236,7 +231,12 @@ the block.
     $\mathcal{O}$ = ($\mathcal{O}_0$, $\mathcal{O}_1$, $\mathcal{O}_2$), \enskip $\mathcal{O}_d \subset \mathbb{N} $ & output block end coordinates\\
     $\mathcal{R}$ = ($\mathcal{R}_0$, $\mathcal{R}_1$, $\mathcal{R}_2$), \enskip $\mathcal{R}_d \subset \mathbb{N} $ & read block end coordinates\\
     $\mathcal{W}$ = ($\mathcal{W}_0$, $\mathcal{W}_1$, $\mathcal{W}_2$), \enskip $\mathcal{W}_d \subset \mathbb{N} $ & write block end coordinates\\
-    &
+    &\\
+    \multicolumn{2}{c}{\cellcolor{black!25}$n_X$ are used for block numbers}\\
+    $n_I$ = number of input blocks\\
+    $n_O$ = number of output blocks\\
+    $n_R$ = number of read blocks\\
+    $n_W$ = number of write blocks\\
   \end{tabular}
   \label{table:notations}
 \end{table}
@@ -424,7 +424,7 @@ Section ~\ref{sec:experiments}.
 %----------------------------------------
 \section{The \keep heuristic}
 %----------------------------------------
-\tristan{Timothée, remplacer $\Lambda$ par $\hat R$ dans toutes les figures (notation plus claire)}
+\tristan{Timothée, remplacer $\Lambda$ par $\hat r$ dans toutes les figures (notation plus claire)}
 As mentioned previously, the baseline strategy empties
 the cache at each iteration, which generates many seeks when input and output
 blocks have different shapes. Instead, the proposed
@@ -456,9 +456,9 @@ contiguously to the output blocks.
       \IF{mc > m}
       \STATE \textbf{continue} \COMMENT{Read shape cannot respect memory constraint}
       \ENDIF
-      \IF{$R$ == $\hat R$}
+      \IF{$R$ == $\hat r$}
       \STATE bestReadBlocks = readBlocks
-      \STATE \textbf{break} \COMMENT{$\hat R$ respects memory constraint}
+      \STATE \textbf{break} \COMMENT{$\hat r$ respects memory constraint}
       \ENDIF
       \STATE s = generatedSeeks($I$, $R$, writeBlocks, $O$)
       \IF{minSeeks == None or s' < minSeeks}
@@ -493,18 +493,18 @@ remainder of this section: \texttt{candidateReadShapes} (line 11),
 % might not be possible due to memory limitations, since at each iteration
 % the parts of the read block that are not written must remain in cache.
 
-To generate candidate read shapes, we first define a shape $\hat R$ such
-that in each dimension $d$, $\hat R_d$ is the smallest multiple of $I_d$
+To generate candidate read shapes, we first define a shape $\hat r$ such
+that in each dimension $d$, $\hat r_d$ is the smallest multiple of $I_d$
 that is greater or equal to $O_d$:
 
 \[
 \forall d \in \{1, 2, 3\},
 \]
 \[
-  \enskip \exists \hat k \in \mathbb{N}, \enskip \hat R_d = \hat kI_d \enskip \mathrm{and} \enskip \hat k I_d \geq O_d \enskip \mathrm{and} \enskip \forall k < \hat k, \enskip kI_d < O_d
+  \enskip \exists \hat k \in \mathbb{N}, \enskip \hat r_d = \hat kI_d \enskip \mathrm{and} \enskip \hat k I_d \geq O_d \enskip \mathrm{and} \enskip \forall k < \hat k, \enskip kI_d < O_d
 \]
 
-Using $\hat R$ as read shape minimizes the seeks in the input blocks, as
+Using $\hat r$ as read shape minimizes the seeks in the input blocks, as
 in this situation each iteration reads input blocks completely, requiring a
 single seek per input block. If there is enough memory to use write blocks
 of shape $O$, then this solution also minimizes the seeks in the output
@@ -512,23 +512,23 @@ blocks, as output blocks can be written in a single seek too \tristan{isn't it a
 
 Function \texttt{getCandidateReadShape} returns the following shapes:
 \[
-  \Big\{ (C_0, C_1, \hat R_2) \in \mathbb{N}^3 \enskip / \enskip
+  \Big\{ (C_0, C_1, \hat r_2) \in \mathbb{N}^3 \enskip / \enskip
           \forall i \in \{1, 2\}, \enskip \exists k_i \in \mathbb{N}, \enskip
-           A_i = k_iC_i \enskip \mathrm{and} \enskip C_i \leq \hat R_i \Big\}
+           A_i = k_iC_i \enskip \mathrm{and} \enskip C_i \leq \hat r_i \Big\}
 \]
-The third coordinate of all read shapes is set to $\hat R_2$, to guarantee
+The third coordinate of all read shapes is set to $\hat r_2$, to guarantee
 that no cuts along dimension 2 will be made during reads. This assumes that
-$m > \hat R_2$, i.e., a block of shape (1, 1, $\hat R_k$) fits in
+$m > \hat r_2$, i.e., a block of shape (1, 1, $\hat r_k$) fits in
 memory, which is reasonable. The other two coordinates are set to divisors of $A_0$ and $A_1$ which are
-less than or equal to $\hat R_0$ and $\hat R_1$ (respectively).
+less than or equal to $\hat r_0$ and $\hat r_1$ (respectively).
 
 The candidate shapes are sorted first by decreasing $C_1$ values, then by
 decreasing $C_0$ values. The first tested read shape is therefore
-$\hat R$. While $\hat R$ is the optimal read shape, leading to a single
+$\hat r$. While $\hat r$ is the optimal read shape, leading to a single
 seek per input or output block, there is no obvious relation between the
 other candidate shapes and the number of seeks that they generate, since
 this number depends on how input, read, write, and output block shapes are
-arranged. For this reason, the \keep heuristic returns if $\hat R$
+arranged. For this reason, the \keep heuristic returns if $\hat r$
 respects the memory constraint (line 20), but it otherwise evaluates all
 the other read shapes.
 
@@ -664,25 +664,13 @@ experiments is also available in the same repository.
 The implementation supports the HDF5 file format, but the code is modular
 enough to support other formats in the future.
 
-% \subsection{Optimizing the bruteforce search}
-\tristan{Tristan to reword this paragraph when the comments are clarified}
-One can note that when the read buffer shape $B$ is smaller than $\hat R$,
-the overall number of buffers increases.
-It is therefore quicker to compute the number of seeks and the maximum
-quantity of memory to be used for the buffers close to $\hat R$.
-On the contrary, it can take several seconds to compute theses metrics \tristan{seeks should be really fast with the model} for
-small buffers, knowing that among the possible buffer shapes, it is not rare to
-see buffers like ($1,1,\Lambda_k$), which is the worst case.
-Moreover, it is more probable that smaller buffers give worst results.
-That is why we decided, instead of testing all possible buffer shapes, to implement a heuristic:
-First, we start testing the shapes from the ideal ones ($\Lambda$) to the worst ones
-($1,1,\Lambda_k$ for example), reducing the buffer shape in the $i$ dimension
-first, and then in $j$.
-When the first possible buffer shape has been found (in terms of memory consumption),
-we evaluate the next $n$ buffers (we set $n=10$ arbitrarily) only.
-If no buffer makes less seeks than the first one, then we will use the first buffer found.
-If a buffer $B'$ is better however, $n$ is reset to 0 and we test the next $n$
-buffers, starting from $B'$.
+To reduce the time requirements of brute-force search, we limit the testing
+of candidate read shapes as follows: starting from $\hat r$ = ($\hat r_0$,
+$\hat r_1$, $\hat r_2$), we evaluate candidate read shapes sorted by
+decreasing $X_1$ value, then by decreasing $X_0$ value. We stop the search
+when the number of generated seeks doesn't reduce for 10 iterations after
+the current best read shape was found (read shape leading to the current minimum
+seek number and respecting the memory constraint).
 
 %----------------------------------------
 \section{Experiments}
@@ -694,173 +682,178 @@ buffers, starting from $B'$.
 check that implementation makes the same number}
 
 \subsection{Experiment conditions}
-The experiments were run on a PowerEdge C6420 server node of a private cluster
-on CentOS Linux release 8.1.1911 (Core), kernel release
-$4.18.0-147.5.1.\textrm{el}8\_1.\textrm{x}86\_64$.
-The node has 250Gi of RAM, 6 Intel SSDSC2KG480G8R SSDs (ext4) of size 480~GB
-and 2 Intel(R) Xeon(R) Gold 6130 CPU @ 2.10GHz processors
-with 16 cores/processor and 2 threads/core.
+The experiments were run on a DELL-EMC PowerEdge C6420 server
+with CentOS Linux release 8.1.1911 (Core), kernel release
+$4.18.0-147.5.1.\textrm{el}8\_1.\textrm{x}86\_64$, 250GB of RAM, 
+6 $\times$ SSDs Intel SSDSC2KG480G8R (480~GB, xfs),
+2 $\times$ Intel Xeon Gold 6130 CPUs @ 2.10GHz (16 cores/CPU, 2 threads/core). 
 The cluster was accessed through the SLURM batch manager.
 
-We first repartitioned an array of shape $A=(3500,3500,3500)$ and of type
-\texttt{float16} (2 bytes per array element), representing 85.7~GB,
-using the input and output block shapes in Table~\ref{tab:exp}.
-We then partitioned an other, bigger array, of shape $A=(8000,8000,8000)$ of the same
-data type, for a total size of 1~TB.
+We repartitioned two arrays of 2-byte elements (float 16): a "small" one (85.75~GiB)  of shape $A=(3500,3500,3500)$
+and a "large" one (1024~GiB) of shape $A=(8000,8000,8000)$. 
+We used the input and output block shapes in Table~\ref{tab:exp}\tristan{add block sizes for large array}.
+We repartitioned the small array with $m$=275~GiB (256~GB), 8.6~GiB (8~GB)
+ and 4.3~GiB (4~GB), to benchmark the baseline and \keep algorithms with different
+ memory constraints. For the large array we used $m$=256~GB only.
+The memory was controlled through SLURM's cgroup-based memory requirement,
+which means that $m$ was the total amount of RAM allocated to the
+repartitioning task, including anonymous memory and cache. Swapping was
+disabled.
 
-For the smallest array, we measured repartitioning time for $m$=250~GB, 8~GB and 4~GB
-in order to benchmark the performances of the baseline and \keep algorithms with
-different memory constraints.
-The goal of processing a 1~TB sized array was to amplify the repartitioning
-problem and see how both algorithms would work. It has therefore been
-repartitioned in real conditions i.e. with all the 250~GB available RAM of the node.
-The memory was controlled through SLURM's cgroup-based memory requirement, which means
-that $m$ was the total amount of RAM allocated to the repartitioning task,
-including anonymous memory and cache. Swapping was disabled.
+A single disk was used when processing the small array. However, for the
+large array, the 6 disks were used as the capacity of a single disk was not
+enough to accomodate the input or the output blocks. We used the disks in
+round robin when writing the input blocks before the experiment and when
+writing the output blocks during the experiment.
 
-Note that when processing the small array, only one SSD was used, whereas when
-processing the big array, one SSD was not enough to store 2 times 1~TB of data
-(the input blocks and the output blocks), that is why we used all SSDs of the node.
-When creating the input blocks and writing the output blocks the blocks were
-written in a round-robin fashion on the SSDs: each successive block was written
-on a different SSD.
+\tristan{Mention page cache flushing, randomization of experiments, repetitions}
 
-\begin{table}[ht]
+\begin{table}
+  \setlength{\tabcolsep}{3pt}
   \centering
-  \caption{Input and output block shapes for $A=(3500,3500,3500)$.}
-   \begin{tabular}{c|cc|cc}
+  \caption{Input and output blocks shapes}
+  $A=(3500,3500,3500)$:\\
+   \begin{tabular}{c|ccc|ccc}
    \rowcolor{black!25}
-          & \multicolumn{2}{c|}{\texttt{inBlocks}} & \multicolumn{2}{c}{\texttt{outBlocks}} \\
+          & \multicolumn{3}{c|}{\texttt{inBlocks}} & \multicolumn{3}{c}{\texttt{outBlocks}} \\
     \rowcolor{black!25}
-     \#     & $I$ & size (MB) & $O$ & size (MB)  \\
+  Config &      $I$      & $n_I$  & size &      $O$       & $n_O$  & size  \\
+  \rowcolor{black!25}
+     &               &        & (MiB)&                &        & (MiB) \\
    \hline
-   0 & (875,875,875) & ~1,339 & (875,1750,875) & ~2,860 \\
-   1 &               &     & (700,875,700)  & ~857 \\
-   \rowcolor{black!10}
-   2 & (350,350,350) & ~86  & (500,500,500)  & ~250 \\
-   \rowcolor{black!10}
-   3 &               &     & (250,250,250)  & ~31  \\
-   4 & (175,175,175) &  ~11  & (250,250,250)  & ~31 \\
-   \rowcolor{black!10}
-   5 & (350,875,350) & ~214 & (500,875,500)  & ~437 \\
-   \rowcolor{black!10}
-   6 &               &     & (350,500,350)  & ~122 \\
+   0 & (875,875,875) & 64     & 1,340    & (875,1750,875) & 32     &  2,680 \\
+   1 &               &        &           & (700,875,700)  & 100    & 858 \\
+   \rowcolor{black!10}       
+   2 & (350,350,350) &1,000   & 86        & (500,500,500)  & 343    & 250 \\
+   \rowcolor{black!10}       
+   3 &               &        &           & (250,250,250)  & 2,744  & 31  \\
+   4 & (175,175,175) &8,000   & 11        & (250,250,250)  & 2,744  & 31 \\
+   \rowcolor{black!10}    
+   5 & (350,875,350) &400     & 214       & (500,875,500)  & 196    & 438 \\
+   \rowcolor{black!10}    
+   6 &               &        &           & (350,500,350)  & 700    & 122 \\
+   \end{tabular}
+   \vspace*{0.2cm}\\
+   $A=(8000,8000,8000)$: \tristan{Timothée, fill this table}\\
+   \begin{tabular}{c|ccc|ccc}
+   \rowcolor{black!25}
+          & \multicolumn{3}{c|}{\texttt{inBlocks}} & \multicolumn{3}{c}{\texttt{outBlocks}} \\
+    \rowcolor{black!25}
+  Config &      $I$      & $n_I$  & size &      $O$       & $n_O$  & size  \\
+  \rowcolor{black!25}
+     &               &        & (MiB)&                &        & (MiB) \\
+   \hline
+   0 & --            & --     & --    & --            & --     &  --    \\
+   
    \end{tabular}
    \label{tab:exp}
 \end{table}
 
 \subsection{Results}
 
-\subsubsection{Results on the small array}
-
-The first part of the \keep heuristic is to compute the best buffer shape possible
-given the amount of memory available.
-The buffer shapes found for each run and each amount of RAM available are summarized in
-Table~\ref{tab:buffer_shapes}.
-
-\begin{table}[ht]
+\begin{figure*}
   \centering
-  \caption{\tristan{indiquer les buffer shapes (R) égales à $\hat R$}Description of the different buffer shapes used for each run by the keep algorithm, depending on the amount of RAM available. The last column gives the maximum RAM consumption estimated by the keep algorithm before running (at buffer selection time).}
-
-   \begin{tabular}[t]{| c | c | c | c |}
-   \hline
-   $m$ & ref & buffer shape & maximum estimated (MB) \\
-   \hline
-   \multirow{2}{*}{256GB} & 0 & (875, 1750, 875) & 2,679.6875 \\
-   & 1 & (875, 875, 875) &  14,631.09375 \\
-   & 2 & (700, 700, 700) &  11,596.0 \\
-   & 3 & (350, 350, 350) &  5,255.75 \\
-   & 4 & (350, 350, 350) &  5,255.75 \\
-   & 5 & (700, 875, 700) &  10,920.0 \\
-   & 6 & (350, 875, 350) &  1,133.125 \\
-   \hline
-   \multirow{2}{*}{8GB} & 0 & (875, 1750, 875) & 2,679.6875 \\
-   & 1 & (700, 875, 875) &  1,715.0 \\
-   & 2 & (500, 700, 700) &  2,040.0 \\
-   & 3 & (350, 350, 350) &  5,255.75 \\
-   & 4 & (350, 350, 350) &  5,255.75 \\
-   & 5 & (500, 875, 700) &  962.5 \\
-   & 6 & (350, 875, 350) &  1,133.125 \\
-   \hline
-   \multirow{2}{*}{4GB} & 0 & (875, 1750, 875) & 2,679.6875 \\
-   & 1 & (700, 875, 875) &  1,715.0 \\
-   & 2 & (500, 700, 700) &  2,040.0 \\
-   & 3 & (250, 350, 350) &  430.0 \\
-   & 4 & (250, 350, 350) &  430.0 \\
-   & 5 & (500, 875, 700) &  962.5 \\
-   & 6 & (350, 875, 350) &  1,133.125 \\
-   \hline
-   \end{tabular}
-
-   \label{tab:buffer_shapes}
-
-\end{table}
-
-The results in terms of processing times are shown on
-Figure~\ref{fig:time_3500}, whereas the results in terms of seeks are
-presented on Figure~\ref{fig:seeks_3500}.
-
-Considering Figure~\ref{fig:seeks_3500}, one can see that the number of
-seeks is drastically reduced by the keep algorithm, which is consistent with
-the results in terms of processing time (Figure~\ref{fig:time_3500}).
-We remark that one needs to reduce significantly the amount of seeks produced
-by a re-partition algorithm to clearly see an impact on the processing time.
-Considering run 4 which shows the most important differences in terms of
-processing time, the amount of seeks have been reduced from about 100 millions
-seeks to thousands of seeks.
-We also remark that although the number of seeks have been reduced from millions
-to thousands of seeks for runs 1 to 5, the reduction in processing time does not
-follow linearly the reduction in the number of seeks.
-This is probably due to the fact that some seeks are more costly than others,
-which has not been taken into account in our problem formulation.
-
-Looking at Figure~\ref{fig:time_3500}, we can see that
-the baseline algorithm performs surprisingly well compared to the keep algorithm
-when the main memory available is 256GB (all the node's available RAM).
-We can see that when the amount of RAM available decreases (8 and 4GB), the
-performances of the baseline algorithm decreases drastically.
-In particular, the keep algorithm is approximately 2 times faster for runs
-2, 3 and 4 on Figure~\ref{fig:time_3500}.
-From these observations we suppose that the baseline algorithm performs well
-with 256GB because it leverages the page cache.
-It is counter-intuitive to see that the performances of the baseline algorithm
-differs for the different amount of RAM available, because apart from $m$
-nothing changes for the baseline algorithm; the read buffer shape stays $B=I$.
-
-Another factor for the baseline algorithm to perform well compared to the
-keep algorithm with 256GB is the time overhead of the keep algorithm which is
-very important as one can see on Figure~\ref{fig:time_3500}.
-This is due to our implementation and the tradeoff presented in section
-``Implementation".
-Concretely, the time overhead is mainly due to making copies of the data from
-the read buffers to the cache.
-In terms of read/write processing time however, we can clearly see an
-important speedup by the keep algorithm compared to the baseline for
-runs 3 and 4.
-One can also notice a non-negligible speedup for runs 1 to 5 for the experiment
-with 8 and 4GB.
-There are big differences in the benefits of using the keep algorithm instead of
-the baseline algorithm, depending on the different runs.
-This is due to the difference in complexity between the runs.
-The runs that are more complex (with more shape mismatches) are more optimized
-by the keep algorithm, hence producing a bigger speedup from the keep compared to
-the baseline.
-
-\begin{figure*}[h]
-  \centering
-  \includegraphics[scale=0.36]{./figures/time_3500.png}
-  \caption{Results in terms of processing time for the keep and baseline algorithms. From left to right, the results are presented for 256, 8 and 4GB of available main memory.}
+  \begin{subfigure}{\textwidth}
+    \caption{Number of seeks (log scale)}
+    \includegraphics[scale=0.36]{./figures/seeks_3500.png}
+    \label{fig:seeks_3500}
+  \end{subfigure}
+  \begin{subfigure}{\textwidth}
+    \caption{Processing time}
+   \includegraphics[scale=0.36]{./figures/time_3500.png}
   \label{fig:time_3500}
+  \end{subfigure}
+ 
+  \caption{Repartitioning results for the small array (85.75~GiB). \textbf{(a)} Compared to baseline, the \keep heuristic 
+  reduces the number of seeks by four orders of magnitude. \textbf{(b)} The \keep heuristic provides speed-up factors of up to \todo{x}.}
 \end{figure*}
 
-\begin{figure*}[h]
-    \centering
-    \includegraphics[scale=0.36]{./figures/seeks_3500.png}
-    \caption{Results in terms of seeks for the keep and baseline algorithms. From left to right, the results are presented for 256, 8 and 4GB of available main memory.}
-    \label{fig:seeks_3500}
-  \end{figure*}
 
-\subsubsection{Results on the big array}
+
+\subsubsection{Small array (85.75~GiB)}
+
+By design, the number of seeks is drastically reduced by the \keep
+heuristic compared to baseline (Fig.~\ref{fig:seeks_3500}), by a factor of
+\todo{x} on average. In configurations 1 to 5 in particular, baseline
+requires up to $10^8$ seeks while the \keep heuristic only requires up to
+$10^4$.
+
+This reduced seeking translates to important reductions of the
+repartitioning time (Fig.~\ref{fig:time_3500}). Compared to baseline, the
+\keep heuristic provides speed up factors of up to \todo{x} for
+$m=275~GiB$, \todo{x} for $m=8.6~GiB$, and \todo{x} for $m=4.3~GiB$.
+Speed-up is only observed when baseline requires $\mathbb{O}(10^8)$ seeks
+(configurations 1-5): lower amounts of seek don't seem to have an effect on
+I/O time. Speed-up is mostly coming from write time reduction, since
+baseline read complete input blocks without seeking.
+
+
+% Considering run 4 which shows the most important differences in terms of
+% processing time, the amount of seeks have been reduced from about 100 millions
+% seeks to thousands of seeks.
+% We also remark that although the number of seeks have been reduced from millions
+% to thousands of seeks for runs 1 to 5, the reduction in processing time does not
+% follow linearly the reduction in the number of seeks.
+% This is probably due to the fact that some seeks are more costly than others,
+% which has not been taken into account in our problem formulation.
+
+The baseline performances improve drastically with the amount of memory
+allocated to the reprartitioning. For $m=275~GiB$, repartitioning times of
+baseline and \keep are on par for all configurations except configuration
+4. This is most likely due to the use of asynchronous write back to disk
+through the Linux page cache. In our experiments, the ratio of "dirty"
+data, the cache data waiting to be written to disk, was set to 40\% , a
+common value for compute nodes, which means that the small array entirely
+fit in memory for $m=275~GiB$. The \keep strategy is mostly useful for
+arrays that do not fit in page cache memory.
+
+The overhead of the \keep heuristic consists of search time
+(Alg.~\ref{alg:keep}) and cache management (data copy to/from cache in
+Alg.~\ref{algo:generalrepartition}). While search time is negligible, cache
+management is substantial except for configuration 0 where the total number
+of blocks is limited.
+
+
+Table~\ref{tab:buffer_shapes} shows the read block shapes selected by the
+\keep heuristic. The optimal shape $\hat r$ was used for all configurations with $m=$ 275~GiB.
+  \begin{table}
+    \centering
+    \caption{Read block shapes and peak memory estimates selected by the
+    \keep heuristic to repartition the small image.}
+     \begin{tabular}[t]{cccc}
+     \hline
+     \rowcolor{black!25}
+    Config &      $m$=4.3 GiB   & $m$=8.6 GiB     & $m$=275 GiB  \\
+    0      &   (875, 1750, 875)* & (875, 1750, 875)* & (875, 1750, 875)* \\
+           &    2.8 GiB         & 2.8  GiB        & 2.8  GiB             \\
+           \rowcolor{black!10}
+    1      &   (700, 875, 875)  & (700, 875, 875) & (875, 875, 875)* \\
+           \rowcolor{black!10}
+           &    1.8  GiB        & 1.8  GiB        & 15.3  GiB              \\
+    2      &   (500, 700, 700)  & (500, 700, 700) & (700, 700, 700)* \\
+           &    2.1  GiB        & 2.1  GiB        & 12.2  GiB             \\
+           \rowcolor{black!10}
+    3      &   (250, 350, 350)  & (350, 350, 350) & (350, 350, 350)* \\
+           \rowcolor{black!10}
+           &    0.45 GiB        & 5.5   GiB       & 5.5   GiB            \\
+    4      &   (250, 350, 350)  & (350, 350, 350)* & (350, 350, 350)*  \\
+           &    0.45 GiB        & 5.5  GiB        & 5.5   GiB            \\
+           \rowcolor{black!10}
+    5      &   (500, 875, 700)  & (500, 875, 700) & (700, 875, 700)* \\
+           \rowcolor{black!10}
+           &    1.0  GiB        & 1.0  GiB        & 11.5  GiB             \\
+    6      &   (350, 875, 350)*  & (350, 875, 350)* & (350, 875, 350)* \\
+           &    1.2  GiB        & 1.2  GiB        & 1.2   GiB            \\
+     \hline
+     \end{tabular}
+     * selected read block shape was $\hat r$
+     \label{tab:buffer_shapes}
+  \end{table}
+
+\subsubsection{Large array}
+
+\tristan{We can't really present these results unless the overheads are fixed, 
+including cache management and read times.}
 
 Given the 250~GB RAM available, the read buffer shapes tested were always equal to
 the input aggregates' shapes.
@@ -997,7 +990,7 @@ As explained in the discussion, the buffer ordering problem is complex and does
 not seem easily solvable.
 This study uses a naive order which is, again, the inverse storage order.
 The reason for that order is that as it is more important to keep data in the
-$k$ dimension to save seeks and we assume that $B_k=\hat R_k$, it seems
+$k$ dimension to save seeks and we assume that $B_k=\hat r_k$, it seems
 reasonable to load the buffers in the $k$ dimension first.
 Note that using such
 an order recycles extra data in the $k$ dimension first; It is therefore
