@@ -154,7 +154,7 @@ memory usage and I/O efficiency. For instance, the Python HDF5 library
 The \keep heuristic leverages a memory cache to read and write data as
 contiguously as possible, similarly to the "clustered" and "multiple"
 algorithms described in~\cite{seqalgorithms}. The storage order of array
-elements on disk is assumed be known to the application, but unconstrained.
+elements on disk is assumed to be known to the application, but unconstrained.
 Implementations based on our algorithm could therefore use arbitrary file
 formats. We focus on sequential algorithms, assuming that arrays are stored
 on a single device and accessed by single-threaded I/Os. Extensions to parallel
@@ -280,7 +280,7 @@ where $O \neq I$. Notations are summarized in
 Table~\ref{table:notations}.
 
 We formalize the re-partitioning problem as in Algorithm~\ref{algo:generalrepartition}.
-A re-partioning algorithm takes a
+A re-partitioning algorithm takes a
 list of input blocks \texttt{inBlocks}, a list of output
 blocks \texttt{outBlocks}, and the amount of memory \texttt{m}
 available for the algorithm. Subject to $m$, the algorithm determines (1)
@@ -429,11 +429,11 @@ contiguously to the output blocks.
       \STATE writeBlocks = createWriteBlocks(readBlocks, outBlocks)
       \STATE mc = peakMemory($R$)
       \IF{mc > m}
-      \STATE \textbf{continue} \COMMENT{Memory constraint cannot be fullfiled}
+      \STATE \textbf{continue} \COMMENT{Memory constraint cannot be fulfiled}
       \ENDIF
       \IF{$R$ == $\hat r$}
       \STATE bestReadBlocks = readBlocks
-      \STATE \textbf{break} \COMMENT{$\hat r$ fullfills memory constraint}
+      \STATE \textbf{break} \COMMENT{$\hat r$ fulfills memory constraint}
       \ENDIF
       \STATE s = generatedSeeks($I$, $R$, writeBlocks, $O$)
       \IF{minSeeks == None or s' < minSeeks}
@@ -623,7 +623,7 @@ project repository is available at
 how to install the package and its dependencies. The code used for the
 experiments is also available in the same repository.
 The implementation supports the HDF5 file format, but the code is modular
-enough to accomodate other formats in the future.
+enough to accommodate other formats in the future.
 
 To reduce the time requirements of brute-force search, we limit the testing
 of candidate read shapes as follows in the implementation: starting from
@@ -758,7 +758,7 @@ baseline read complete input blocks without seeking.
 % which has not been taken into account in our problem formulation.
 
 The baseline performances improve drastically with the amount of memory
-allocated to the reprartitioning. For $m$=275~GiB, repartitioning times of
+allocated to the repartitioning. For $m$=275~GiB, repartitioning times of
 baseline and \keep are on par for all configurations except configuration
 4. This is most likely due to the use of asynchronous write back to disk
 through the Linux page cache. In our experiments, the ratio of "dirty"
@@ -957,7 +957,7 @@ an order recycles extra data in the $k$ dimension first; It is therefore
 more efficient when the biggest shape mismatch between the input and output
 blocks is in $k$.
 
-Thanksfully, the impact of the buffer ordering on performance can be
+Thankfully, the impact of the buffer ordering on performance can be
 mitigated. Indeed, the impact of the buffer ordering depends on the size of the
 mismatches. One can reduce the amount of extra data by using smallest blocks: Even
 if the overlap between the input and output files is big with respect to their
