@@ -186,7 +186,7 @@ validity and implications of our results.
 \begin{figure}
   \centering
   \includegraphics[scale=0.32]{./figures/figure_1.png}
-  \caption{Ordering of 3D array elements in files in C-order. The first stored element is colored in green, 
+  \caption{Ordering of 3D array elements in files in C order. The first stored element is colored in green, 
   the last one is in blue. Seeking to the red elements is required when extracting the 3D block with plain borders.}
   \label{fig:seeks_and_rowmajor}
 \end{figure}
@@ -196,7 +196,7 @@ validity and implications of our results.
 
 For the sake of clarity and without loss of generality, we assume that
  files are written in row-major order (Fig.~\ref{fig:seeks_and_rowmajor},
- a.k.a ``C" order), where the fastest moving dimension in the file is the
+ a.k.a C order), where the fastest moving dimension in the file is the
  last dimension of the array, and the slowest moving dimension in the file
  is the first dimension of the array. This convention is for instance the
  one used in the HDF5 format ~\cite{hdf5}.
@@ -207,6 +207,7 @@ situations: (1) when an array block is opened for reading or writing, and
 the block.
 
 \subsection{The re-partitioning problem}
+
 \begin{table}
   \caption{Notations}
   \begin{tabular}{ll}
@@ -240,7 +241,8 @@ the block.
   \end{tabular}
   \label{table:notations}
 \end{table}
-\begin{algorithm}
+
+\begin{algorithm}[b]
   \caption{General re-partitioning algorithm}
   \label{algo:generalrepartition}
   \begin{algorithmic}[1]
@@ -271,28 +273,28 @@ the block.
 \end{algorithm}
 
 We focus on 3D arrays for simplicity. Consider a 3D array \texttt{A} of shape $A =
-(A_i, A_j, A_k)$, partitioned as uniformly-shaped input blocks of shape $I =
+(A_i, A_j, A_k)$, partitioned in uniformly-shaped input blocks of shape $I =
 (I_i, I_j, I_k)$ stored on disk. Our goal is to re-partition the input
 blocks into uniform output blocks of shape $O = (O_i, O_j, O_k)$,
-where $O \neq I$. Our notations are summarized in
+where $O \neq I$. Notations are summarized in
 Table~\ref{table:notations}.
 
-We formalize the re-partitioning problem as follows.
-A re-partioning algorithm (Algorithm~\ref{algo:generalrepartition}) takes a
-list of input blocks \texttt{inBlocks} of shape $I$, a list of output
-blocks \texttt{outBlocks} of shape $O$, and the amount of memory \texttt{m}
+We formalize the re-partitioning problem as in Algorithm~\ref{algo:generalrepartition}.
+A re-partioning algorithm takes a
+list of input blocks \texttt{inBlocks}, a list of output
+blocks \texttt{outBlocks}, and the amount of memory \texttt{m}
 available for the algorithm. Subject to $m$, the algorithm determines (1)
 \texttt{readBlocks}, a list of uniformly-shaped blocks of shape $R$ to be read from the
 input blocks, and (2) \texttt{writeBlocks}, a list of blocks,
-usually not uniformly-shaped, where each block contains a contiuous piece of
-data that will be written in an output block with a single seek (line 10).
+usually not uniformly-shaped, to be written to output blocks (line 10).
 If read blocks and input blocks have a different shape, then reading read blocks requires
 more than one seek. Similarly, if write blocks and output blocks have a different shape,
 then writing write blocks requires more than one seek. Input, output, read
-and write blocks all form a partition of the 3D array of shape $A$. The
+and write blocks all form a partition of the 3D array \texttt{A}. The
 main loop of the algorithm (line 12) loads one read block at a time (line
 13), inserts it into a cache (line 14), and writes write blocks from the
-cache when they are complete (lines 15 -- 20).
+cache when they are complete (lines 15 -- 20). Function \texttt{write} is assumed 
+to open each output block only once, and to write the required elements of \texttt{data} in it.
 
 It should be noted that blocks are passed to the algorithm by reference,
 not by data. Only variables \texttt{data} (lines 13, 17) and \texttt{cache}
@@ -301,13 +303,13 @@ not by data. Only variables \texttt{data} (lines 13, 17) and \texttt{cache}
 Since read and write blocks both represent a partition of $A$, all the
 elements in \texttt{inBlocks} are read exactly once, and written exactly once too. Other
 problem formalizations may allow for input elements to be read and
-discarded, to reduce seeks. Exploring such a trade-off
+discarded, to reduce seeking. Exploring such a trade-off
 between seeks and redundant reads could be an interesting extension to this problem.
 
 Our goal is to minimize the number of seeks done by the algorithm, which
 occur during reads (line 13) and writes (line 18). The re-partitioning
 problem is therefore to find \texttt{readBlocks} and \texttt{writeBlocks} that
-minimize \textsc{seeks}, the objective function that returns the number of
+minimize the number of
 seeks done by the algorithm, subject to the memory constraint $m$.
 
 % Problem: re-partitioning of multi-dimensional arrays
@@ -319,34 +321,25 @@ seeks done by the algorithm, subject to the memory constraint $m$.
 Solutions of this problem materialize as implementations of function
 \texttt{getReadWriteBlocks} (Alg.~\ref{algo:generalrepartition}, line 10). A
 lower bound on the number of seeks for the repartitioning problem is $n_I +
-n_I$, with $n_I$ the number of input blocks and $n_O$ the number of output
-blocks. Indeed, input and output files all have to be accessed at least
+n_O$, with $n_I$ the number of input blocks and $n_O$ the number of output
+blocks. Indeed, input and output blocks all have to be opened at least
 once, which requires a seek.
 
 For simplicity, we require that all blocks in \texttt{readBlocks} have the
-same shape $R$. We also identify the size of an array in memory as its
+same shape $R$. We also equate the size of an array in memory as its
 number of elements. To the best of our knowledge, no algorithm has been
 proposed for the repartitioning problem.
 
 
 \subsection{Baseline}
 
-\begin{figure*}[h]
-\centering
-\includegraphics[scale=0.4]{./figures/baseline_figure.png}
-\caption{Illustration of write buffers and output blocks overlapping on the plan
-($X_1$,$X_2$). This Figure also illustrates what we call cuts (red lines) and
-shape matches (green lines).}
-\label{fig:baseline_figure}
-\end{figure*}
-
 Our baseline algorithm for the repartitioning problem loads one input block
 at a time ($R$=$I$), and directly writes it to the appropriate output
 blocks ($W$=$R$). It assumes that input blocks fit in memory. The number of
-generatd seeks $s_b$
+generated seeks $s_b$ \tristan{run spellcheck on all the text}
 depends on how write blocks overlap with
-output blocks in each dimension (Fig.\ref{fig:baseline_figure}). To compute $s_b$, we define
-$\mathcal{W}_d$ and $\mathcal{O}_d$ the sets of write and output block end
+output blocks in each dimension (Fig.~\ref{fig:baseline_figure}). To determine $s_b$, we define
+$\mathcal{W}_d$ and $\mathcal{O}_d$, the sets of write and output block end
 coordinates in dimension $d$:
 \[
   \forall d \in \llbracket 1, 3 \rrbracket,
@@ -369,7 +362,7 @@ The number of output block pieces along dimension $d$ is then:
                \sum_{i=1}^{A_d/O_d} \vert C_{i, d}\left(  \mathcal{W}_d, \mathcal{O}_d \right) \vert + 1 - \delta_{\vert C_{i, d}\left(  \mathcal{W}_d, \mathcal{O}_d \right) \vert, 0}
 \]
 where $\vert$ . $\vert$ is the cardinality operator and $\delta$ is the Kronecker delta.
-The number of matching endings is:
+The number of \emph{matches} between block endings is:
 \[
   m_d = m_d\left(  \mathcal{W}_d, \mathcal{O}_d \right) = \vert \mathcal{W}_d \cup  \mathcal{O}_d \vert  - c_d
   \]
@@ -382,44 +375,26 @@ Finally, the number of seeks created by the baseline algorithm is:
 \end{equation}
 
 
+\begin{figure}
+  \centering
+  \includegraphics[width=0.5\textwidth]{./figures/baseline_figure.png}
+  \caption{Overlapping of write and output blocks in the plan
+  ($X_1$,$X_2$), showing cuts (red lines) and matches (green lines)}
+  \tristan{Timothée, in Fig 2: use dark gray to represent write and output
+  blocks, it's difficult to see the red and green lines over blue and kaki
+  backgrounds. Increase the line width of block endings. Use "matches"
+  instead of "matching endings". Remove endings at the end of "write block
+  endings" and "output block endings" too. Reduce spacing between arrows to save space and make the core diagram larger. The orientation of 
+  (X1, X2) is not consistent with C order (it is direct in C order).} 
+  \label{fig:baseline_figure}
+  \end{figure}
+
 As can be seen from Equation~\ref{eq:seeks-baseline}, cuts along dimension 2 generate $\mathcal{O}(A_0 A_1)$
 seeks, which is prohibitive when \texttt{A} is large, cuts along dimension 1 generate $\mathcal{O}(A_0)$ seeks and cuts in
 dimension 0 generate $\mathcal{O}(1)$ seeks. The \keep heuristic described
 in the next section aims at avoiding cuts primarily in dimension 2, and if
 possible in dimension 1 and 0. An experimental verification of the model will be provided in
 Section ~\ref{sec:experiments}.
-
-
-
-
-% We implemented Equation~\ref{eq:1} and ran it on a cubic array to confirm these
-% theories. One shape mismatch is added at a time in order to see the impact on
-% the number of seeks. The setting and results of this simulation are summarized
-% in table~\ref{tab:simseekmodel}.
-
-% \begin{table}[ht]
-%   \centering
-%   \caption{Results of the simulation using the baseline algorithm's seek model}
-
-%    \begin{tabular}[t]{| c | c | c | c | c |}
-%    \hline
-%    Mismatch & R & B=I & O & nb seeks \\
-%      \hline\hline
-%      k & (3500,3500,3500) & (500,500,875) & (500,500,500) & 73,500,000 \\
-%      \hline
-%      j & (3500,3500,3500) & (500,875,500) & (500,500,500) & 147,000 \\
-%      \hline
-%      i & (3500,3500,3500) & (875,500,500) & (500,500,500) & 294 \\
-%      \hline
-%      i,j & (3500,3500,3500) & (875,875,500) & (500,500,500) & 147,168 \\
-%      \hline
-%      i,j,k & (3500,3500,3500) & (875,875,875) & (500,500,500) & 73,584,096 \\
-%      \hline
-%    \end{tabular}
-
-%    \label{tab:simseekmodel}
-
-% \end{table}
 
 %----------------------------------------
 \section{The \keep heuristic}
@@ -451,38 +426,37 @@ contiguously to the output blocks.
     \STATE minSeeks = None
     \FOR{$R$ in readShapes}
       \STATE readBlocks = blocks($R$, $A$)
-      \STATE writeBlocks = createWriteBlocks(readBlocks, outBlocks)  \tristan{OR JUST OUTBLOCKS???}
+      \STATE writeBlocks = createWriteBlocks(readBlocks, outBlocks)
       \STATE mc = peakMemory($R$)
       \IF{mc > m}
-      \STATE \textbf{continue} \COMMENT{Read shape cannot respect memory constraint}
+      \STATE \textbf{continue} \COMMENT{Memory constraint cannot be fullfiled}
       \ENDIF
       \IF{$R$ == $\hat r$}
       \STATE bestReadBlocks = readBlocks
-      \STATE \textbf{break} \COMMENT{$\hat r$ respects memory constraint}
+      \STATE \textbf{break} \COMMENT{$\hat r$ fullfills memory constraint}
       \ENDIF
       \STATE s = generatedSeeks($I$, $R$, writeBlocks, $O$)
       \IF{minSeeks == None or s' < minSeeks}
       \STATE minSeeks, bestReadBlocks = s, readBlocks
       \ENDIF
     \ENDFOR
-    \RETURN readBlocks, writeBlocks
+    \RETURN bestReadBlocks, writeBlocks
   \end{algorithmic}
 \end{algorithm}
 The \keep heuristic (Alg.~\ref{algo:keep}) is a brute-force search
 of the best read shape among a list of candidates (line 11).
-For each candidate read shape, it initializes a list of write blocks (line
-14), determines the memory consumed by this solution (line 15), and provided that the
-memory constraint is respected, merges write blocks as much as allowed by the memory
-constraint (lines 16-22), computes
+For each candidate read shape, it creates a list of write blocks (line
+15), determines the memory consumed by this solution (line 16), and provided that the
+memory constraint is respected, computes
 the number of seeks created by the solution (line
-23), and selects the read shape that minimizes the number of seeks (lines
-24-26). Finally, a list of read blocks is generated from the selected read shape (lines
-28-29), and the algorithm returns.
+24), and selects the read shape that minimizes the number of seeks (lines
+25-27). 
 
 The \keep heuristic uses the following functions, described in the
 remainder of this section: \texttt{candidateReadShapes} (line 11),
-\texttt{split} (line 14), \texttt{memoryConsumed} (line 15),
-\texttt{mergeWriteBlocks} (line 22), \texttt{generatedSeeks} (line 23).
+\texttt{blocks} (line 14), \texttt{createWriteBlocks} (line 15),
+\texttt{peakMemory} (line 16), and
+\texttt{generatedSeeks} (line 24).
 
 \subsection{Candidate read shapes}
 
@@ -504,7 +478,7 @@ that is greater or equal to $O_d$:
   \enskip \exists \hat k \in \mathbb{N}, \enskip \hat r_d = \hat kI_d \enskip \mathrm{and} \enskip \hat k I_d \geq O_d \enskip \mathrm{and} \enskip \forall k < \hat k, \enskip kI_d < O_d
 \]
 
-Using $\hat r$ as read shape minimizes the seeks in the input blocks, as
+Using $\hat r$ as read shape minimizes seeking in the input blocks, as
 in this situation each iteration reads input blocks completely, requiring a
 single seek per input block. If there is enough memory to use write blocks
 of shape $O$, then this solution also minimizes the seeks in the output
@@ -513,30 +487,30 @@ blocks, as output blocks can be written in a single seek too \tristan{isn't it a
 Function \texttt{getCandidateReadShape} returns the following shapes:
 \[
   \Big\{ (C_0, C_1, \hat r_2) \in \mathbb{N}^3 \enskip / \enskip
-          \forall i \in \{1, 2\}, \enskip \exists k_i \in \mathbb{N}, \enskip
+          \forall i \in \{0, 1\}, \enskip \exists k_i \in \mathbb{N}, \enskip
            A_i = k_iC_i \enskip \mathrm{and} \enskip C_i \leq \hat r_i \Big\}
 \]
 The third coordinate of all read shapes is set to $\hat r_2$, to guarantee
 that no cuts along dimension 2 will be made during reads. This assumes that
-$m > \hat r_2$, i.e., a block of shape (1, 1, $\hat r_k$) fits in
-memory, which is reasonable. The other two coordinates are set to divisors of $A_0$ and $A_1$ which are
-less than or equal to $\hat r_0$ and $\hat r_1$ (respectively).
+$m \geq \hat r_2$, i.e., a block of shape (1, 1, $\hat r_2$) fits in
+memory, which seems reasonable. The other two coordinates are set to divisors of $A_0$ and $A_1$ which are
+less than or equal to $\hat r_0$ and $\hat r_1$ respectively.
 
 The candidate shapes are sorted first by decreasing $C_1$ values, then by
 decreasing $C_0$ values. The first tested read shape is therefore
 $\hat r$. While $\hat r$ is the optimal read shape, leading to a single
 seek per input or output block, there is no obvious relation between the
 other candidate shapes and the number of seeks that they generate, since
-this number depends on how input, read, write, and output block shapes are
+this number depends on how input, read, write, and output blocks are
 arranged. For this reason, the \keep heuristic returns if $\hat r$
-respects the memory constraint (line 20), but it otherwise evaluates all
+respects the memory constraint (line 20-23), but it otherwise evaluates all
 the other read shapes.
 
 \subsection{Block order}
 
-While creating uniform block coordinates from a block shape is
-straightforward, their order may have an impact on the amount of data
-stored in cache and therefore on the peak memory consumption. For
+Creating uniform blocks from a block shape is
+straightforward, but their order impacts the amount of data
+stored in cache and therefore the peak memory consumption. For
 simplicity, function \texttt{block} returns read blocks in the
 order used for array elements on disk (C order in this paper).
 
@@ -547,10 +521,7 @@ as follows. For each read block,
 eight write blocks are first created, defined as the $F_i$ blocks in
 Figure~\ref{fig:nomenclature_overlaps}. The $F_i$ blocks are then merged
 recursively with sub-blocks of neighboring read blocks, following the rules
-in Table~\ref{tab:fusion}. The resulting write blocks cover complete output blocks. \tristan{if this is the case we should just
-say that from the beginning and move the Fi definition back to the memory consumption and remove this section because there's nothing to say.}
-\tristan{du coup, si on garde toutes les chutes en mémoire et qu'on les fusionne comme ça,
-je ne comprends pas comment on peut avoir des seeks en sortie car on va recréer exactement les output blocks.}
+in Table~\ref{tab:fusion}. \tristan{Timothée, pourrais-tu expliquer ici ou dans la légende de la figure comment F0 est défini ?}
 \begin{table}
   \centering
   \caption{Recursive merging of initial write blocks. The first column
@@ -582,13 +553,12 @@ je ne comprends pas comment on peut avoir des seeks en sortie car on va recréer
 \begin{figure*}[h]
   \centering
   \includegraphics[scale=0.4]{./figures/figure_3.png}
-  \caption{Illustration of an input aggregate (left) and its division into indexed remainder volumes (right).
-  Each remainder volume is a part of an output block.}
+  \caption{Sub-blocks used in the merging of write blocks.}
   \label{fig:nomenclature_overlaps}
   \end{figure*}
 
 \subsection{Peak memory}
-
+\tristan{Timothée, in Fig 3, explain what is F0 and what is the union of Fi blocks}
 To determine the peak memory used by a particular combination of read and
 write blocks, one needs to determine the amount of data in the cache at
 each iteration, which depends on how read and write blocks overlap. Since we were only able to find an analytical
@@ -616,15 +586,12 @@ consumption.
 
 Similar to the
 baseline, seeks generated by the \keep heuristic happen during reads (line
-13 in Alg.~\ref{algo:generalrepartition}) and during writes (line 18). The
-seeks generated during writes are directly obtained from
-Equation~\ref{eq:seeks-baseline}, defining $\mathcal{W}_d$ as the end coordinates of
-\texttt{writeBlocks}. To count the seeks generated
+13 in Alg.~\ref{algo:generalrepartition}) and during writes (line 18).  To count the seeks generated
 during reads, we note that the read process is dual to the write process:
 writing in-memory blocks with end coordinates $\mathcal{M}$ to disk blocks
 with end coordinates $\mathcal{D}$ generates the same number of seeks as
 reading disk blocks with end coordinates $\mathcal{D}$ to in-memory blocks
-with end coordinates $\mathcal{M}$. This number of seeks is returned by the following function:
+with end coordinates $\mathcal{M}$. We can determine this number using Equation~\ref{eq:seeks-baseline}:
 
 \begin{eqnarray*}
   \textsc{seeks} \left(  \mathcal{M}, \mathcal{D} \right) &=&  A_0 A_1 c_2\left(\mathcal{M}_d, \mathcal{D}_d\right) + \\
@@ -632,13 +599,8 @@ with end coordinates $\mathcal{M}$. This number of seeks is returned by the foll
                                                          && c_0\left(\mathcal{M}_d, \mathcal{D}_d\right) m_1\left(\mathcal{M}_d, \mathcal{D}_d\right) m_2\left(\mathcal{M}_d, \mathcal{D}_d \right)\\
                                                          && + \vert \mathcal{D} \vert
 \end{eqnarray*}
-Equation~\ref{eq:seeks-baseline} becomes:
-\[
-  s_b = \textsc{seeks} \left( \mathcal{W}, \mathcal{O} \right) + n_i
-\]
-where $\mathcal{W}$ and $\mathcal{O}$ are defined as in
-Equation~\ref{eq:baseline-blocks}. It should be noted that function
-\textsc{seeks} does not assume that $\mathcal{M}$ or $\mathcal{O}$ relate to
+Function
+\textsc{seeks} does not assume that $\mathcal{M}$ or $\mathcal{D}$ relate to
 blocks of uniform shape. Therefore, it can be applied to the \keep
 heuristics where write blocks are not necessarily of uniform shape.
 The number of seeks generated by the \keep algorithm is given by:
@@ -656,21 +618,19 @@ where the first term represents the number of seeks required to read input
 \subsection{Implementation}
 
 We implemented the baseline and \keep heuristic in Python 3.7. The
-\href{https://github.com/big-data-lab-team/repartition_experiments}{project's
-repository} includes documentation on
-how to install the package and its dependencies. The code used in the
+project repository is available at
+\url{https://github.com/big-data-lab-team/repartition_experiments}. It includes documentation on
+how to install the package and its dependencies. The code used for the
 experiments is also available in the same repository.
-
 The implementation supports the HDF5 file format, but the code is modular
-enough to support other formats in the future.
+enough to accomodate other formats in the future.
 
 To reduce the time requirements of brute-force search, we limit the testing
-of candidate read shapes as follows: starting from $\hat r$ = ($\hat r_0$,
-$\hat r_1$, $\hat r_2$), we evaluate candidate read shapes sorted by
-decreasing $X_1$ value, then by decreasing $X_0$ value. We stop the search
-when the number of generated seeks doesn't reduce for 10 iterations after
-the current best read shape was found (read shape leading to the current minimum
-seek number and respecting the memory constraint).
+of candidate read shapes as follows in the implementation: starting from
+$\hat r$ = ($\hat r_0$, $\hat r_1$, $\hat r_2$), we evaluate candidate read
+shapes sorted by decreasing $X_1$ values, then by decreasing $X_0$ values.
+We stop the search if the best number of seeks (\texttt{minSeeks} in
+Alg.~\ref{algo:keep}) does not decrease for 10 iterations.
 
 %----------------------------------------
 \section{Experiments}
@@ -687,7 +647,7 @@ with CentOS Linux release 8.1.1911 (Core), kernel release
 $4.18.0-147.5.1.\textrm{el}8\_1.\textrm{x}86\_64$, 250GB of RAM, 
 6 $\times$ SSDs Intel SSDSC2KG480G8R (480~GB, xfs),
 2 $\times$ Intel Xeon Gold 6130 CPUs @ 2.10GHz (16 cores/CPU, 2 threads/core). 
-The cluster was accessed through the SLURM batch manager.
+The server was accessed through the SLURM batch manager.
 
 We repartitioned two arrays of 2-byte elements (float 16): a "small" one (85.75~GiB)  of shape $A=(3500,3500,3500)$
 and a "large" one (1024~GiB) of shape $A=(8000,8000,8000)$. 
@@ -701,10 +661,9 @@ repartitioning task, including anonymous memory and cache. Swapping was
 disabled.
 
 A single disk was used when processing the small array. However, for the
-large array, the 6 disks were used as the capacity of a single disk was not
+large array, the 6 disks available on the server were used as the capacity of a single disk was not
 enough to accomodate the input or the output blocks. We used the disks in
-round robin when writing the input blocks before the experiment and when
-writing the output blocks during the experiment.
+round robin.
 
 \tristan{Mention page cache flushing, randomization of experiments, repetitions}
 
@@ -763,15 +722,16 @@ writing the output blocks during the experiment.
    \includegraphics[scale=0.36]{./figures/time_3500.png}
   \label{fig:time_3500}
   \end{subfigure}
- 
   \caption{Repartitioning results for the small array (85.75~GiB). \textbf{(a)} Compared to baseline, the \keep heuristic 
   reduces the number of seeks by four orders of magnitude. \textbf{(b)} The \keep heuristic provides speed-up factors of up to \todo{x}.}
+  \label{fig:3500}
 \end{figure*}
 
 
 
 \subsubsection{Small array (85.75~GiB)}
 
+Results are shown in Figure~\ref{fig:3500}.
 By design, the number of seeks is drastically reduced by the \keep
 heuristic compared to baseline (Fig.~\ref{fig:seeks_3500}), by a factor of
 \todo{x} on average. In configurations 1 to 5 in particular, baseline
@@ -781,9 +741,9 @@ $10^4$.
 This reduced seeking translates to important reductions of the
 repartitioning time (Fig.~\ref{fig:time_3500}). Compared to baseline, the
 \keep heuristic provides speed up factors of up to \todo{x} for
-$m=275~GiB$, \todo{x} for $m=8.6~GiB$, and \todo{x} for $m=4.3~GiB$.
-Speed-up is only observed when baseline requires $\mathbb{O}(10^8)$ seeks
-(configurations 1-5): lower amounts of seek don't seem to have an effect on
+$m$=275~GiB, \todo{x} for $m$=8.6~GiB, and \todo{x} for $m$=4.3~GiB.
+Speed-up is only observed when baseline requires O($10^8$) seeks, which occurs
+in configurations 1 to 5: lower amounts of seeks don't seem to have an effect on
 I/O time. Speed-up is mostly coming from write time reduction, since
 baseline read complete input blocks without seeking.
 
@@ -798,17 +758,17 @@ baseline read complete input blocks without seeking.
 % which has not been taken into account in our problem formulation.
 
 The baseline performances improve drastically with the amount of memory
-allocated to the reprartitioning. For $m=275~GiB$, repartitioning times of
+allocated to the reprartitioning. For $m$=275~GiB, repartitioning times of
 baseline and \keep are on par for all configurations except configuration
 4. This is most likely due to the use of asynchronous write back to disk
 through the Linux page cache. In our experiments, the ratio of "dirty"
 data, the cache data waiting to be written to disk, was set to 40\% , a
 common value for compute nodes, which means that the small array entirely
-fit in memory for $m=275~GiB$. The \keep strategy is mostly useful for
+fit in memory for $m$=275~GiB. The \keep strategy is mostly useful for
 arrays that do not fit in page cache memory.
 
 The overhead of the \keep heuristic consists of search time
-(Alg.~\ref{alg:keep}) and cache management (data copy to/from cache in
+(Alg.~\ref{algo:keep}) and cache management (data copy to/from cache in
 Alg.~\ref{algo:generalrepartition}). While search time is negligible, cache
 management is substantial except for configuration 0 where the total number
 of blocks is limited.
