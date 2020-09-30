@@ -372,9 +372,10 @@ Finally, the number of seeks created by the baseline algorithm is:
   s_b = A_0 A_1 c_2 +
       A_0 c_1 m_2 +
       c_0 m_1 m_2
-       + n_i + \mathcal{T}_0\mathcal{T}_1\mathcal{T}_2 \label{eq:seeks-baseline}
+       + n_I + \mathcal{T}_0\mathcal{T}_1\mathcal{T}_2 \label{eq:seeks-baseline}
 \end{equation}
 with $ \mathcal{T}_d = \vert \mathcal{R}_d \cup \mathcal{O}_d \vert$
+\tristan{update model following Timothee's adjustment}
 
 \begin{figure}
   \centering
@@ -424,7 +425,7 @@ endings" and "output block endings" too. Reduce spacing between arrows to save s
     \STATE writeBlocks: a list of write blocks
     \STATE
     \STATE \textbf{Algorithm}
-    \STATE readShapes = candidateReadShapes($I$, $O$)
+    \STATE readShapes = candidateReadShapes($I$, $O$, $A$)
     \STATE minSeeks = None
     \FOR{$R$ in readShapes}
       \STATE readBlocks = blocks($R$, $A$)
@@ -438,7 +439,7 @@ endings" and "output block endings" too. Reduce spacing between arrows to save s
       \STATE \textbf{break} \COMMENT{$\hat r$ fulfills memory constraint}
       \ENDIF
       \STATE s = generatedSeeks($I$, $R$, writeBlocks, $O$)
-      \IF{minSeeks == None or s' < minSeeks}
+      \IF{minSeeks == None or s < minSeeks}
       \STATE minSeeks, bestReadBlocks = s, readBlocks
       \ENDIF
     \ENDFOR
@@ -472,12 +473,12 @@ remainder of this section: \texttt{candidateReadShapes} (line 11),
 To generate candidate read shapes, we first define a shape $\hat r$ such
 that in each dimension $d$, $\hat r_d$ is the smallest multiple of $I_d$
 that is greater or equal to $O_d$:
-
 \[
 \forall d \in \{1, 2, 3\},
 \]
 \[
-  \enskip \exists \hat k \in \mathbb{N}, \enskip \hat r_d = \hat kI_d \enskip \mathrm{and} \enskip \hat k I_d \geq O_d \enskip \mathrm{and} \enskip \forall k < \hat k, \enskip kI_d < O_d
+  \hat r_d = I_d \left( 1 + \left \lfloor \frac{O_d}{I_d} \right \rfloor \right)
+%  \enskip \exists \hat k \in \mathbb{N}, \enskip \hat r_d = \hat kI_d \enskip \mathrm{and} \enskip \hat k I_d \geq O_d \enskip \mathrm{and} \enskip \forall k < \hat k, \enskip kI_d < O_d
 \]
 
 Using $\hat r$ as read shape minimizes seeking in the input blocks, as
@@ -486,7 +487,7 @@ single seek per input block. If there is enough memory to use write blocks
 of shape $O$, then this solution also minimizes the seeks in the output
 blocks, as output blocks can be written in a single seek too.
 
-Function \texttt{getCandidateReadShape} returns the following shapes:
+Function \texttt{candidateReadShape} returns the following shapes:
 \[
   \Big\{ (C_0, C_1, \hat r_2) \in \mathbb{N}^3 \enskip / \enskip
           \forall i \in \{0, 1\}, \enskip \exists k_i \in \mathbb{N}, \enskip
@@ -562,11 +563,13 @@ are defined to be the first output block's end coordinates encountered.
 \begin{figure}
   \centering
   \includegraphics[scale=0.4]{./figures/figure_3.png}
-  \caption{Division of a read block into write blocks. Write blocks are merged using the scheme in Table~\ref{tab:fusion}. The blue block represents $F_0$.}
+  \caption{Division of a read block into write blocks. $F_0$, the write block represented in blue, 
+  is the output block containing the origin of the read block. $F_1$-$F_7$ are the intersections 
+  of the read block with the neighboring output blocks.
+  Following this division, write blocks are merged using the scheme in Table~\ref{tab:fusion}.}
   \label{fig:nomenclature_overlaps}
   \end{figure}
 
-  \tristan{what is F0 in fig 3, how is it defined?}
 \subsection{Peak memory}
 To determine the peak memory used by a particular combination of read and
 write blocks, one needs to determine the amount of data in the cache at
@@ -766,15 +769,15 @@ of each repetition.
   \centering
   \begin{subfigure}{\textwidth}
     \caption{Number of seeks (log scale)}
-    \includegraphics[scale=0.45]{./figures/seeks_3500.png}
+    \includegraphics[width=\textwidth]{./figures/seeks_3500.pdf}
     \label{fig:seeks_3500}
   \end{subfigure}
   \begin{subfigure}{\textwidth}
     \caption{Processing time}
-   \includegraphics[scale=0.45]{./figures/time_3500.png}
+   \includegraphics[width=\textwidth]{./figures/time_3500.pdf}
   \label{fig:time_3500}
   \end{subfigure}
-  \caption{Repartitioning results for the small array (85.75~GiB). \textbf{(a)} Compared to baseline, the \keep heuristic
+  \caption{Repartitioning results for the small array (85.75~GiB). Averages on 5 repetitions. \textbf{(a)} Compared to baseline, the \keep heuristic
   reduces the number of seeks by four orders of magnitude. \textbf{(b)} The \keep heuristic provides speed-up factors of up to 2.5 (configuration 4).}
   \label{fig:3500}
 \end{figure*}
@@ -901,7 +904,6 @@ seeking.
 \tristan{Timothée, pourrais-tu exporter toutes les figures en pdf plutot qu'en png ? Les formats bitmap 
 causent de l'aliasing quand on change l'échelle.}
 
-\tristan{pourrais-tu ajouter une grille verticale sur la Figure 4, pour qu'on puisse mieux voir les valeurs ?}
 \begin{figure*}[h]
   \centering
   \includegraphics[scale=0.36]{./figures/time_8000.png}
@@ -920,7 +922,6 @@ causent de l'aliasing quand on change l'échelle.}
 \section{Discussion}
 %----------------------------------------
 \tristan{Tristan to refocus the discussion and conclusion}
-\tristan{From discussion with Valerie, mention practical considerations related to page cache and readahead}
 
 %
 The \keep heuristic can reduce the number of seeks required to repartition an array
@@ -948,15 +949,17 @@ generalize this observation beyond the particular input and output block shapes
 tested in our experiments.
 
 % Page cache
-The memory page cache provided by the Linux kernel plays a significant
-role in the repartitioning problem when the amount of memory increases.
-When repartitioning a 85.75~GiB array with 275~GiB of working memory, 
-all the output blocks are
-written to memory and asynchronously flushed to disk, bringing
-the baseline algorithm on par with the \keep heuristic. This is not
-surprising given the importance of page cache for I/O intensive
-applications~\cite{hayot2019performance}. In the future, it would be
-interesting to develop a repartitioning algorithm aware of this reality.
+The memory page cache provided by the Linux kernel plays a significant role
+in the repartitioning problem when the amount of memory increases. When
+repartitioning a 85.75~GiB array with 275~GiB of working memory, all the
+output blocks are written to memory and asynchronously flushed to disk,
+bringing the baseline algorithm on par with the \keep heuristic. This is
+not surprising given the importance of page cache for I/O intensive
+applications~\cite{hayot2019performance}. The Linux kernel provides other
+relevant I/O strategies such as readahead and clustered writes that may
+interfere with the \keep heuristic. Incorporating awareness of kernel I/O
+strategies into the repartitioning algorithm may further enhance
+performance.
 
 % Parallelization and clusters
 Most applications would process large multi-dimensional arrays in parallel,
@@ -973,6 +976,8 @@ In particular, the \keep heuristic would interface nicely with the \texttt{dask.
 
 \tristan{Timothée, you wrote this: "there is still margin for improvement in optimizing
 the read time.". Could you explain why?}
+
+Other array manipulation problems could benefit from a similar approach. 
 
 % Buffer ordering 
 
@@ -1023,36 +1028,36 @@ the read time.". Could you explain why?}
 
 
 % Split and merge
-\subsection{Split and merge}
+% \subsection{Split and merge}
 
-Special cases of the re-partitioning problem occur when $I=A$ (``split''
-problem) or when $O=A$ (``merge'' problem). Two strategies were introduced
-in~\cite{seqalgorithms} to address these problems: the ``multiple" and the
-``clustered" strategies. In these strategies, every read block is directly
-written to the destination output files, that is, \texttt{readBlocks} and
-\texttt{writeBlocks} are identical ($R=W$). The only difference between the
-multiple and the clustered strategies lies in the selection of $R$.
+% Special cases of the re-partitioning problem occur when $I=A$ (``split''
+% problem) or when $O=A$ (``merge'' problem). Two strategies were introduced
+% in~\cite{seqalgorithms} to address these problems: the ``multiple" and the
+% ``clustered" strategies. In these strategies, every read block is directly
+% written to the destination output files, that is, \texttt{readBlocks} and
+% \texttt{writeBlocks} are identical ($R=W$). The only difference between the
+% multiple and the clustered strategies lies in the selection of $R$.
 
-In the split problem, the naive strategy defines the read blocks as having
-the same shape as the output blocks ($R$=$O$). The read blocks are
-iteratively loaded from $A$ and entirely written to the appropriate output
-block. The clustered strategy, however, loads as many contiguous read
-blocks of shape $O$ as possible to fit in $m$. $R$ is therefore a multiple
-of $O$. Depending on the amount of main memory available, read blocks may
-be loaded individually, by entire block columns, or by entire block slabs.
-Although this strategy allows to write each output block in one seek, the
-clustered strategy is limited by the fact that it does not optimize the
-reading step. In the general re-partitioning problem, one can expect the
-clustered strategy to perform poorly as it reads an output block regardless
-of its spread among input blocks.
+% In the split problem, the naive strategy defines the read blocks as having
+% the same shape as the output blocks ($R$=$O$). The read blocks are
+% iteratively loaded from $A$ and entirely written to the appropriate output
+% block. The clustered strategy, however, loads as many contiguous read
+% blocks of shape $O$ as possible to fit in $m$. $R$ is therefore a multiple
+% of $O$. Depending on the amount of main memory available, read blocks may
+% be loaded individually, by entire block columns, or by entire block slabs.
+% Although this strategy allows to write each output block in one seek, the
+% clustered strategy is limited by the fact that it does not optimize the
+% reading step. In the general re-partitioning problem, one can expect the
+% clustered strategy to perform poorly as it reads an output block regardless
+% of its spread among input blocks.
 
-The multiple strategy
-aims at not doing any seek while reading \textit{and} writing:
-both the input and the output blocks are read/written contiguously. In
-terms of Algorithm~\ref{algo:generalrepartition}, it means defining read blocks as
-contiguous parts of the input array and write blocks as contiguous parts of
-the output arrays. Although the multiple strategy does not seek while reading or writing, it
-requires many switches between output blocks.
+% The multiple strategy
+% aims at not doing any seek while reading \textit{and} writing:
+% both the input and the output blocks are read/written contiguously. In
+% terms of Algorithm~\ref{algo:generalrepartition}, it means defining read blocks as
+% contiguous parts of the input array and write blocks as contiguous parts of
+% the output arrays. Although the multiple strategy does not seek while reading or writing, it
+% requires many switches between output blocks.
 
 % As stated in the introduction, the split and merge tasks are special cases of
 % the repartition task. This observation leads us to think that maybe one could find
