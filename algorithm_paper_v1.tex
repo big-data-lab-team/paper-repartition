@@ -40,7 +40,7 @@
 \author{Timoth\'ee Gu\'edon$^{1,2}$, Val\'erie Hayot-Sasson$^1$, Tristan Glatard$^1$}
 
 \affiliation{$^1$ Department of Computer Science and Software Engineering, Concordia University, Montreal, Canada\\
-             $^2$ ESIEA school of engineering, Laval, France}
+             $^2$ ESIEA school of engineering, France}
 
 \begin{abstract}
 Multi-dimensional arrays have become the main scientific data structures,
@@ -186,7 +186,7 @@ validity and implications of our results.
 
 \begin{figure}
   \centering
-  \includegraphics[scale=0.32]{./figures/figure_1.png}
+  \includegraphics[scale=0.32]{./figures/figure_1.pdf}
   \caption{Ordering of 3D array elements in files in C order. The first stored element is colored in green,
   the last one is in blue. Seeking to the red elements is required when extracting the 3D block with plain borders.}
   \label{fig:seeks_and_rowmajor}
@@ -337,7 +337,7 @@ proposed for the repartitioning problem.
 Our baseline algorithm for the repartitioning problem loads one input block
 at a time ($R$=$I$), and directly writes it to the appropriate output
 blocks ($W$=$R$). It assumes that input blocks fit in memory. The number of
-generated seeks $s_b$ \tristan{run spellcheck on all the text}
+generated seeks $s_b$
 depends on how write blocks overlap with
 output blocks in each dimension (Fig.~\ref{fig:baseline_figure}). To determine $s_b$, we define
 $\mathcal{W}_d$ and $\mathcal{O}_d$, the sets of write and output block end
@@ -372,14 +372,13 @@ Finally, the number of seeks created by the baseline algorithm is:
   s_b = A_0 A_1 c_2 +
       A_0 c_1 m_2 +
       c_0 m_1 m_2
-       + n_I + \mathcal{T}_0\mathcal{T}_1\mathcal{T}_2 \label{eq:seeks-baseline}
+       + n_I + (m_0+c_0)(m_1+c_1)(m_2+c_2) \label{eq:seeks-baseline}
 \end{equation}
-with $ \mathcal{T}_d = \vert \mathcal{R}_d \cup \mathcal{O}_d \vert$
-\tristan{update model following Timothee's adjustment}
+with $(m_0+c_0)(m_1+c_1)(m_2+c_2)$ the number of output block openings.
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.5\textwidth]{./figures/baseline_figure.png}
+  \includegraphics[width=0.5\textwidth]{./figures/baseline_figure.pdf}
   \caption{Overlapping of write and output blocks in the plan
   ($X_1$,$X_2$), showing cuts (red lines) and matches (green lines)}
   \label{fig:baseline_figure}
@@ -400,14 +399,6 @@ the cache at each iteration, which generates many seeks when input and output
 blocks have different shapes. Instead, the proposed
 \keep heuristic keeps in cache the array elements that cannot be written
 contiguously to the output blocks.
-
-\tristan{Timothée, in Fig 2: use dark gray to represent write and output
-blocks, it's difficult to see the red and green lines over blue and kaki
-backgrounds. Increase the line width of block endings. Use "matches"
-instead of "matching endings". Remove endings at the end of "write block
-endings" and "output block endings" too. Reduce spacing between arrows to save space and make the core diagram larger. The orientation of
-(X1, X2) is not consistent with C order (it is direct in C order).}
-
 
 \subsection{Overview}
 
@@ -562,9 +553,9 @@ are defined to be the first output block's end coordinates encountered.
 
 \begin{figure}
   \centering
-  \includegraphics[scale=0.4]{./figures/figure_3.png}
-  \caption{Division of a read block into write blocks. $F_0$, the write block represented in blue, 
-  is the output block containing the origin of the read block. $F_1$-$F_7$ are the intersections 
+  \includegraphics[scale=0.4]{./figures/figure_3.pdf}
+  \caption{Division of a read block into write blocks. $F_0$, the write block represented in blue,
+  is the output block containing the origin of the read block. $F_1$-$F_7$ are the intersections
   of the read block with the neighboring output blocks.
   Following this division, write blocks are merged using the scheme in Table~\ref{tab:fusion}.}
   \label{fig:nomenclature_overlaps}
@@ -608,7 +599,9 @@ We can determine this number using Equation~\ref{eq:seeks-baseline} without the 
 \begin{eqnarray*}
   \textsc{seeks} \left(  \mathcal{M}, \mathcal{D} \right) &=&  A_0 A_1 c_2\left(\mathcal{M}_d, \mathcal{D}_d\right) + \\
                                                          &&  A_0 c_1\left(\mathcal{M}_d, \mathcal{D}_d\right) m_2\left(\mathcal{M}_d, \mathcal{D}_d\right) +\\
-                                                         && c_0\left(\mathcal{M}_d, \mathcal{D}_d\right) m_1\left(\mathcal{M}_d, \mathcal{D}_d\right) m_2\left(\mathcal{M}_d, \mathcal{D}_d \right)
+                                                         && c_0\left(\mathcal{M}_d, \mathcal{D}_d\right) m_1\left(\mathcal{M}_d, \mathcal{D}_d\right) + \\
+                                                         && m_2\left(\mathcal{M}_d, \mathcal{D}_d \right) + \\
+                                                         && (m_0+c_0)(m_1+c_1)(m_2+c_2)
 \end{eqnarray*}
 Function
 \textsc{seeks} does not assume that $\mathcal{M}$ or $\mathcal{D}$ relate to
@@ -616,7 +609,7 @@ blocks of uniform shape. Therefore, it can be applied to the \keep
 heuristics where write blocks are not necessarily of uniform shape.
 The number of seeks generated by the \keep algorithm is given by:
 \begin{equation}
-  s_k = \textsc{seeks} \left(  \mathcal{R}, \mathcal{I} \right) + \textsc{seeks} \left( \mathcal{W}, \mathcal{O} \right) + \mathcal{T}_0\mathcal{T}_1\mathcal{T}_2 + \vert \mathcal{W}_0 \vert  \vert \mathcal{W}_1 \vert \vert \mathcal{W}_2 \vert \label{eq:seeks-keep}
+  s_k = \textsc{seeks} \left(  \mathcal{R}, \mathcal{I} \right) + \textsc{seeks} \left( \mathcal{W}, \mathcal{O} \right)  \label{eq:seeks-keep}
 \end{equation}
 with $ \mathcal{T}_d = \vert \mathcal{R}_d \cup \mathcal{I}_d \vert$
 
@@ -650,14 +643,11 @@ shapes sorted by decreasing $X_1$ values, then by decreasing $X_0$ values.
 We stop the search if the best number of seeks (\texttt{minSeeks} in
 Alg.~\ref{algo:keep}) does not decrease for 10 iterations.
 
-Finally, we had to copy data to the cache instead of reading directly into
-it. \tristan{Timothée, je ne comprends pas la fin de ce paragraphe, peux-tu
-mieux expliquer stp?} This is due to our formulation of the re-partition
-problem which requires us to be able to predict the amount of memory
-consumed by our algorithm to ensure that the limit $m$ will be respected.
-Python uses a custom garbage collector which manages the release of our
-data structures and prevents us to force the release of some data parts. We
-found that copying the data to the cache enabled us to stay below the
+We could have passed the data from to read buffers to the cache by reference
+which would have save us the time of copying the data.
+However, keeping a reference to the read buffers prevented them to be freed and
+therefore increased the maximum amount of memory used drastically.
+Therefore, we found that copying the data into the cache enabled us to stay below the
 maximum memory consumption that we predicted at the buffer selection time.
 
 %----------------------------------------
@@ -788,14 +778,14 @@ of each repetition.
 Results are shown in Figure~\ref{fig:3500}.
 By design, the number of seeks is drastically reduced by the \keep
 heuristic compared to baseline (Fig.~\ref{fig:seeks_3500}), by a factor of
-\mytodo{x} on average. In configurations 1 to 5 in particular, baseline
+90,000 on average. In configurations 1 to 5 in particular, baseline
 requires up to $10^8$ seeks while the \keep heuristic only requires up to
 $10^4$.
 
 This reduced seeking translates to important reductions of the
 repartitioning time (Fig.~\ref{fig:time_3500}). Compared to baseline, the
-\keep heuristic provides speed up factors of up to \mytodo{x} for
-$m$=275~GiB, \mytodo{x} for $m$=8.6~GiB, and \mytodo{x} for $m$=4.3~GiB.
+\keep heuristic provides speed up factors of up to 1.4 for
+$m$=275~GiB, 1.9 for $m$=8.6~GiB, and 2.2 for $m$=4.3~GiB.
 Speed-up is only observed when baseline requires O($10^8$) seeks, which occurs
 in configurations 1 to 5: lower amounts of seeks don't seem to have an effect on
 I/O time. Speed-up is mostly coming from write time reduction, since
@@ -901,9 +891,6 @@ the \keep strategy succeeded in reducing the number of seeks significantly. Once
 again, the reduction in processing time is also non linear with the reduction in
 seeking.
 
-\tristan{Timothée, pourrais-tu exporter toutes les figures en pdf plutot qu'en png ? Les formats bitmap 
-causent de l'aliasing quand on change l'échelle.}
-
 \begin{figure*}[h]
   \centering
   \includegraphics[scale=0.36]{./figures/time_8000.png}
@@ -932,7 +919,7 @@ increase with the size of the repartitioned array; in 3D, speed-up is
 proportional to $A_0$$A_1$ when enough memory is available to avoid cuts in
 dimension 2. Speed-up factors are also expected to increase with the dimension of
 the repartitioned array; in dimension $d$, speed-up is proportional
-to the product of the first d-1 $A_i$ when enough memory is available.  
+to the product of the first d-1 $A_i$ when enough memory is available.
 Therefore, the \keep heuristic is adapted to the repartitioning of large
 multi-dimensional arrays in the current context of growing data volumes.
 
@@ -944,8 +931,8 @@ of 85.75~GiB in our experiments, seems to be sufficient to remove most of
 the seeks required for the repartitioning. This is consistent with the fact
 that the \keep heuristic only stores partial output blocks in cache, until
 they can be combined into complete output blocks. In the future, it would
-be interesting to derive an upper bound of the peak memory consumption, to 
-generalize this observation beyond the particular input and output block shapes 
+be interesting to derive an upper bound of the peak memory consumption, to
+generalize this observation beyond the particular input and output block shapes
 tested in our experiments.
 
 % Page cache
@@ -967,19 +954,20 @@ on a multi-core computer or on an HPC cluster. The \keep heuristic is
 directly applicable to multi-core environments, assuming sequential I/Os.
 The case of HPC clusters, however, it would have to be extended to consider network data
 transfers. In addition, HPC clusters would most
-likely store input blocks on a parallel file system such as Lustre where 
-files are striped across multiple disks and nodes. An extended formulation of the 
+likely store input blocks on a parallel file system such as Lustre where
+files are striped across multiple disks and nodes. An extended formulation of the
 repartitioning problem would be required in this context.
-It would be interesting to integrate such an extension in the Dask engine, 
+It would be interesting to integrate such an extension in the Dask engine,
 a popular parallelization framework of the SciPy ecosystem~\cite{matthew_rocklin-proc-scipy-2015}.
 In particular, the \keep heuristic would interface nicely with the \texttt{dask.array} API.
 
 \tristan{Timothée, you wrote this: "there is still margin for improvement in optimizing
 the read time.". Could you explain why?}
+\timothee{ce que je veux dire c'est qu'au final la méthode de "buffer extension" permet de réduire les seeks en écriture mais pas en lecture alors que de base on souhaitait que ça réduise en écriture ET en lecture}
 
-Other array manipulation problems could benefit from a similar approach. 
+Other array manipulation problems could benefit from a similar approach.
 
-% Buffer ordering 
+% Buffer ordering
 
 % Seek types
 
