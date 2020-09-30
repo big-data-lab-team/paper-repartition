@@ -111,7 +111,7 @@ acquisition methods, it is now common for such images to exceed the amount
 of working memory available on typical computers, requiring their
 partitioning in blocks stored in independent files or in multiple HDF5
 sections. BigBrain~\cite{Amunts1472}, for instance, is a human brain model
-providing microscopic data at the resolution of 20 micrometers that comes
+providing microscopic data at the resolution of 20 micrometres that comes
 in the form of many 3D blocks. Partitioning large arrays enables efficient
 queries, flexibility in adding new data~\cite{optimal_chuking}, granular data
 transfers, and parallel processing with frameworks such as
@@ -120,7 +120,7 @@ different block geometries depending on their processing requirements, such
 as 2D slices or 3D blocks.
 
 % Seeks create performance issues
-Manipulating large multidimensional arrays, however, comes with performance
+Manipulating large multidimensional arrays, however, come with performance
 challenges related to the ordering and organization of array elements on
 storage devices. In particular, reading or writing elements scattered in different
 disk regions can generate millions to billions of \emph{seeks}, the
@@ -163,7 +163,7 @@ environments are part of our future work. Although in practice seek times
 depend on various factors, such as the distance between the initial and
 target drive positions, we focus on minimizing seek \emph{numbers}, for
 simplicity. Likewise, the effects of I/O optimizations such as page caching
-or readahead will be discussed experimentally but not modeled.
+or readahead will be discussed experimentally but not modelled.
 
 In summary, the paper makes the following contributions:
 \begin{itemize}
@@ -197,9 +197,9 @@ validity and implications of our results.
 
 For the sake of clarity and without loss of generality, we assume that
  files are written in row-major order (Fig.~\ref{fig:seeks_and_rowmajor},
- a.k.a C order), where the fastest moving dimension in the file is the
+ a.k.a. C order), where the fastest moving dimension in the file is the
  last dimension of the array, and the slowest moving dimension in the file
- is the first dimension of the array. This convention is for instance the
+ is the first dimension of the array. This convention is, for instance, the
  one used in the HDF5 format ~\cite{hdf5}.
 
 Accessing data from an array stored on disk generates seeks in two
@@ -290,7 +290,7 @@ input blocks, and (2) \texttt{writeBlocks}, a list of blocks,
 usually not uniformly-shaped, to be written to output blocks (line 10).
 If read blocks and input blocks have a different shape, then reading read blocks requires
 more than one seek. Similarly, if write blocks and output blocks have a different shape,
-then writing write blocks requires more than one seek. Input, output, read
+then writing write blocks requires more than one seeks. Input, output, read
 and write blocks all form a partition of the 3D array \texttt{A}. The
 main loop of the algorithm (line 12) loads one read block at a time (line
 13), inserts it into a cache (line 14), and writes write blocks from the
@@ -302,13 +302,13 @@ not by data. Only variables \texttt{data} (lines 13, 17) and \texttt{cache}
 (line 14) hold actual data, contributing to the consumed memory.
 
 Since read and write blocks both represent a partition of $A$, all the
-elements in \texttt{inBlocks} are read exactly once, and written exactly once too. Other
+elements in \texttt{inBlocks} are read exactly once and written exactly once too. Other
 problem formalizations may allow for input elements to be read and
 discarded, to reduce seeking. Exploring such a trade-off
 between seeks and redundant reads could be an interesting extension to this problem.
 
 Our goal is to minimize the number of seeks done by the algorithm, which
-occur during reads (line 13) and writes (line 18). The re-partitioning
+occurs during reads (line 13) and writes (line 18). The re-partitioning
 problem is therefore to find \texttt{readBlocks} and \texttt{writeBlocks} that
 minimize the number of
 seeks done by the algorithm, subject to the memory constraint $m$.
@@ -494,7 +494,7 @@ The candidate shapes are sorted first by decreasing $C_1$ values, then by
 decreasing $C_0$ values. The first tested read shape is therefore
 $\hat r$. While $\hat r$ is the optimal read shape, leading to a single
 seek per input or output block, there is no obvious relation between the
-other candidate shapes and the number of seeks that they generate, since
+other candidate shapes and the number of seeks that they generate since
 this number depends on how input, read, write, and output blocks are
 arranged. For this reason, the \keep heuristic returns if $\hat r$
 respects the memory constraint (line 20-23), but it otherwise evaluates all
@@ -525,7 +525,7 @@ are defined to be the first output block's end coordinates encountered.
 
 \begin{table}
   \centering
-  \caption{Recursive merging of initial write blocks. The first column
+  \caption{Recursive merging of the initial write blocks. The first column
   identifies a sub-block of a read block (i.e., an initial write block),
   and the second column identifies the sub-block(s) of the neighboring read
   block(s) that are merged with the sub-block of the first column. For instance, sub-block $F_1$ is merged with sub-block $F_0$
@@ -644,7 +644,7 @@ We stop the search if the best number of seeks (\texttt{minSeeks} in
 Alg.~\ref{algo:keep}) does not decrease for 10 iterations.
 
 We could have passed the data from to read buffers to the cache by reference
-which would have save us the time of copying the data.
+which would have saved us the time of copying the data.
 However, keeping a reference to the read buffers prevented them to be freed and
 therefore increased the maximum amount of memory used drastically.
 Therefore, we found that copying the data into the cache enabled us to stay below the
@@ -659,7 +659,7 @@ maximum memory consumption that we predicted at the buffer selection time.
 We tested our models against lighter implementations of the baseline and \keep
 algorithms. We tested each model on 1,000 randomly generated cases.
 To that aim, we first generate a random original array by multiplying 4 numbers
-randompy drawn from ${2, 3, 5, 7}$, putting each number to the power 1 or 2
+randomly drawn from ${2, 3, 5, 7}$, putting each number to the power 1 or 2
 (again, randomly) and multiplying them:
 $\hat r = (r,r,r)$ with $r = (x_0^{p_0}x_1^{p_1}x_2^{p_2}x_3^{p_3})$.
 We then compute the divisors of $r$ and take two of them for the shapes of $I$
@@ -745,11 +745,11 @@ disabled.
 
 A single disk was used when processing the small array. However, for the
 large array, the 6 disks available on the server were used as the capacity of a single disk was not
-enough to accomodate the input or the output blocks. We used the disks in
-round robin.
+enough to accommodate the input or the output blocks. We used the disks in
+round-robin.
 
 We did 5 repetitions of each configuration for the small array, and 1
-repetition for the large array. The page cache was flushed at the begining
+repetition for the large array. The page cache was flushed at the beginning
 of each repetition.
 
 
@@ -806,7 +806,7 @@ allocated to the repartitioning. For $m$=275~GiB, repartitioning times of
 baseline and \keep are on par for all configurations except configuration
 4. This is most likely due to the use of asynchronous write back to disk
 through the Linux page cache. In our experiments, the ratio of "dirty"
-data, the cache data waiting to be written to disk, was set to 40\% , a
+data, the cache data waiting to be written to disk, was set to 40\%, a
 common value for compute nodes, which means that the small array entirely
 fit in memory for $m$=275~GiB. The \keep strategy is mostly useful for
 arrays that do not fit in page cache memory.
@@ -864,7 +864,7 @@ the input aggregates' shapes.
 Globally, one can see on Figure~\ref{fig:time_8000} that apart from run 2 the \keep
 strategy and baseline are pretty equivalent, and for 5 runs over 8 the \keep
 strategy is slightly faster.
-There is no important improvement however, which is mainly due to 3 bottlenecks:
+There is no important improvement, however, which is mainly due to 3 bottlenecks:
 \begin{itemize}
   \item the overhead time
   \item the preprocessing time
@@ -873,12 +873,12 @@ There is no important improvement however, which is mainly due to 3 bottlenecks:
 
 It seems logical to get an overhead time that explodes, especially in run 2, as
 it was already important on the small array. As it is mostly due to cache manipulations,
-a bigger array implies bigger data transfered during these cache manipulations.
+a bigger array implies bigger data transferred during these cache manipulations.
 
 Interestingly, the preprocessing time can be very large.
 The preprocessing time includes the computation of the write buffers and the
 computation of a Python dictionary associating each buffer with the output blocks
-it interects. The latter operation can be very expensive when there are a lot
+it intersects. The latter operation can be very expensive when there are a lot
 of buffers.
 
 The experiment on a big array was worth it as it clearly shows a limit
@@ -888,7 +888,7 @@ cost of an increase in read time.
 
 Finally, one can see on Figure~\ref{fig:seeks_8000} that in this experiment, too,
 the \keep strategy succeeded in reducing the number of seeks significantly. Once
-again, the reduction in processing time is also non linear with the reduction in
+again, the reduction in processing time is also non-linear with the reduction in
 seeking.
 
 \begin{figure*}[h]
@@ -1063,7 +1063,7 @@ Other array manipulation problems could benefit from a similar approach.
 % ROIs
 \subsection{ROI extraction}
 The Region Of Interest (ROI) extraction problem is a related problem that still
-needs to be adressed.
+needs to be addressed.
 A solution using chunking as been introduced in~\cite{optimal_chuking}.
 The authors define an array partitioned into chunks of equal shapes and then
 define a query as an arbitrary subarray of the input, chunked, array.
@@ -1076,7 +1076,7 @@ input array into an ``optimal" chunk shape.
 We would prefer letting the application choose the appropriate chunk shape
 regarding its needs and not needing to estimate the processing workload.
 We define the ROI extraction problem as follows: Finding an algorithm that takes
-as input an arbitrary chunk shape and extract the ROI data from the chunks with
+as input an arbitrary chunk shape and extracts the ROI data from the chunks with
 the less number of seeks as possible.
 
 
@@ -1101,7 +1101,7 @@ That is why efficiently processing such arrays is of major importance in the big
 
 Splitting and merging arrays has been successfully done, we therefore attempted
 to solve the next step: the re-partitioning problem.
-This problem consists in efficiently re-writing a chunked array to change the blocks shape.
+This problem consists of efficiently re-writing a chunked array to change the shape of the blocks.
 We think that solving this problem could enable us to solve the ROI (region of interest)
 extraction problem in the future, which is also a very common problem for scientists.
 We formally defined the re-partitioning problem together with a \emph{baseline algorithm} to solve it.
@@ -1114,7 +1114,7 @@ The keep algorithm reduces the number of seeks by
 Although the re-partitioning problem is more complex than splitting/merging chunks,
 we proved that it can be optimized and that it is possible to reduce the
 processing time significantly.
-Surprisingly however, the baseline algorithm has been found to perform pretty
+Surprisingly, however, the baseline algorithm has been found to perform pretty
 well when there is a lot of memory available as it leverages the page cache to
 speedup computations without reducing the number of seeks.
 For now, the keep algorithm may be more interesting than the baseline algorithm
@@ -1123,7 +1123,7 @@ only when the memory constraint is important ($m$ small compared to the array si
 In the future, the algorithm performances may be improved by finding a variant
 to the keep algorithm that also reduce the read time significantly,
 identifying and focusing on reducing the most expensive seeks,
-and finally, finding parrallel and/or distributive versions of the keep algorithm.
+and finally, finding parallel and/or distributive versions of the keep algorithm.
 
 %----------------------------------------
 \section{Acknowledgments}
