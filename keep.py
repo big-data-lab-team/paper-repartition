@@ -1,4 +1,5 @@
 import math
+import os
 import numpy as np
 
 
@@ -13,7 +14,7 @@ class Partition():
         blocs: the list of blocks in the partition
         zeros: if True, fill all the blocks with zeros. Warning: this allocates memory. 
     '''
-    def __init__(self, shape, name, array=None, zeros=False, element_size=1):
+    def __init__(self, shape, name, array=None, fill=None, element_size=1):
         assert(all(x >= 0 for x in shape)), f"Invalid shape: {shape}"
         self.shape = tuple(shape)
         self.ndim = len(shape)
@@ -28,10 +29,7 @@ class Partition():
             for i in range(array.ndim):
                 assert(array.shape[i] % self.shape[i] == 0)
 
-        self.blocks = self.__get_blocks()
-        if zeros:
-            for b in self.blocks:
-                self.blocks[b][0].data = bytearray(math.prod(self.shape))
+        self.blocks = self.__get_blocks(fill)
 
     def repartition(self, out_blocks, m, get_read_write_blocks):
         '''
@@ -42,13 +40,13 @@ class Partition():
                                                           out_blocks, m)
         cache = Cache(write_blocks, out_blocks)
         for read_block in read_blocks.blocks:
-            self.read(read_blocks.blocks[read_block][0])
+            self.read_from(read_blocks.blocks[read_block][0])
             blocks = cache.insert(read_blocks.blocks[read_block][0])
             for b in blocks:
-                out_blocks.write(b)
+                out_blocks.write_to(b)
                 del(b.data) # not sure if this deletes data in read blocks
 
-    def read(self, block):
+    def read_from(self, block):
         '''
         Read block from partition. Shape of block may not match shape of 
         partition.
@@ -62,7 +60,7 @@ class Partition():
             for b in self.blocks:
                 block.read_from(self.blocks[b][0])
     
-    def write(self, block):
+    def write_to(self, block):
         '''
         Write data in block to partition blocks. Shape of block may not match
         shape of partition.
@@ -76,13 +74,17 @@ class Partition():
             for b in self.blocks:
                 block.write_to(self.blocks[b][0])
 
+    def write(self):
+        for b in self.blocks:
+            self.blocks[b][0].write()
+
     def covered_blocks(self, block):
         '''
         Return partition blocks that have a non-empty intersection with block
         '''
         return []
 
-    def __get_blocks(self):
+    def __get_blocks(self, fill):
         '''
         Return the list of blocks in this partition
         '''
@@ -99,7 +101,8 @@ class Partition():
             for j in range(int(shape[1]/self.shape[1])):
                 for k in range(int(shape[2]/self.shape[2])):
                     origin = (i*self.shape[0], j*self.shape[1], k*self.shape[2])
-                    blocks[origin] = [ Block(origin, self.shape, element_size=self.element_size, file_name=f'{self.name}_block_{offset}.bin') ]
+                    blocks[origin] = [ Block(origin, self.shape, element_size=self.element_size,
+                                       fill=fill, file_name=f'{self.name}_block_{offset}.bin') ]
                     offset += math.prod(self.shape)*self.element_size
         return blocks
 
@@ -131,13 +134,18 @@ class Block():
         origin: the origin of the block. Example: (10, 5, 10)
         shape: the block shape. Example: (5, 10, 5)
     '''
-    def __init__(self, origin, shape, data=None, element_size=1, file_name=None):
+    def __init__(self, origin, shape, data=None, element_size=1, file_name=None, fill=None):
         assert(all(x >= 0 for x in shape)), f"Invalid shape: {shape}"
+        assert(data is None or fill is None), "Cannot set both block data and fill pattern"
         self.origin = tuple(origin)
         self.shape = tuple(shape)
         self.data = data
         self.file_name = file_name
         self.element_size = element_size
+        if fill=='zeros':
+            self.data = bytearray(math.prod(self.shape))
+        if fill=='random':
+            self.data = bytearray(os.urandom(math.prod(self.shape)))
 
     def empty(self):
         '''
@@ -151,6 +159,7 @@ class Block():
         and only the block
         '''
         if self.data == None:
+            log(f'<< Reading {self.file_name}', 0)
             with open(self.file_name, 'rb') as f:
                 self.data = f.read()
 
@@ -158,26 +167,41 @@ class Block():
         '''
         Write the block to disk.
         '''
+        assert(self.data is not None), 'Cannot write block with no data'
         assert(len(self.data) == math.prod(self.shape)*self.element_size)
-        with(open(self.file_name), 'wb+') as f:
-            f.write(self.data)
+        with open(self.file_name, 'ab+') as f:
+            b = f.write(self.data)
         f.close()
+        return b
 
     def offset(self, point):
         '''
-        Return offset of point in block
+        Return offset of point in self
         '''
         assert(self.inside(point)), f'Cannot get offset of point {point} which is outside of block {self}'
-        return point[2]-self.origin[2] + self.shape[2]*(point[1]-self.origin[1]) + self.shape[2]*self.shape[1]*(point[0]-self.origin[0])
+        offset = point[2]-self.origin[2] + self.shape[2]*(point[1]-self.origin[1]) + self.shape[2]*self.shape[1]*(point[0]-self.origin[0])
+        return offset
 
-    def get_read_offsets(self, block):
+    def block_offsets(self, block):
+        '''
+        Return the offsets in self of contiguous data segments in block.
+        '''
         origin = tuple(max(block.origin[i], self.origin[i]) for i in (0, 1, 2))
         end = tuple(min(block.origin[i] + block.shape[i], self.origin[i] + self.shape[i]) for i in (0, 1, 2))
         if any(end[i] - origin[i] <= 0 for i in (0, 1, 2)):  # blocks don't overlap
             return (), (), ()
 
-        read_points = tuple(((i, j, k), self.offset((i,j,k))) for i in range(origin[0], end[0]) for j in range(origin[1], end[1]) for k in (origin[2], end[2]))
-        read_points = tuple(x for i, x in enumerate(read_points) if i==len(read_points)-1 or i==0 or (x[1] != read_points[i+1][1] and x[1] != read_points[i-1][1]))
+        read_points = tuple(((i, j, k),
+                            self.offset((i,j,k))) for i in range(origin[0], end[0])
+                                                  for j in range(origin[1], end[1])
+                                                  for k in (origin[2], end[2]-1))
+        # Remove duplicate offsets
+        read_points = tuple(x for i, x in enumerate(read_points)
+                            if i == len(read_points)-1 or i ==0 or # always keep the first and last
+                            ((i % 2 == 0 or x[1] != read_points[i+1][1]-1) and
+                             (i % 2 == 1 or x[1] != read_points[i-1][1]+1)
+                            )
+                            )
         return origin, tuple(end[i]-origin[i] for i in (0, 1, 2)), read_points
 
     def read_from(self, block):
@@ -186,47 +210,63 @@ class Block():
         '''
         if self.data is None:
             self.data = bytearray(math.prod(self.shape))
-
         data = bytearray()
-        origin, shape, read_points = self.get_read_offsets(block) # empty if blocks don't overlap
+        origin, shape, read_points = self.block_offsets(block) # empty if blocks don't overlap
         # Read in block
         with open(block.file_name, 'rb') as f:
-            for i, r in enumerate(read_points[::2]):
+            n = int(len(read_points)/2)
+            log(f'<< Reading from {block.file_name} ({n} seeks)', 0)
+            b = 0
+            for i, r in enumerate(read_points):
+                if i % 2 == 1:
+                    continue
                 f.seek(read_points[i][1])
-                data += f.read(read_points[i+1][1]-read_points[i][1])
+                data += f.read(read_points[i+1][1]-read_points[i][1]+1)
+                b += read_points[i+1][1]-read_points[i][1] + 1
+            log(f'Read {b} bytes', 0)
         # Create block from data
         data_block = Block(origin, shape, data)
-        _, _, read_points = data_block.get_read_offsets(self)
+        _, _, read_points = data_block.block_offsets(self)
         offset = 0
         for i, x in enumerate(read_points[::2]):
-            self.data[read_points[i][1]:read_points[i+1][1]] = data_block.data[offset:offset+read_points[i+1][1]-read_points[i][1]]
+            self.data[read_points[i][1]:read_points[i+1][1]] = data_block.data[offset:offset+read_points[i+1][1]-read_points[i][1]] # check +1
             offset += read_points[i+1][1]-read_points[i][1]
+        return b
 
     def write_to(self, block):
         '''
         Write relevant data sections to block
         '''
+        assert(block.file_name), f"Block {block} has no file name"
         data = bytearray()
-        _, _, read_points = block.get_read_offsets(self)
+        _, _, read_points = block.block_offsets(self)
         # Read through current block
         for i, x in enumerate(read_points[::2]):
-            data += self.data[read_points[i][1]:(read_points[i+1][1])]
+            data += self.data[read_points[i][1]:(read_points[i+1][1]+1)]
 
         # Create block from data
-        origin, shape, read_points = self.get_read_offsets(block)
+        origin, shape, read_points = self.block_offsets(block)
         offset = 0
         if len(read_points) == 0:
             return
         with open(block.file_name, 'ab+') as f:
             n = int(len(read_points)/2)
-            print(f'Writing to {block.file_name} ({n} seeks)')
+            log(f'>> Writing to {block.file_name} ({n} seeks)', 0)
             b = 0
-            for i, r in enumerate(read_points[::2]):
+            log(read_points, 0)
+            for i, r in enumerate(read_points):
+                if i % 2 == 1:
+                    continue
+                log(f'Seek to {read_points[i][1]}')
                 f.seek(read_points[i][1])
-                b += f.write(data[offset:offset+read_points[i+1][1]-read_points[i][1]])
-                offset += read_points[i+1][1]-read_points[i][1]
-            print(f'Wrote {b} bytes')
+                log(f'Write data from {offset} to {offset+read_points[i+1][1]-read_points[i][1]}')
+                delta = f.write(data[offset:(offset+read_points[i+1][1]-read_points[i][1]+1)])
+                log(f'Wrote {delta} bytes')
+                b += delta
+                offset += read_points[i+1][1]-read_points[i][1]+1
+            log(f'Wrote {b} bytes in total', 0)
         f.close()
+        return b
 
     def inside(self, point):
         '''
@@ -241,7 +281,7 @@ class Block():
         self.data = bytearray(math.prod(self.shape))
 
     def __str__(self):
-        return f'Block: origin {self.origin}; shape {self.shape}'
+        return f'Block: origin {self.origin}; shape {self.shape}; file_name: {self.file_name}'
 
 class Cache():
 
@@ -339,7 +379,7 @@ def create_write_blocks(read_blocks, out_blocks):
         for f in range(1, 8):
             if not f_blocks[i][f] is None:
                 destF0 = destination_F0(read_blocks, i, f)
-                print(f'Block {i}: moving F{f} to Block {destF0} F0')
+                log(f'Block {i}: moving F{f} to Block {destF0} F0', 0)
                 write_blocks[f_blocks[i][0].origin] += [ f_blocks[i][f] ]
     
     return write_blocks
@@ -394,3 +434,8 @@ def get_F_blocks(write_block, out_blocks):
     # Remove empty blocks and return
     f_blocks = [ f if not f.empty() else None for f in [F0, F1, F2, F3, F4, F5, F6, F7]]
     return f_blocks
+
+def log(message, level=0):
+    LOG_LEVEL=0
+    if level >= LOG_LEVEL:
+        print(message)
