@@ -36,15 +36,19 @@ class Partition():
         Fills partition out_blocks with data from self.
         out_blocks: a partition. The blocks of this partition will be written
         '''
+        log('')
+        log(f'# Repartitioning {self.name} in {out_blocks.name}')
         read_blocks, write_blocks = get_read_write_blocks(self,
                                                           out_blocks, m)
         cache = Cache(write_blocks, out_blocks)
         for read_block in read_blocks.blocks:
+            print(read_block)
             self.read_from(read_blocks.blocks[read_block][0])
             blocks = cache.insert(read_blocks.blocks[read_block][0])
             for b in blocks:
                 out_blocks.write_to(b)
-                del(b.data) # not sure if this deletes data in read blocks
+              #  del(b.data) # not sure if this deletes data in read blocks, yes it crashes
+              # TODO: Find a way to remove data from cache
 
     def read_from(self, block):
         '''
@@ -91,7 +95,7 @@ class Partition():
 
         # The partition is the array itself
         if self.array == None:
-            return [ Block((0, 0, 0), self.shape)]
+            return { (0, 0, 0): [ Block((0, 0, 0), self.shape, fill=fill, file_name=f'{self.name}.bin') ] }
 
         blocks = {}
         shape = self.array.shape
@@ -158,10 +162,9 @@ class Block():
         Read the block from file_name. File file_name has to contain the block 
         and only the block
         '''
-        if self.data == None:
-            log(f'<< Reading {self.file_name}', 0)
-            with open(self.file_name, 'rb') as f:
-                self.data = f.read()
+        log(f'<< Reading {self.file_name}', 0)
+        with open(self.file_name, 'rb') as f:
+            self.data = f.read()
 
     def write(self):
         '''
@@ -169,7 +172,7 @@ class Block():
         '''
         assert(self.data is not None), 'Cannot write block with no data'
         assert(len(self.data) == math.prod(self.shape)*self.element_size)
-        with open(self.file_name, 'ab+') as f:
+        with open(self.file_name, 'wb+') as f:
             b = f.write(self.data)
         f.close()
         return b
@@ -211,62 +214,82 @@ class Block():
         if self.data is None:
             self.data = bytearray(math.prod(self.shape))
         data = bytearray()
-        origin, shape, read_points = self.block_offsets(block) # empty if blocks don't overlap
+        origin, shape, block_offsets = block.block_offsets(self) # empty if blocks don't overlap
         # Read in block
         with open(block.file_name, 'rb') as f:
-            n = int(len(read_points)/2)
-            log(f'<< Reading from {block.file_name} ({n} seeks)', 0)
-            b = 0
-            for i, r in enumerate(read_points):
+            log(f'<< Reading from {block.file_name} ({len(block_offsets)/2} seeks)', 0)
+            total_bytes = 0
+            for i, r in enumerate(block_offsets):
                 if i % 2 == 1:
                     continue
-                f.seek(read_points[i][1])
-                data += f.read(read_points[i+1][1]-read_points[i][1]+1)
-                b += read_points[i+1][1]-read_points[i][1] + 1
-            log(f'Read {b} bytes', 0)
-        # Create block from data
+                log(f'Seek to offset {block_offsets[i][1]} in {block.file_name}')
+                f.seek(block_offsets[i][1])
+                data += f.read(block_offsets[i+1][1]-block_offsets[i][1] + 1)
+                total_bytes += block_offsets[i+1][1]-block_offsets[i][1] + 1
+            assert(len(data) == total_bytes)
+            log(f'Read {total_bytes} bytes', 0)
+
+        # Write data block to self
         data_block = Block(origin, shape, data)
-        _, _, read_points = data_block.block_offsets(self)
-        offset = 0
-        for i, x in enumerate(read_points[::2]):
-            self.data[read_points[i][1]:read_points[i+1][1]] = data_block.data[offset:offset+read_points[i+1][1]-read_points[i][1]] # check +1
-            offset += read_points[i+1][1]-read_points[i][1]
-        return b
+        _, _, self_offsets = self.block_offsets(data_block)
+        data_offset = 0
+        for i, x in enumerate(self_offsets):
+            if i % 2 == 1:
+                continue
+            next_data_offset = data_offset + self_offsets[i+1][1] - self_offsets[i][1] + 1
+            self.data[self_offsets[i][1]:self_offsets[i+1][1]+1] = data_block.data[data_offset:next_data_offset]
+            data_offset = next_data_offset
+        return total_bytes
 
     def write_to(self, block):
         '''
         Write relevant data sections to block
         '''
         assert(block.file_name), f"Block {block} has no file name"
+        log(f'Writing block {self} to {block}')
         data = bytearray()
-        _, _, read_points = block.block_offsets(self)
-        # Read through current block
-        for i, x in enumerate(read_points[::2]):
-            data += self.data[read_points[i][1]:(read_points[i+1][1]+1)]
-
-        # Create block from data
-        origin, shape, read_points = self.block_offsets(block)
-        offset = 0
-        if len(read_points) == 0:
+        origin, shape, self_offsets = self.block_offsets(block)
+        log(f'Self offsets: {self_offsets}')
+        if len(self_offsets) == 0: # if there is nothing to read there is nothing to write
             return
-        with open(block.file_name, 'ab+') as f:
-            n = int(len(read_points)/2)
-            log(f'>> Writing to {block.file_name} ({n} seeks)', 0)
-            b = 0
-            log(read_points, 0)
-            for i, r in enumerate(read_points):
+        for i, x in enumerate(self_offsets):
+            if i % 2 == 1:
+                continue
+            data += self.data[self_offsets[i][1]:(self_offsets[i+1][1]+1)]
+        
+        # Data is now the continuous block of data from self to be written into block
+        # TODO: check that no data was actually copied
+        data_block = Block(origin, shape, data=data)
+        _, _, block_offsets = block.block_offsets(data_block)
+        log(f'Block offsets: {block_offsets}')
+        # block offsets are now the offsets in the block to be written
+        
+        data_offset = 0
+        
+        mode = 'wb'
+        if os.path.exists(block.file_name):  # if file already exists, open in r+b mode to modify without overwriting
+            mode = 'r+b'
+        with open(block.file_name, mode) as f:
+            log(f'>> Writing to {block.file_name} ({len(block_offsets)/2} seeks)', 0)
+            total_bytes = 0
+            log(block_offsets, 0)
+            for i, r in enumerate(block_offsets):
                 if i % 2 == 1:
                     continue
-                log(f'Seek to {read_points[i][1]}')
-                f.seek(read_points[i][1])
-                log(f'Write data from {offset} to {offset+read_points[i+1][1]-read_points[i][1]}')
-                delta = f.write(data[offset:(offset+read_points[i+1][1]-read_points[i][1]+1)])
-                log(f'Wrote {delta} bytes')
-                b += delta
-                offset += read_points[i+1][1]-read_points[i][1]+1
-            log(f'Wrote {b} bytes in total', 0)
+                log(f'Seek to offset {block_offsets[i][1]} in {block.file_name}')
+                f.seek(block_offsets[i][1])
+                log(f'Current position in file: {f.tell()}')
+                next_data_offset = data_offset+block_offsets[i+1][1]-block_offsets[i][1]+1
+                log(f'Write data from {data_offset} to {next_data_offset}'
+                    f' ({data[data_offset:next_data_offset]})')
+                wrote_bytes = f.write(data[data_offset:next_data_offset])
+                log(f'Wrote {wrote_bytes} bytes')
+                log(f'Current position in file: {f.tell()}')
+                total_bytes += wrote_bytes
+                data_offset = next_data_offset
+            log(f'Wrote {total_bytes} bytes in total', 0)
         f.close()
-        return b
+        return total_bytes
 
     def inside(self, point):
         '''
@@ -281,7 +304,7 @@ class Block():
         self.data = bytearray(math.prod(self.shape))
 
     def __str__(self):
-        return f'Block: origin {self.origin}; shape {self.shape}; file_name: {self.file_name}'
+        return f'Block: origin {self.origin}; shape {self.shape}; file_name: {self.file_name} '
 
 class Cache():
 
@@ -436,6 +459,6 @@ def get_F_blocks(write_block, out_blocks):
     return f_blocks
 
 def log(message, level=0):
-    LOG_LEVEL=0
+    LOG_LEVEL=1
     if level >= LOG_LEVEL:
         print(message)
