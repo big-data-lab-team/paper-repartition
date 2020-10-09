@@ -1,4 +1,5 @@
 import math
+import os
 from block import Block
 from cache import Cache
 
@@ -26,8 +27,7 @@ class Partition():
         if array != None:
             self.array = array
             assert(array.ndim == self.ndim)
-            for i in range(array.ndim):
-                assert(array.shape[i] % self.shape[i] == 0)
+            assert(all(array.shape[i] % self.shape[i] == 0) for i in range(array.ndim))
 
         self.blocks = self.__get_blocks(fill)
 
@@ -39,21 +39,22 @@ class Partition():
         '''
         log('')
         log(f'# Repartitioning {self.name} in {out_blocks.name}')
-        read_blocks, write_blocks = get_read_write_blocks(self,
-                                                          out_blocks, m, self)
-        print(f'Write blocks: {write_blocks}')
-        cache = Cache(write_blocks, out_blocks)
+        read_blocks, write_blocks, match = get_read_write_blocks(self,
+                                                                 out_blocks, m, self.array)
+        print(f'repartition: Selected read blocks: {read_blocks}')
+        print(f'repartition: Write blocks: {write_blocks}')
+        cache = Cache(write_blocks, out_blocks, match)
         seeks = 0
         total_bytes = 0
         for read_block in read_blocks.blocks:
-            t, s = self.read_from(read_blocks.blocks[read_block][0])
-            print(f'Read required {s} seeks')
+            t, s = self.read_from(read_blocks.blocks[read_block])
+            print(f'repartition: Read required {s} seeks')
             total_bytes += t
             seeks += s
-            blocks = cache.insert(read_blocks.blocks[read_block][0])
-            for b in blocks:
+            complete_blocks = cache.insert(read_blocks.blocks[read_block])
+            for b in complete_blocks:
                 t, s = out_blocks.write_to(b)
-                print(f'Write required {s} seeks')
+                print(f'repartition: Write required {s} seeks')
                 total_bytes += t
                 seeks += s
                 del(b.data) # not sure if this deletes data in read blocks
@@ -68,13 +69,13 @@ class Partition():
         total_bytes = 0
         if block.shape == self.shape:
             # Return partition block
-            my_block = self.blocks[block.origin][0]
+            my_block = self.blocks[block.origin]
             total_bytes = my_block.read()
             block.data = my_block.data
             seeks = 1
         else:
             for b in self.blocks:
-                t, s = block.read_from(self.blocks[b][0])
+                t, s = block.read_from(self.blocks[b])
                 seeks += s
                 total_bytes += t
         return total_bytes, seeks
@@ -88,24 +89,24 @@ class Partition():
         total_bytes = 0
         if block.shape == self.shape:
             # Return partition block
-            my_block = self.blocks[block.origin][0]
+            my_block = self.blocks[block.origin]
             my_block.data = block.data
             total_bytes = my_block.write()
             seeks = 1
         else:
             for b in self.blocks:
-                t, s = block.write_to(self.blocks[b][0])
+                t, s = block.write_to(self.blocks[b])
                 seeks += s
                 total_bytes += t
         return total_bytes, seeks
 
     def write(self):
         for b in self.blocks:
-            self.blocks[b][0].write()
+            self.blocks[b].write()
 
     def clear(self):
         for b in self.blocks:
-            self.blocks[b][0].clear()
+            self.blocks[b].clear()
 
     def __get_blocks(self, fill):
         '''
@@ -114,7 +115,7 @@ class Partition():
 
         # The partition is the array itself
         if self.array == None:
-            return { (0, 0, 0): [ Block((0, 0, 0), self.shape, fill=fill, file_name=f'{self.name}.bin') ] }
+            return { (0, 0, 0): Block((0, 0, 0), self.shape, fill=fill, file_name=f'{self.name}.bin') }
 
         blocks = {}
         shape = self.array.shape
@@ -124,8 +125,8 @@ class Partition():
             for j in range(int(shape[1]/self.shape[1])):
                 for k in range(int(shape[2]/self.shape[2])):
                     origin = (i*self.shape[0], j*self.shape[1], k*self.shape[2])
-                    blocks[origin] = [ Block(origin, self.shape, element_size=self.element_size,
-                                       fill=fill, file_name=f'{self.name}_block_{offset}.bin') ]
+                    blocks[origin] = Block(origin, self.shape, element_size=self.element_size,
+                                       fill=fill, file_name=f'{self.name}_block_{offset}.bin')
                     offset += math.prod(self.shape)*self.element_size
         return blocks
 
@@ -144,10 +145,13 @@ class Partition():
         return neighbor_ind
 
     def __str__(self):
+
+        blocks = os.linesep.join([str(self.blocks[b]) for b in self.blocks])
+
         if self.array is None:
-            return f'Partition of shape {self.shape}'
+            return f'Partition of shape {self.shape}. Blocks:' + blocks
         else:
-            return f'Partition of shape {self.shape} of array of shape {self.array.shape}'
+            return f'Partition of shape {self.shape} of array of shape {self.array.shape}. Blocks:' + blocks
 
 def log(message, level=0):
     LOG_LEVEL=1

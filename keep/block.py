@@ -10,8 +10,10 @@ class Block():
         shape: the block shape. Example: (5, 10, 5)
     '''
     def __init__(self, origin, shape, data=None, element_size=1, file_name=None, fill=None):
+        assert(len(shape) >= 1), f'Invalid shape: {shape}'
         assert(all(x >= 0 for x in shape)), f"Invalid shape: {shape}"
         assert(data is None or fill is None), "Cannot set both block data and fill pattern"
+        assert(len(origin) == len(shape)), f"Origin {origin} and shape {shape} don't match"
         self.origin = tuple(origin)
         self.shape = tuple(shape)
         self.data = data
@@ -46,7 +48,7 @@ class Block():
         Write the block to disk.
         '''
         assert(self.data is not None), 'Cannot write block with no data'
-        assert(len(self.data) == math.prod(self.shape)*self.element_size)
+        assert(len(self.data) == math.prod(self.shape)*self.element_size), "Block shape doesn't match data size"
         with open(self.file_name, 'wb+') as f:
             b = f.write(self.data)
         f.close()
@@ -59,6 +61,12 @@ class Block():
         assert(self.inside(point)), f'Cannot get offset of point {point} which is outside of block {self}'
         offset = point[2]-self.origin[2] + self.shape[2]*(point[1]-self.origin[1]) + self.shape[2]*self.shape[1]*(point[0]-self.origin[0])
         return offset
+    
+    def complete(self):
+        '''
+        Return True if block contains all the data it's supposed to
+        '''
+        return len(self.data) == math.prod(self.shape)
 
     def block_offsets(self, block):
         '''
@@ -80,6 +88,9 @@ class Block():
                              (i % 2 == 1 or x[1] != read_points[i-1][1]+1)
                             )
                             )
+        # TODO: should there be a +1 in the shape? think end=origin. 
+        # Don't think so, end already has the + 1 (works well with ranges so don't change it)
+        # Also, removing the +1 crashes the content tests
         return origin, tuple(end[i]-origin[i] for i in (0, 1, 2)), read_points
 
     def read_from(self, block):
@@ -90,6 +101,8 @@ class Block():
             self.data = bytearray(math.prod(self.shape))
         data = bytearray()
         origin, shape, block_offsets = block.block_offsets(self) # empty if blocks don't overlap
+        if len(block_offsets) == 0: 
+            return 0, 0 # nothing to read
         # Read in block
         seeks = len(block_offsets)/2
         with open(block.file_name, 'rb') as f:
@@ -106,28 +119,36 @@ class Block():
             log(f'Read {total_bytes} bytes', 0)
 
         # Write data block to self
-        data_block = Block(origin, shape, data)
-        _, _, self_offsets = self.block_offsets(data_block)
+        data_block = Block(origin=origin, shape=shape, data=data)
+        self.put_data_block(data_block)
+
+        return total_bytes, seeks
+
+    def put_data_block(self, block):
+        '''
+        Write block.data into self.data
+        '''
+#        assert(len(self.data) + len(block.data) <= math.prod(self.shape)), 'No space available in block'
+        _, _, self_offsets = self.block_offsets(block)
         data_offset = 0
         for i, x in enumerate(self_offsets):
             if i % 2 == 1:
                 continue
             next_data_offset = data_offset + self_offsets[i+1][1] - self_offsets[i][1] + 1
-            self.data[self_offsets[i][1]:self_offsets[i+1][1]+1] = data_block.data[data_offset:next_data_offset]
+            self.data[self_offsets[i][1]:self_offsets[i+1][1]+1] = block.data[data_offset:next_data_offset]
             data_offset = next_data_offset
-        return total_bytes, seeks
 
-    def write_to(self, block):
+    def get_data_block(self, block):
         '''
-        Write relevant data sections to block
+        Assemble and return the block of data from self that matches 
+        the geometry of block
         '''
-        assert(block.file_name), f"Block {block} has no file name"
-        log(f'Writing block {self} to {block}')
+
         data = bytearray()
         origin, shape, self_offsets = self.block_offsets(block)
         log(f'Self offsets: {self_offsets}')
         if len(self_offsets) == 0: # if there is nothing to read there is nothing to write
-            return
+            return Block((-1, -1, -1), (0, 0, 0))
         for i, x in enumerate(self_offsets):
             if i % 2 == 1:
                 continue
@@ -135,8 +156,19 @@ class Block():
         
         # Data is now the continuous block of data from self to be written into block
         # TODO: check that no data was actually copied
-        data_block = Block(origin, shape, data=data)
-        _, _, block_offsets = block.block_offsets(data_block)
+        return Block(origin, shape, data=data)
+
+    def write_to(self, block):
+        '''
+        Write relevant data sections to block
+        '''
+        assert(block.file_name), f"Block {block} has no file name"
+        log(f'Writing block {self} to {block}')
+
+        data_b = self.get_data_block(block)
+        data = data_b.data
+
+        _, _, block_offsets = block.block_offsets(data_b)
         log(f'Block offsets: {block_offsets}')
         # block offsets are now the offsets in the block to be written
         
@@ -180,7 +212,15 @@ class Block():
         self.data = bytearray(math.prod(self.shape))
 
     def __str__(self):
-        return f'Block: origin {self.origin}; shape {self.shape}; file_name: {self.file_name} '
+        s = 0
+        if hasattr(self, 'data'):
+            if self.data != None:
+                s = len(self.data)
+        
+        desc = f'Block: origin {self.origin}; shape {self.shape}; data in mem: {s}B'
+        if self.file_name != None:
+            desc += f'; file_name: {self.file_name}'
+        return desc
 
 def log(message, level=0):
     LOG_LEVEL=1
