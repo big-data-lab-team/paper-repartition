@@ -116,10 +116,6 @@ def create_write_blocks(read_blocks, out_blocks):
         for f in range(1, 8):
             if not f_blocks[f] is None:
                 destF0 = destination_F0(read_blocks, i, f)
-                if destF0 != i:
-                    log(f'Block {i}: moving F{f} {f_blocks[f]} to Block {destF0} F0', 0)
-                else:
-                    log(f'Block {i}: keeping F{f} here', 0)
                 moved_f_blocks[destF0] += [ f_blocks[f] ]
                 match[(r, f)] = destF0
 
@@ -127,12 +123,12 @@ def create_write_blocks(read_blocks, out_blocks):
     match = { k: merged_blocks[match[k]] for k in match}
     blocks = { m.origin: m for m in merged_blocks }
 
-
     # Warning: write_blocks are a partition but a non-uniform one
-    # This is indicated by the null shape for now, this may have side effects
+    # This may have side effects. This is also the reason for the 
+    # weird create_blocks param
     write_blocks = Partition((1, 1, 1),
                              name='write_blocks',
-                            array=read_blocks.array)
+                            array=read_blocks.array, create_blocks=False)
     write_blocks.blocks = blocks
     cache = KeepCache(write_blocks, out_blocks, match)
 

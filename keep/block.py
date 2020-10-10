@@ -25,7 +25,7 @@ class Data():
       #  print('putting buffer: ', buffer)
         if len(self.data) < offset:
             # We need to allocate the buffer until the offset
-            # This may increase mem usage, might be solved by numpy views
+            # TODO: This increases mem usage, might be solved by numpy views
             #print(f'Filling {offset-len(self.data)} zeros from {len(self.data)} to {offset}')
             self.data[len(self.data):offset] = bytearray(offset-len(self.data))
 
@@ -153,7 +153,6 @@ class Block():
             for i, r in enumerate(block_offsets):
                 if i % 2 == 1:
                     continue
-                log(f'Seek to offset {block_offsets[i][1]} in {block.file_name}')
                 f.seek(block_offsets[i][1])
                 data += f.read(block_offsets[i+1][1]-block_offsets[i][1] + 1)
                 total_bytes += block_offsets[i+1][1]-block_offsets[i][1] + 1
@@ -176,11 +175,9 @@ class Block():
             if i % 2 == 1:
                 continue
             next_data_offset = data_offset + self_offsets[i+1][1] - self_offsets[i][1] + 1
-            log(f'put_data_block: writing to offsets {self_offsets[i][1]} {self_offsets[i+1][1]} ')
             self.data.put(self_offsets[i][1], block.data.get(data_offset, next_data_offset))
             data_offset = next_data_offset
         assert(data_offset == block.data.mem_usage()), f'Block is {block.data.mem_usage()}B but only {data_offset} were copied'
-        log(f'Copied {data_offset} bytes to {self}')
 
     def get_data_block(self, block):
         '''
@@ -214,7 +211,6 @@ class Block():
         data = data_b.data
 
         _, _, block_offsets = block.block_offsets(data_b)
-        log(f'Block offsets: {block_offsets}')
         # block offsets are now the offsets in the block to be written
         
         data_offset = 0
@@ -223,23 +219,17 @@ class Block():
         if os.path.exists(block.file_name):  # if file already exists, open in r+b mode to modify without overwriting
             mode = 'r+b'
         with open(block.file_name, mode) as f:
-            log(f'>> Writing to {block.file_name} ({len(block_offsets)/2} seeks)', 0)
+            log(f'  >> Writing to {block.file_name} ({len(block_offsets)/2} seeks)', 0)
             total_bytes = 0
-            log(block_offsets, 0)
             for i, r in enumerate(block_offsets):
                 if i % 2 == 1:
                     continue
-                log(f'Seek to offset {block_offsets[i][1]} in {block.file_name}')
                 f.seek(block_offsets[i][1])
-                log(f'Current position in file: {f.tell()}')
                 next_data_offset = data_offset+block_offsets[i+1][1]-block_offsets[i][1]+1
-                log(f'Write data from {data_offset} to {next_data_offset}')
                 wrote_bytes = f.write(data.get(data_offset, next_data_offset))
-                log(f'Wrote {wrote_bytes} bytes')
-                log(f'Current position in file: {f.tell()}')
                 total_bytes += wrote_bytes
                 data_offset = next_data_offset
-            log(f'Wrote {total_bytes} bytes in total', 0)
+            log(f'  Wrote {total_bytes} bytes in total', 0)
         f.close()
         return total_bytes, seeks
 

@@ -23,14 +23,12 @@ class KeepCache(Cache):
             log(match[k])
 
     def insert(self, read_block):
-        log(f'Inserting read block {read_block} in keep cache')
         f_blocks = keep.get_F_blocks(read_block, self.out_blocks, get_data=True)
         complete_blocks = []
         for i in range(8):
             if f_blocks[i] is None or f_blocks[i].empty():
                 continue
             dest_block = self.match[(read_block.origin, i)]
-            log(f'Inserting block {i} {f_blocks[i]} in {dest_block}')
             dest_block.put_data_block(f_blocks[i]) # in-memory copy, might be costly
             if dest_block.complete():
                 complete_blocks += [ dest_block ]

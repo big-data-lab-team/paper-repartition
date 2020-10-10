@@ -15,7 +15,7 @@ class Partition():
         zeros: if True, fill all the blocks with zeros. Warning: this allocates memory. 
     '''
 
-    def __init__(self, shape, name, array=None, fill=None):
+    def __init__(self, shape, name, array=None, fill=None, create_blocks=True):
         assert(all(x >= 0 for x in shape)), f"Invalid shape: {shape}"
         self.shape = tuple(shape)
         self.ndim = len(shape)
@@ -28,7 +28,8 @@ class Partition():
             assert(array.ndim == self.ndim)
             assert(all(array.shape[i] % self.shape[i] == 0) for i in range(array.ndim))
 
-        self.blocks = self.__get_blocks(fill)
+        if create_blocks:
+            self.blocks = self.__get_blocks(fill)
 
     def repartition(self, out_blocks, m, get_read_write_blocks):
         '''
@@ -51,6 +52,10 @@ class Partition():
             complete_blocks = cache.insert(read_blocks.blocks[read_block])
             for b in complete_blocks:
                 log(f'repartition: Writing complete block {b}')
+                # TODO: it's a bit overkill to write_to all the output blocks
+                # although nothing is actually written to blocks that don't need it
+                # Also, write_to is not well named, it is the block being written
+                # to the partition
                 t, s = out_blocks.write_to(b)
                 log(f'repartition: Write required {s} seeks')
                 total_bytes += t
@@ -117,17 +122,18 @@ class Partition():
 
         blocks = {}
         shape = self.array.shape
-        offset = 0
-        # This could be a list expansion
         # Warning: read order of blocks in repartition
         # depends on this key order...
-        for i in range(int(shape[0]/self.shape[0])):
-            for j in range(int(shape[1]/self.shape[1])):
-                for k in range(int(shape[2]/self.shape[2])):
-                    origin = (i*self.shape[0], j*self.shape[1], k*self.shape[2])
-                    blocks[origin] = Block(origin, self.shape,
-                                       fill=fill, file_name=f'{self.name}_block_{offset}.bin')
-                    offset += math.prod(self.shape)
+        ni = int(shape[0]/self.shape[0])
+        nj = int(shape[1]/self.shape[1])
+        nk = int(shape[2]/self.shape[2])
+        blocks = { (i*self.shape[0], j*self.shape[1], k*self.shape[2]):
+                   Block((i*self.shape[0], j*self.shape[1], k*self.shape[2]), self.shape,
+                          fill=fill, file_name=f'{self.name}_block_{math.prod(self.shape)*(k+j*nk+i*nj*nk)}.bin') 
+                    for i in range(ni)
+                    for j in range(nj)
+                    for k in range(nk)
+                 }
         return blocks
 
     def get_neighbor_block_ind(self, block_ind, dim):
