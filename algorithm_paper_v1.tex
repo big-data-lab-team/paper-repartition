@@ -260,7 +260,7 @@ the block.
     \STATE initialize(cache)
     \FOR{readBlock in readBlocks}
       \STATE data $\leftarrow$ read(readBlock, inBlocks)
-      \STATE cache.insert(data)
+      \STATE \tristan{return complete blocks here, avoid for loop next}cache.insert(data)
       \FOR{writeBlock in writeBlocks}
         \IF{$\mathrm{readBlock} \cap \mathrm{writeBlock} \neq \emptyset$ \\
              \quad \textbf{and} cache.isComplete(writeBlock)}
@@ -468,7 +468,7 @@ that is greater or equal to $O_d$:
 \forall d \in \{1, 2, 3\},
 \]
 \[
-  \hat r_d = I_d \left( 1 + \left \lfloor \frac{O_d}{I_d} \right \rfloor \right)
+  \hat r_d = I_d \left \lceil \frac{O_d}{I_d} \right \rceil
 %  \enskip \exists \hat k \in \mathbb{N}, \enskip \hat r_d = \hat kI_d \enskip \mathrm{and} \enskip \hat k I_d \geq O_d \enskip \mathrm{and} \enskip \forall k < \hat k, \enskip kI_d < O_d
 \]
 
@@ -529,7 +529,7 @@ are defined to be the first output block's end coordinates encountered.
   identifies a sub-block of a read block (i.e., an initial write block),
   and the second column identifies the sub-block(s) of the neighboring read
   block(s) that are merged with the sub-block of the first column. For instance, sub-block $F_1$ is merged with sub-block $F_0$
-  of the neighboring read block in dimension $X_2$.}
+  of the neighboring read block in dimension $X_2$. \tristan{target blocks are ORs}}
    \begin{tabular}{c|l}
    \rowcolor{black!25}
    Sub-block & Merged with \\
@@ -626,6 +626,11 @@ The first term represents the number of seeks required to read input
  a direct implementation of Equation~\ref{eq:seeks-keep}.
 
 \subsection{Implementation}
+
+\tristan{mention tests}
+
+\tristan{Mention array copies in Python, slicing doesnt copy data but references are copied
+look at https://stackoverflow.com/questions/5131538/slicing-a-list-in-python-without-generating-a-copy}
 
 We implemented the baseline and \keep heuristic in Python 3.7. The
 project repository is available at

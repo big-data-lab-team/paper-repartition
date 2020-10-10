@@ -1,6 +1,7 @@
 import math
 from partition import Partition
 from block import Block
+from cache import KeepCache, BaselineCache
 
 '''
     Keep and baseline algorithms
@@ -12,21 +13,21 @@ def keep(in_blocks, out_blocks, m, array):
     min_seeks = None
     for r in read_shapes:
         read_blocks = Partition(r, 'read_blocks', array=array)
-        write_blocks, match = create_write_blocks(read_blocks, out_blocks)
+        write_blocks, cache = create_write_blocks(read_blocks, out_blocks)
         mc = peak_memory(r, write_blocks)
         if mc > m:
             continue
         if r == r_hat:
             best_read_blocks = read_blocks
+            best_cache = cache
             break
         s = generated_seeks(in_blocks, read_blocks, write_blocks, out_blocks)
         if min_seeks == None or s < min_seeks:
-            min_seeks, best_read_blocks = s, read_blocks
-    return best_read_blocks, write_blocks, match
+            min_seeks, best_read_blocks, best_cache = s, read_blocks, cache
+    return best_read_blocks, best_cache
 
 def baseline(in_blocks, out_blocks, m, array):
-    return in_blocks, in_blocks, { (origin, 0): in_blocks.blocks[origin]
-                                   for origin in in_blocks.blocks }
+    return in_blocks, BaselineCache()
  
 '''
     Utils
@@ -48,12 +49,12 @@ def get_r_hat(in_blocks, out_blocks):
 
 def candidate_read_shapes(in_blocks, out_blocks, r_hat, array):
     assert(in_blocks.ndim == 3), 'Only supports dimension 3'
-    print(f'keep: rhat is {r_hat}')
+    log(f'keep: rhat is {r_hat}')
     divs0 = [x for x in divisors(array.shape[0]) if x <= r_hat[0]]
     divs1 = [x for x in divisors(array.shape[1]) if x <= r_hat[1]]
     shapes = [ (x, y, r_hat[2]) for x in divs0 for y in divs1 ]
     shapes.sort(key=lambda x: (x[1], x[0]),reverse=True)
-    print(f'keep: shapes = {shapes}')
+    log(f'keep: shapes = {shapes}')
     return shapes
 
 def divisors(n):
@@ -90,11 +91,12 @@ def merge_blocks(block_list):
     Assume all blocks are empty.
     Return the merged blocks.
     '''
-    assert(all(b.data == None for b in block_list)), 'Cannot merge non-empty blocks'
+    assert(all(b.data.mem_usage() == 0 for b in block_list)), 'Cannot merge non-empty blocks'
     origin = tuple(min([b.origin[i] for b in block_list]) for i in (0, 1, 2))
     end = tuple(max([b.origin[i] + b.shape[i] for b in block_list]) for i in (0, 1, 2))
     shape = tuple(end[i] - origin[i] for i in (0, 1, 2))
-    return Block(origin, shape)
+    b = Block(origin, shape, data=bytearray())
+    return b
 
 def create_write_blocks(read_blocks, out_blocks):
     '''
@@ -104,13 +106,13 @@ def create_write_blocks(read_blocks, out_blocks):
 
     match = {}
 
-    moved_f_blocks = [ [] for i in range(len(read_blocks))]
+    moved_f_blocks = [ [] for i in range(len(read_blocks.blocks))]
 
-    for i, r in enumerate(read_blocks):
-        f_blocks = get_F_blocks(read_blocks.blocks[r], out_blocks)
+    for i, r in enumerate(read_blocks.blocks):
+        f_blocks = get_F_blocks(read_blocks.blocks[r], out_blocks, get_data=False)
 
         moved_f_blocks[i] += [ f_blocks[0] ]  # don't move F0
-
+        match[(r, 0)] = i
         for f in range(1, 8):
             if not f_blocks[f] is None:
                 destF0 = destination_F0(read_blocks, i, f)
@@ -119,10 +121,10 @@ def create_write_blocks(read_blocks, out_blocks):
                 else:
                     log(f'Block {i}: keeping F{f} here', 0)
                 moved_f_blocks[destF0] += [ f_blocks[f] ]
-                match[(r.origin, i)] = destF0
+                match[(r, f)] = destF0
 
     merged_blocks = [ merge_blocks(blocks) for blocks in moved_f_blocks ]
-    match = { k: merged_blocks[k[1]] for k in match}
+    match = { k: merged_blocks[match[k]] for k in match}
     blocks = { m.origin: m for m in merged_blocks }
 
 
@@ -130,14 +132,14 @@ def create_write_blocks(read_blocks, out_blocks):
     # This is indicated by the null shape for now, this may have side effects
     write_blocks = Partition((1, 1, 1),
                              name='write_blocks',
-                            array=read_blocks.array,
-                            element_size=read_blocks.element_size)
+                            array=read_blocks.array)
     write_blocks.blocks = blocks
+    cache = KeepCache(write_blocks, out_blocks, match)
 
-    return write_blocks, match
+    return write_blocks, cache
 
 
-def get_F_blocks(write_block, out_blocks):
+def get_F_blocks(write_block, out_blocks, get_data=False):
     '''
     Assuming out_blocks are of uniform size
     '''
@@ -147,49 +149,57 @@ def get_F_blocks(write_block, out_blocks):
     out_ends = [ math.floor((write_block.origin[i]+write_block.shape[i])/out_blocks.shape[i])*out_blocks.shape[i] for i in range(len(origin)) ]
     shape = [ out_ends[i]-write_block.origin[i] if out_ends[i] > write_block.origin[i] else write_block.shape[i] for i in range(len(origin))] 
     F0 = Block(origin, shape)
-    F0 = write_block.get_data_block(F0)
+    if get_data:
+        F0 = write_block.get_data_block(F0)
 
     # F1
     origin = (F0.origin[0], F0.origin[1], F0.origin[2] + F0.shape[2])
     shape = [ F0.shape[0], F0.shape[1], write_block.shape[2] - F0.shape[2] ]
     F1 = Block(origin, shape)
-    F1 = write_block.get_data_block(F1)
+    if get_data:
+        F1 = write_block.get_data_block(F1)
 
     # F2
     origin = (F0.origin[0], F0.origin[1] + F0.shape[1], F0.origin[2])
     shape = [ F0.shape[0], write_block.shape[1] - F0.shape[1], F0.shape[2] ]
     F2 = Block(origin, shape)
-    F2 = write_block.get_data_block(F2)
+    if get_data:
+        F2 = write_block.get_data_block(F2)
 
     # F3
     origin = (F0.origin[0], F0.origin[1] + F0.shape[1], F0.origin[2] + F0.shape[2])
     shape = [ F0.shape[0], write_block.shape[1] - F0.shape[1], write_block.shape[2] - F0.shape[2] ]
     F3 = Block(origin, shape)
-    F3 = write_block.get_data_block(F3)
+    if get_data:
+        F3 = write_block.get_data_block(F3)
 
     # F4
     origin = ( F0.origin[0] + F0.shape[0], F0.origin[1], F0.origin[2] )
     shape = [ write_block.shape[0] - F0.shape[0], F0.shape[1], F0.shape[2] ]
     F4 = Block(origin, shape)
-    F4 = write_block.get_data_block(F4)
+    if get_data:
+        F4 = write_block.get_data_block(F4)
 
     # F5
     origin = ( F0.origin[0] + F0.shape[0], F0.origin[1], F0.origin[2] + F0.shape[2] )
     shape = [ write_block.shape[0] - F0.shape[0], F0.shape[1], write_block.shape[2] - F0.shape[2] ]
     F5 = Block(origin, shape)
-    F5 = write_block.get_data_block(F5)
+    if get_data:
+        F5 = write_block.get_data_block(F5)
 
     # F6
     origin = ( F0.origin[0] + F0.shape[0], F0.origin[1] + F0.shape[1], F0.origin[2] )
     shape = [ write_block.shape[0] - F0.shape[0], write_block.shape[1] - F0.shape[1], F0.shape[2] ]
     F6 = Block(origin, shape)
-    F6 = write_block.get_data_block(F6)
+    if get_data:
+        F6 = write_block.get_data_block(F6)
 
     # F7
     origin = ( F0.origin[0] + F0.shape[0], F0.origin[1] + F0.shape[1], F0.origin[2] + F0.shape[2] )
     shape = [ write_block.shape[0] - F0.shape[0], write_block.shape[1] - F0.shape[1], write_block.shape[2] - F0.shape[2] ]
     F7 = Block(origin, shape)
-    F7 = write_block.get_data_block(F7)
+    if get_data:
+        F7 = write_block.get_data_block(F7)
 
     # Remove empty blocks and return
     f_blocks = [ f if not f.empty() else None for f in [F0, F1, F2, F3, F4, F5, F6, F7]]
