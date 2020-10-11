@@ -4,7 +4,7 @@ import os
 
 class Data():
     '''
-    The data buffer stored by a Block. The implementation uses bytearrays 
+    The data buffer stored by a Block. The implementation uses bytearrays
     but it might be changed to numpy views in the future, to reduce memory
     consumption.
     '''
@@ -34,7 +34,7 @@ class Data():
 
     def put(self, offset, buffer):
         '''
-        Insert buffer at given offset in self. This function was the main 
+        Insert buffer at given offset in self. This function was the main
         motivation to create the class
         '''
         if len(self.data) < offset:
@@ -47,7 +47,7 @@ class Data():
 
     def get(self, start_offset, end_offset):
         '''
-        Returns the data between start_offset (included) 
+        Returns the data between start_offset (included)
         and end_offset (excluded)
         '''
         buffer = self.data[start_offset:end_offset]
@@ -72,7 +72,8 @@ class Block():
             shape: the block shape. Example: (5, 10, 5)
             data: bytearray to initialize the data buffer
             file_name: file name where to read and write the block
-            fill: the pattern to initialize the data buffer: 'zeros' or 'random'
+            fill: the pattern to initialize the data buffer: 'zeros' or
+                  'random'
         '''
         assert(len(shape) >= 1), f'Invalid shape: {shape}'
         assert(all(x >= 0 for x in shape)), f"Invalid shape: {shape}"
@@ -94,6 +95,17 @@ class Block():
         if data is None:
             data = bytearray()
         self.data = Data(data)
+
+    def __str__(self):
+        '''
+        Return a string representation for self
+        '''
+        s = self.data.mem_usage()
+        desc = (f'Block: origin {self.origin}; shape {self.shape};'
+                f' data in mem: {s}B')
+        if self.file_name is not None:
+            desc += f'; file_name: {self.file_name}'
+        return desc
 
     def block_offsets(self, block):
         '''
@@ -314,17 +326,6 @@ class Block():
             log(f'  Wrote {total_bytes} bytes in total', 0)
         f.close()
         return total_bytes, seeks
-
-    def __str__(self):
-        '''
-        Return a string representation for self
-        '''
-        s = self.data.mem_usage()
-        desc = (f'Block: origin {self.origin}; shape {self.shape};'
-                f' data in mem: {s}B')
-        if self.file_name is not None:
-            desc += f'; file_name: {self.file_name}'
-        return desc
 
 
 def log(message, level=0):
