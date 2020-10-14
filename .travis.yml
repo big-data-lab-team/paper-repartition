@@ -1,11 +1,12 @@
 os: linux
 dist: xenial
 
+python:
+  - 3.8
+  
 install:
 - pip install coveralls
-
-python:
-- 3.8
+- pip install pytest
 
 script:
   - pytest keep
