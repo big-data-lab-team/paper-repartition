@@ -19,6 +19,15 @@ def test_inside():
     assert(not b.inside((3, 5, 6)))
     assert(not b.inside((5, 10, 7)))
 
+def test_zeros():
+    b = Block((4, 5, 6), (2, 4, 6), fill='zeros')
+    assert(b.data.bytes() == bytearray(math.prod(b.shape)))
+
+def test_read_from_disjoint():
+    b = Block((4, 5, 6), (2, 4, 6))
+    c = Block((40, 50, 60), (2, 4, 6))
+    assert(b.read_from(c) == (0, 0))
+
 
 def test_offset():
     b = Block((1, 1, 1), (4, 5, 6))
@@ -327,3 +336,7 @@ def test_repartition_keep_3(cleanup_blocks):
     array_data = array.blocks[(0,0,0)].data.bytes()
 
     assert(rein_data == array_data)
+
+def test_partition_clear(cleanup_blocks):
+    array = Partition((12, 12, 12), name='array', fill='random')
+    array.clear()

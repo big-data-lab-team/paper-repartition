@@ -52,12 +52,6 @@ class Partition():
             fill: argument passed to Block
         '''
 
-        # The partition is the array itself
-        if self.array is None:
-            return {(0, 0, 0):
-                    Block((0, 0, 0), self.shape, fill=fill,
-                          file_name=f'{self.name}.bin')}
-
         # Blocks have to be created
         blocks = {}
         shape = self.array.shape
@@ -83,12 +77,8 @@ class Partition():
         '''
         blocks = os.linesep.join([str(self.blocks[b]) for b in self.blocks])
 
-        if self.array is None:
-            return (f'Partition of shape {self.shape}. Blocks:' +
-                    os.linesep + blocks)
-        else:
-            return (f'Partition of shape {self.shape} of array of shape '
-                    f'{self.array.shape}. Blocks:' + os.linesep + blocks)
+        return (f'Partition of shape {self.shape} of array of shape '
+                f'{self.array.shape}. Blocks:' + os.linesep + blocks)
 
     def clear(self):
         '''
@@ -217,6 +207,6 @@ def log(message, level=0):
     '''
     Temporary logger
     '''
-    LOG_LEVEL = 1
+    LOG_LEVEL = 0
     if level >= LOG_LEVEL:
         print(message)

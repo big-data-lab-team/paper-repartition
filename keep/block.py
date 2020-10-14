@@ -8,17 +8,14 @@ class Data():
     but it might be changed to numpy views in the future, to reduce memory
     consumption.
     '''
-    def __init__(self, data=None):
+    def __init__(self, data):
         '''
         Default constructor
 
         Optional keyword arguments:
         data: a bytearray containing the data to put in the buffer
         '''
-        if data is None:
-            self.data = bytearray()
-        else:
-            self.data = data
+        self.data = data
 
     def mem_usage(self):
         '''

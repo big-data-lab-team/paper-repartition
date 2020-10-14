@@ -4,10 +4,42 @@ from block import Block
 from cache import KeepCache, BaselineCache
 
 '''
-    Keep and baseline algorithms
+This module is the entrypoint for array repartitioning. 
 '''
 
+
+def baseline(in_blocks, out_blocks, m, array):
+    '''
+    Implements get_read_blocks_and_cache(in_blocks, out_blocks, m, array)
+    used in Partition.repartition. It provides a baseline repartitioning
+    algorithm where read blocks are input blocks.
+
+    Arguments:
+        in_blocks: input partition, to be repartitioned
+        out_blocks: output partition, to be written to disk
+        m: max memory to be used by the repartitioning. This parameter is
+           here for type consistency in Partition.repartition but it is
+           ignored in this baseline implementation.
+        array: partitioned array. This parameter is here for type
+               consistency in Partition.repartition but it is ignored in this
+               baseline implementation.
+    '''
+    return in_blocks, BaselineCache()
+
 def keep(in_blocks, out_blocks, m, array):
+    '''
+    Implements get_read_blocks_and_cache(in_blocks, out_blocks, m, array)
+    used in Partition.repartition. Implements the keep heuristic (Algorithm
+    2 in the paper).
+
+    Arguments:
+        in_blocks: input partition, to be repartitioned
+        out_blocks: output partition, to be written to disk
+        m: max memory to be used by the repartitioning.
+        array: partitioned array. Doesn't need to contain data, used just 
+               to get total dimensions of the array.
+               
+    '''
     r_hat = get_r_hat(in_blocks, out_blocks)
     read_shapes = candidate_read_shapes(in_blocks, out_blocks, r_hat, array)
     min_seeks = None
@@ -26,25 +58,10 @@ def keep(in_blocks, out_blocks, m, array):
             min_seeks, best_read_blocks, best_cache = s, read_blocks, cache
     return best_read_blocks, best_cache
 
-def baseline(in_blocks, out_blocks, m, array):
-    return in_blocks, BaselineCache()
- 
+
 '''
     Utils
 '''
-
-def peak_memory(r, write_blocks):
-   # print(f'TODO: implement peak memory')
-    return -1
-
-def generated_seeks(in_blocks, read_blocks, write_blocks, out_blocks):
-   # print(f'TODO: implement seek model')
-    return -1
-
-def get_r_hat(in_blocks, out_blocks):
-    return tuple([ in_blocks.shape[i]*(
-                                       math.ceil(out_blocks.shape[i]/in_blocks.shape[i]))
-                                       for i in range(in_blocks.ndim)])
 
 
 def candidate_read_shapes(in_blocks, out_blocks, r_hat, array):
@@ -57,46 +74,6 @@ def candidate_read_shapes(in_blocks, out_blocks, r_hat, array):
     log(f'keep: shapes = {shapes}')
     return shapes
 
-def divisors(n):
-    return [x for x in range(1, n+1) if n % x == 0]
-
-def destination_F0(read_blocks, read_block_ind, F_ind):
-    '''
-        read_blocks: partition
-        read_block_ind: read block index
-        F_ind: the i in Fi
-    '''
-    neighbor_x0 = read_blocks.get_neighbor_block_ind(read_block_ind, 0)
-    neighbor_x1 = read_blocks.get_neighbor_block_ind(read_block_ind, 1)
-    neighbor_x2 = read_blocks.get_neighbor_block_ind(read_block_ind, 2)
-    assert(F_ind < 8 and F_ind > 0)
-    if F_ind == 1:
-        return neighbor_x2
-    if F_ind == 2:
-        return neighbor_x1
-    if F_ind == 3:
-        return destination_F0(read_blocks, neighbor_x1, 1)
-    if F_ind == 4:
-        return neighbor_x0
-    if F_ind == 5:
-        return destination_F0(read_blocks, neighbor_x0, 1) 
-    if F_ind == 6:
-        return destination_F0(read_blocks, neighbor_x0, 2)
-    if F_ind == 7:
-        return destination_F0(read_blocks, neighbor_x0, 3)
-
-def merge_blocks(block_list):
-    '''
-    Assume block list merges in a cuboid block.
-    Assume all blocks are empty.
-    Return the merged blocks.
-    '''
-    assert(all(b.data.mem_usage() == 0 for b in block_list)), 'Cannot merge non-empty blocks'
-    origin = tuple(min([b.origin[i] for b in block_list]) for i in (0, 1, 2))
-    end = tuple(max([b.origin[i] + b.shape[i] for b in block_list]) for i in (0, 1, 2))
-    shape = tuple(end[i] - origin[i] for i in (0, 1, 2))
-    b = Block(origin, shape, data=bytearray())
-    return b
 
 def create_write_blocks(read_blocks, out_blocks):
     '''
@@ -133,6 +110,47 @@ def create_write_blocks(read_blocks, out_blocks):
     cache = KeepCache(write_blocks, out_blocks, match)
 
     return write_blocks, cache
+
+
+def destination_F0(read_blocks, read_block_ind, F_ind):
+    '''
+        read_blocks: partition
+        read_block_ind: read block index
+        F_ind: the i in Fi
+    '''
+    neighbor_x0 = read_blocks.get_neighbor_block_ind(read_block_ind, 0)
+    neighbor_x1 = read_blocks.get_neighbor_block_ind(read_block_ind, 1)
+    neighbor_x2 = read_blocks.get_neighbor_block_ind(read_block_ind, 2)
+    assert(F_ind < 8 and F_ind > 0)
+    if F_ind == 1:
+        return neighbor_x2
+    if F_ind == 2:
+        return neighbor_x1
+    if F_ind == 3:
+        return destination_F0(read_blocks, neighbor_x1, 1)
+    if F_ind == 4:
+        return neighbor_x0
+    if F_ind == 5:
+        return destination_F0(read_blocks, neighbor_x0, 1) 
+    if F_ind == 6:
+        return destination_F0(read_blocks, neighbor_x0, 2)
+    if F_ind == 7:
+        return destination_F0(read_blocks, neighbor_x0, 3)
+
+
+def divisors(n):
+    return [x for x in range(1, n+1) if n % x == 0]
+
+
+def get_r_hat(in_blocks, out_blocks):
+    return tuple([ in_blocks.shape[i]*(
+                                       math.ceil(out_blocks.shape[i]/in_blocks.shape[i]))
+                                       for i in range(in_blocks.ndim)])
+
+
+def generated_seeks(in_blocks, read_blocks, write_blocks, out_blocks):
+   # print(f'TODO: implement seek model')
+    return -1
 
 
 def get_F_blocks(write_block, out_blocks, get_data=False):
@@ -201,57 +219,77 @@ def get_F_blocks(write_block, out_blocks, get_data=False):
     f_blocks = [ f if not f.empty() else None for f in [F0, F1, F2, F3, F4, F5, F6, F7]]
     return f_blocks
 
+
+def merge_blocks(block_list):
+    '''
+    Assume block list merges in a cuboid block.
+    Assume all blocks are empty.
+    Return the merged blocks.
+    '''
+    assert(all(b.data.mem_usage() == 0 for b in block_list)), 'Cannot merge non-empty blocks'
+    origin = tuple(min([b.origin[i] for b in block_list]) for i in (0, 1, 2))
+    end = tuple(max([b.origin[i] + b.shape[i] for b in block_list]) for i in (0, 1, 2))
+    shape = tuple(end[i] - origin[i] for i in (0, 1, 2))
+    b = Block(origin, shape, data=bytearray())
+    return b
+
+
+def peak_memory(r, write_blocks):
+   # print(f'TODO: implement peak memory')
+    return -1
+
+
 '''
     Seek model
 '''
 
-def shape_to_end_coords(M, A, d=3):
-    '''
-    M: block shape M=(M1, M2, M3). Example: (500, 500, 500)
-    A: input array shape A=(A1, A2, A3). Example: (3500, 3500, 3500)
-    Return: end coordinates of the blocks, in each dimension. Example: ([500, 1000, 1500, 2000, 2500, 3000, 3500],
-                                                                   [500, 1000, 1500, 2000, 2500, 3000, 3500],
-                                                                   [500, 1000, 1500, 2000, 2500, 3000, 3500])
-    '''
-    return [ [ (j+1)*M[i] for j in range(int(A[i]/M[i])) ] for i in range(d)]
+# def shape_to_end_coords(M, A, d=3):
+#     '''
+#     M: block shape M=(M1, M2, M3). Example: (500, 500, 500)
+#     A: input array shape A=(A1, A2, A3). Example: (3500, 3500, 3500)
+#     Return: end coordinates of the blocks, in each dimension. Example: ([500, 1000, 1500, 2000, 2500, 3000, 3500],
+#                                                                    [500, 1000, 1500, 2000, 2500, 3000, 3500],
+#                                                                    [500, 1000, 1500, 2000, 2500, 3000, 3500])
+#     '''
+#     return [ [ (j+1)*M[i] for j in range(int(A[i]/M[i])) ] for i in range(d)]
 
-def seeks(A, M, D):
-    '''
-    A: shape of the large array. Example: (3500, 3500, 3500)
-    M: coordinates of memory block ends (read or write). Example: ([500, 1000, 1500, 2000, 2500, 3000, 3500],
-                                                                   [500, 1000, 1500, 2000, 2500, 3000, 3500],
-                                                                   [500, 1000, 1500, 2000, 2500, 3000, 3500])
-    D: coordinates of disk block ends (input or output). Example: ([500, 1000, 1500, 2000, 2500, 3000, 3500],
-                                                                   [500, 1000, 1500, 2000, 2500, 3000, 3500],
-                                                                   [500, 1000, 1500, 2000, 2500, 3000, 3500])
-    Returns: number of seeks required to write M blocks into D blocks. This number is also the number of seeks
-             to read D blocks into M blocks.
-    '''
+# def seeks(A, M, D):
+#     '''
+#     A: shape of the large array. Example: (3500, 3500, 3500)
+#     M: coordinates of memory block ends (read or write). Example: ([500, 1000, 1500, 2000, 2500, 3000, 3500],
+#                                                                    [500, 1000, 1500, 2000, 2500, 3000, 3500],
+#                                                                    [500, 1000, 1500, 2000, 2500, 3000, 3500])
+#     D: coordinates of disk block ends (input or output). Example: ([500, 1000, 1500, 2000, 2500, 3000, 3500],
+#                                                                    [500, 1000, 1500, 2000, 2500, 3000, 3500],
+#                                                                    [500, 1000, 1500, 2000, 2500, 3000, 3500])
+#     Returns: number of seeks required to write M blocks into D blocks. This number is also the number of seeks
+#              to read D blocks into M blocks.
+#     '''
 
-    c = [ 0 for i in range(len(A))] # number of cuts in each dimension
-    m = [] # number of matches in each dimension
+#     c = [ 0 for i in range(len(A))] # number of cuts in each dimension
+#     m = [] # number of matches in each dimension
 
-    n = math.prod( [len(D[i]) for i in range(len(A))])  # Total number of disk blocks
+#     n = math.prod( [len(D[i]) for i in range(len(A))])  # Total number of disk blocks
 
-    for d in range(len(A)): # d is the dimension index
+#     for d in range(len(A)): # d is the dimension index
         
-        nd = len(D[d])
-        Cd = [ ]  # all the cut coordinates (for debugging and visualization)
-        for i in range(nd): # for each output block, check how many pieces need to be written
-            if i == 0:
-                Cid = [ m for m in M[d] if 0 < m and m < D[d][i] ]  # number of write block endings in the output block
-            else:               
-                Cid = [ m for m in M[d] if D[d][i-1] < m and m < D[d][i] ]  # number of write block endings in the output block
-            if len(Cid) == 0:
-                continue
-            c[d] += len(Cid) + 1
-            Cd += Cid
+#         nd = len(D[d])
+#         Cd = [ ]  # all the cut coordinates (for debugging and visualization)
+#         for i in range(nd): # for each output block, check how many pieces need to be written
+#             if i == 0:
+#                 Cid = [ m for m in M[d] if 0 < m and m < D[d][i] ]  # number of write block endings in the output block
+#             else:               
+#                 Cid = [ m for m in M[d] if D[d][i-1] < m and m < D[d][i] ]  # number of write block endings in the output block
+#             if len(Cid) == 0:
+#                 continue
+#             c[d] += len(Cid) + 1
+#             Cd += Cid
 
-        m.append(len(set(M[d]).union(set(D[d]))) - c[d])
+#         m.append(len(set(M[d]).union(set(D[d]))) - c[d])
 
-    s = A[0]*A[1]*c[2] + A[0]*c[1]*m[2] + c[0]*m[1]*m[2] + n# + math.prod([m[i] + c[i] for i in (0, 1, 2)])
+#     s = A[0]*A[1]*c[2] + A[0]*c[1]*m[2] + c[0]*m[1]*m[2] + n# + math.prod([m[i] + c[i] for i in (0, 1, 2)])
 
-    return s
+#     return s
 
 def log(message, level=0):
     LOG_LEVEL=0
