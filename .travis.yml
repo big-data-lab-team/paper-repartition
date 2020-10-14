@@ -4,6 +4,9 @@ dist: xenial
 install:
 - pip install coveralls
 
+python:
+- 3.8
+
 script:
   - pytest keep
   - coverage run keep/test_keep.py pytest
