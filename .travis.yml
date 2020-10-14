@@ -7,13 +7,11 @@ python:
   - 3.8
   
 install:
-- pip install coveralls
+- pip install codecov
 - pip install pytest
 
 script:
-  - pytest keep
-  - coverage run keep/test_keep.py pytest
-  - coverage report -m
+  - pytest --cov=keep keep
   
 after_success:
-- coveralls
+  - bash <(curl -s https://codecov.io/bash)
