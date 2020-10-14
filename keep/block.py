@@ -291,7 +291,7 @@ class Block():
         Similar to read_from but for writes.
         '''
         assert(block.file_name), f"Block {block} has no file name"
-        log(f'Writing block {self} to {block}')
+        #log(f'Writing block {self} to {block}')
 
         data_b = self.get_data_block(block)
         data = data_b.data
@@ -307,8 +307,6 @@ class Block():
             #  to modify without overwriting
             mode = 'r+b'
         with open(block.file_name, mode) as f:
-            log(f'  >> Writing to {block.file_name}'
-                ' ({len(block_offsets)/2} seeks)', 0)
             total_bytes = 0
             for i, r in enumerate(block_offsets):
                 if i % 2 == 1:
@@ -320,7 +318,8 @@ class Block():
                 wrote_bytes = f.write(data.get(data_offset, next_data_offset))
                 total_bytes += wrote_bytes
                 data_offset = next_data_offset
-            log(f'  Wrote {total_bytes} bytes in total', 0)
+            if total_bytes != 0:
+                log(f'  Wrote {total_bytes} bytes to {block.file_name} ({len(block_offsets)/2} seeks)', 0)
         f.close()
         return total_bytes, seeks
 

@@ -243,53 +243,70 @@ def peak_memory(r, write_blocks):
     Seek model
 '''
 
-# def shape_to_end_coords(M, A, d=3):
-#     '''
-#     M: block shape M=(M1, M2, M3). Example: (500, 500, 500)
-#     A: input array shape A=(A1, A2, A3). Example: (3500, 3500, 3500)
-#     Return: end coordinates of the blocks, in each dimension. Example: ([500, 1000, 1500, 2000, 2500, 3000, 3500],
-#                                                                    [500, 1000, 1500, 2000, 2500, 3000, 3500],
-#                                                                    [500, 1000, 1500, 2000, 2500, 3000, 3500])
-#     '''
-#     return [ [ (j+1)*M[i] for j in range(int(A[i]/M[i])) ] for i in range(d)]
 
-# def seeks(A, M, D):
-#     '''
-#     A: shape of the large array. Example: (3500, 3500, 3500)
-#     M: coordinates of memory block ends (read or write). Example: ([500, 1000, 1500, 2000, 2500, 3000, 3500],
-#                                                                    [500, 1000, 1500, 2000, 2500, 3000, 3500],
-#                                                                    [500, 1000, 1500, 2000, 2500, 3000, 3500])
-#     D: coordinates of disk block ends (input or output). Example: ([500, 1000, 1500, 2000, 2500, 3000, 3500],
-#                                                                    [500, 1000, 1500, 2000, 2500, 3000, 3500],
-#                                                                    [500, 1000, 1500, 2000, 2500, 3000, 3500])
-#     Returns: number of seeks required to write M blocks into D blocks. This number is also the number of seeks
-#              to read D blocks into M blocks.
-#     '''
+def seek_model(array, mem_blocks, disk_blocks):
+    '''
+    Return the number of seeks required to write mem_blocks to disk_blocks, 
+    or to read disk_blocks in mem_blocks.
 
-#     c = [ 0 for i in range(len(A))] # number of cuts in each dimension
-#     m = [] # number of matches in each dimension
+    array: the complete array. Doesn't need to contain data, used just for its
+           shape.
+    mem_blocks: a partition of array, representing blocks to be stored in memory
+                Doesn't need to contain data, used only for its shape.
+    disk_blocks: a partition of array, representing blocks to be stored on disk.
+                 Doesn't need to contain data, used only for its shape.
+    '''
+    return seeks(array.shape,
+                 shape_to_end_coords(mem_blocks.shape, array.shape),
+                 shape_to_end_coords(disk_blocks.shape, array.shape))
 
-#     n = math.prod( [len(D[i]) for i in range(len(A))])  # Total number of disk blocks
+def shape_to_end_coords(M, A, d=3):
+    '''
+    M: block shape M=(M1, M2, M3). Example: (500, 500, 500)
+    A: input array shape A=(A1, A2, A3). Example: (3500, 3500, 3500)
+    Return: end coordinates of the blocks, in each dimension. Example: ([500, 1000, 1500, 2000, 2500, 3000, 3500],
+                                                                   [500, 1000, 1500, 2000, 2500, 3000, 3500],
+                                                                   [500, 1000, 1500, 2000, 2500, 3000, 3500])
+    '''
+    return [ [ (j+1)*M[i] for j in range(int(A[i]/M[i])) ] for i in range(d)]
 
-#     for d in range(len(A)): # d is the dimension index
+def seeks(A, M, D):
+    '''
+    A: shape of the large array. Example: (3500, 3500, 3500)
+    M: coordinates of memory block ends (read or write). Example: ([500, 1000, 1500, 2000, 2500, 3000, 3500],
+                                                                   [500, 1000, 1500, 2000, 2500, 3000, 3500],
+                                                                   [500, 1000, 1500, 2000, 2500, 3000, 3500])
+    D: coordinates of disk block ends (input or output). Example: ([500, 1000, 1500, 2000, 2500, 3000, 3500],
+                                                                   [500, 1000, 1500, 2000, 2500, 3000, 3500],
+                                                                   [500, 1000, 1500, 2000, 2500, 3000, 3500])
+    Returns: number of seeks required to write M blocks into D blocks. This number is also the number of seeks
+             to read D blocks into M blocks.
+    '''
+
+    c = [ 0 for i in range(len(A))] # number of cuts in each dimension
+    m = [] # number of matches in each dimension
+
+    n = math.prod( [len(D[i]) for i in range(len(A))])  # Total number of disk blocks
+
+    for d in range(len(A)): # d is the dimension index
         
-#         nd = len(D[d])
-#         Cd = [ ]  # all the cut coordinates (for debugging and visualization)
-#         for i in range(nd): # for each output block, check how many pieces need to be written
-#             if i == 0:
-#                 Cid = [ m for m in M[d] if 0 < m and m < D[d][i] ]  # number of write block endings in the output block
-#             else:               
-#                 Cid = [ m for m in M[d] if D[d][i-1] < m and m < D[d][i] ]  # number of write block endings in the output block
-#             if len(Cid) == 0:
-#                 continue
-#             c[d] += len(Cid) + 1
-#             Cd += Cid
+        nd = len(D[d])
+        Cd = [ ]  # all the cut coordinates (for debugging and visualization)
+        for i in range(nd): # for each output block, check how many pieces need to be written
+            if i == 0:
+                Cid = [ m for m in M[d] if 0 < m and m < D[d][i] ]  # number of write block endings in the output block
+            else:               
+                Cid = [ m for m in M[d] if D[d][i-1] < m and m < D[d][i] ]  # number of write block endings in the output block
+            if len(Cid) == 0:
+                continue
+            c[d] += len(Cid) + 1
+            Cd += Cid
 
-#         m.append(len(set(M[d]).union(set(D[d]))) - c[d])
+        m.append(len(set(M[d]).union(set(D[d]))) - c[d])
 
-#     s = A[0]*A[1]*c[2] + A[0]*c[1]*m[2] + c[0]*m[1]*m[2] + n# + math.prod([m[i] + c[i] for i in (0, 1, 2)])
+    s = A[0]*A[1]*c[2] + A[0]*c[1]*m[2] + c[0]*m[1]*m[2] + n# + math.prod([m[i] + c[i] for i in (0, 1, 2)])
 
-#     return s
+    return s
 
 def log(message, level=0):
     LOG_LEVEL=0

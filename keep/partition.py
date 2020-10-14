@@ -149,8 +149,8 @@ class Partition():
         log(f'repartition: # Repartitioning {self.name} in {out_blocks.name}')
         read_blocks, cache = get_read_blocks_and_cache(self, out_blocks,
                                                        m, self.array)
-        log(f'repartition: Selected read blocks: {read_blocks}')
-        log(f'repartition: Cache: {cache}')
+        #log(f'repartition: Selected read blocks: {read_blocks}')
+        #log(f'repartition: Cache: {cache}')
         seeks = 0
         total_bytes = 0
         for read_block in read_blocks.blocks:
