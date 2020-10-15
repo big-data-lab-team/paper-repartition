@@ -116,18 +116,11 @@ class Partition():
         '''
         seeks = 0
         total_bytes = 0
-        if block.shape == self.shape:
-            # Return partition block
-            my_block = self.blocks[block.origin]
-            total_bytes = my_block.read()
-            block.data = my_block.data
-            seeks = 1
-        else:
-            for b in self.blocks:
-                # block may be read from multiple blocks of self
-                t, s = block.read_from(self.blocks[b])
-                seeks += s
-                total_bytes += t
+        for b in self.blocks:
+            # block may be read from multiple blocks of self
+            t, s = block.read_from(self.blocks[b])
+            seeks += s
+            total_bytes += t
         return total_bytes, seeks
 
     def repartition(self, out_blocks, m, get_read_blocks_and_cache):
@@ -142,13 +135,12 @@ class Partition():
                                        an initialized cache from
                                        (in_blocks, out_blocks, m, array)
 
-
         Return number of bytes read or written, and number of seeks done
         '''
         log('')
         log(f'repartition: # Repartitioning {self.name} in {out_blocks.name}')
-        read_blocks, cache = get_read_blocks_and_cache(self, out_blocks,
-                                                       m, self.array)
+        r, c, e = get_read_blocks_and_cache(self, out_blocks, m, self.array)
+        read_blocks, cache, expected_seeks = (r, c, e)
         #log(f'repartition: Selected read blocks: {read_blocks}')
         #log(f'repartition: Cache: {cache}')
         seeks = 0
@@ -170,6 +162,8 @@ class Partition():
                 total_bytes += t
                 seeks += s
                 b.clear()
+        message = f'Incorrect seek count. Expected: {expected_seeks}. Real: {seeks}'
+        assert(expected_seeks == seeks), message
         return total_bytes, seeks
 
     def write(self):
@@ -207,6 +201,6 @@ def log(message, level=0):
     '''
     Temporary logger
     '''
-    LOG_LEVEL = 0
+    LOG_LEVEL = 1
     if level >= LOG_LEVEL:
         print(message)

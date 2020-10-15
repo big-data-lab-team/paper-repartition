@@ -24,7 +24,8 @@ def baseline(in_blocks, out_blocks, m, array):
                consistency in Partition.repartition but it is ignored in this
                baseline implementation.
     '''
-    return in_blocks, BaselineCache()
+    return in_blocks, BaselineCache(), baseline_seek_count(in_blocks,
+                                                           out_blocks)
 
 def keep(in_blocks, out_blocks, m, array):
     '''
@@ -52,11 +53,12 @@ def keep(in_blocks, out_blocks, m, array):
         if r == r_hat:
             best_read_blocks = read_blocks
             best_cache = cache
+            min_seeks = keep_seek_count(in_blocks, read_blocks, write_blocks, out_blocks)
             break
-        s = generated_seeks(in_blocks, read_blocks, write_blocks, out_blocks)
+        s = keep_seek_count(in_blocks, read_blocks, write_blocks, out_blocks)
         if min_seeks == None or s < min_seeks:
             min_seeks, best_read_blocks, best_cache = s, read_blocks, cache
-    return best_read_blocks, best_cache
+    return best_read_blocks, best_cache, min_seeks
 
 
 '''
@@ -244,71 +246,73 @@ def peak_memory(r, write_blocks):
 '''
 
 
-def seek_model(array, mem_blocks, disk_blocks):
-    '''
-    Return the number of seeks required to write mem_blocks to disk_blocks, 
-    or to read disk_blocks in mem_blocks.
+def baseline_seek_count(in_blocks, out_blocks):
+    return keep_seek_count(in_blocks, in_blocks, in_blocks, out_blocks)
 
-    array: the complete array. Doesn't need to contain data, used just for its
-           shape.
-    mem_blocks: a partition of array, representing blocks to be stored in memory
-                Doesn't need to contain data, used only for its shape.
-    disk_blocks: a partition of array, representing blocks to be stored on disk.
-                 Doesn't need to contain data, used only for its shape.
-    '''
-    return seeks(array.shape,
-                 shape_to_end_coords(mem_blocks.shape, array.shape),
-                 shape_to_end_coords(disk_blocks.shape, array.shape))
 
-def shape_to_end_coords(M, A, d=3):
+def keep_seek_count(in_blocks, read_blocks, write_blocks, out_blocks):
+    return (seek_count(read_blocks, in_blocks) +
+            seek_count(write_blocks, out_blocks))
+
+
+def partition_to_end_coords(p):
     '''
-    M: block shape M=(M1, M2, M3). Example: (500, 500, 500)
-    A: input array shape A=(A1, A2, A3). Example: (3500, 3500, 3500)
+    p: a partition
     Return: end coordinates of the blocks, in each dimension. Example: ([500, 1000, 1500, 2000, 2500, 3000, 3500],
                                                                    [500, 1000, 1500, 2000, 2500, 3000, 3500],
                                                                    [500, 1000, 1500, 2000, 2500, 3000, 3500])
     '''
-    return [ [ (j+1)*M[i] for j in range(int(A[i]/M[i])) ] for i in range(d)]
 
-def seeks(A, M, D):
+    return tuple(  # this isn't so efficient...
+            sorted(set([p.blocks[b].origin[i] + p.blocks[b].shape[i]
+                        for b in p.blocks]))
+            for i in (0, 1, 2)
+    )
+
+
+def seek_count(memory_blocks, disk_blocks):
     '''
-    A: shape of the large array. Example: (3500, 3500, 3500)
-    M: coordinates of memory block ends (read or write). Example: ([500, 1000, 1500, 2000, 2500, 3000, 3500],
-                                                                   [500, 1000, 1500, 2000, 2500, 3000, 3500],
-                                                                   [500, 1000, 1500, 2000, 2500, 3000, 3500])
-    D: coordinates of disk block ends (input or output). Example: ([500, 1000, 1500, 2000, 2500, 3000, 3500],
-                                                                   [500, 1000, 1500, 2000, 2500, 3000, 3500],
-                                                                   [500, 1000, 1500, 2000, 2500, 3000, 3500])
-    Returns: number of seeks required to write M blocks into D blocks. This number is also the number of seeks
-             to read D blocks into M blocks.
+    memory_blocks: a partition representing blocks stored in memory, to be
+                   written to disk_blocks or to be read from disk_blocks.
+    disk_blocks: a partition representing blocks to be written to disk from
+                 memory_blocks, or to be read from disk into memory_blocks
+    Returns: number of seeks required to write memory_blocks into disk_blocks.
+             This number is also the number of seeks
+             to read disk_blocks into memory_blocks.
     '''
 
-    c = [ 0 for i in range(len(A))] # number of cuts in each dimension
-    m = [] # number of matches in each dimension
-
-    n = math.prod( [len(D[i]) for i in range(len(A))])  # Total number of disk blocks
-
-    for d in range(len(A)): # d is the dimension index
-        
-        nd = len(D[d])
-        Cd = [ ]  # all the cut coordinates (for debugging and visualization)
-        for i in range(nd): # for each output block, check how many pieces need to be written
-            if i == 0:
-                Cid = [ m for m in M[d] if 0 < m and m < D[d][i] ]  # number of write block endings in the output block
-            else:               
-                Cid = [ m for m in M[d] if D[d][i-1] < m and m < D[d][i] ]  # number of write block endings in the output block
-            if len(Cid) == 0:
-                continue
-            c[d] += len(Cid) + 1
-            Cd += Cid
-
-        m.append(len(set(M[d]).union(set(D[d]))) - c[d])
-
-    s = A[0]*A[1]*c[2] + A[0]*c[1]*m[2] + c[0]*m[1]*m[2] + n# + math.prod([m[i] + c[i] for i in (0, 1, 2)])
-
+    M = partition_to_end_coords(memory_blocks)
+    s = sum([seek_count_block(disk_blocks.blocks[b], M)
+            for b in disk_blocks.blocks])
     return s
 
+
+def seek_count_block(block, M):
+    '''
+    Return the number of seeks required to write block from M, or to read M
+    from block.
+    '''
+
+    # Cuts
+    c = tuple(len([m for m in M[d]
+                   if (block.origin[d] < m
+                   and m < block.origin[d] + block.shape[d])])
+              for d in (0, 1, 2))
+
+    shape = block.shape
+    if c[2] != 0:
+        return (c[2] + 1)*shape[0]*shape[1]
+
+    if c[1] != 0:
+        return (c[1] + 1)*shape[0]
+
+    if c[0] != 0:
+        return c[0] + 1
+
+    return 1
+
+
 def log(message, level=0):
-    LOG_LEVEL=0
+    LOG_LEVEL = 0
     if level >= LOG_LEVEL:
         print(message)

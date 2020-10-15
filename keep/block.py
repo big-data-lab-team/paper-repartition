@@ -328,6 +328,6 @@ def log(message, level=0):
     '''
     Temporary logger
     '''
-    LOG_LEVEL = 0
+    LOG_LEVEL = 1
     if level >= LOG_LEVEL:
         print(message)

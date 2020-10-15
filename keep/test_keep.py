@@ -340,3 +340,32 @@ def test_repartition_keep_3(cleanup_blocks):
 def test_partition_clear(cleanup_blocks):
     array = Partition((12, 12, 12), name='array', fill='random')
     array.clear()
+
+def test_partition_to_end_coords():
+    d = 12
+    array = Partition((d, d, d), name='array')
+    in_blocks = Partition((4, 4, 4), name='in', array=array)
+    coords = keep.partition_to_end_coords(in_blocks)
+    assert(coords == ([4, 8, 12], [4, 8, 12], [4, 8, 12]))
+
+    d = 3500
+    array = Partition((d, d, d), name='array')
+    in_blocks = Partition((500, 500, 500), name='in', array=array)
+    coords = keep.partition_to_end_coords(in_blocks)
+    assert(coords == ([500, 1000, 1500, 2000, 2500, 3000, 3500],
+                      [500, 1000, 1500, 2000, 2500, 3000, 3500],
+                      [500, 1000, 1500, 2000, 2500, 3000, 3500]))
+
+def test_seeks(cleanup_blocks):
+    for a in (1, 2, 3, 4):
+        array = Partition((a, a, a), name='array')
+        divisors = keep.divisors(a)
+        configs = [(i, j, k)
+                   for i in divisors for j in divisors for k in divisors]
+        for c in configs:
+            for d in configs:
+                in_blocks = Partition(c, name='in', array=array, fill='zeros')
+                in_blocks.write()
+                out_blocks = Partition(d, name='out', array=array)
+                # raises an exception if seek count doesnt match real
+                in_blocks.repartition(out_blocks, -1, keep.baseline)
