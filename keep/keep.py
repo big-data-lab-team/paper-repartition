@@ -117,7 +117,7 @@ def create_write_blocks(read_blocks, out_blocks):
                              name='write_blocks',
                              array=read_blocks.array, create_blocks=False)
     write_blocks.blocks = blocks
-    cache = KeepCache(write_blocks, out_blocks, match)
+    cache = KeepCache(out_blocks, match)
 
     return write_blocks, cache
 

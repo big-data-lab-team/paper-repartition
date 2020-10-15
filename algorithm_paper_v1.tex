@@ -362,7 +362,7 @@ The number of output block pieces along dimension $d$ is then:
   c_d = c_d\left(  \mathcal{W}_d, \mathcal{O}_d \right) =
                \sum_{i=1}^{A_d/O_d} \vert C_{i, d}\left(  \mathcal{W}_d, \mathcal{O}_d \right) \vert + 1 - \delta_{\vert C_{i, d}\left(  \mathcal{W}_d, \mathcal{O}_d \right) \vert, 0}
 \]
-where $\vert$ . $\vert$ is the cardinality operator and $\delta$ is the Kronecker delta.
+where $\vert$ . $\vert$ is the cardinality operator and $\delta$ is the Kronecker delta \tristan{I dont think we need the 1 and delta}.
 The number of \emph{matches} between block endings is:
 \[
   m_d = m_d\left(  \mathcal{W}_d, \mathcal{O}_d \right) = \vert \mathcal{W}_d \cup  \mathcal{O}_d \vert  - c_d
@@ -389,7 +389,7 @@ seeks, which is prohibitive when \texttt{A} is large, cuts along dimension 1 gen
 dimension 0 generate $\mathcal{O}(1)$ seeks. The \keep heuristic described
 in the next section aims at avoiding cuts primarily in dimension 2, and if
 possible in dimension 1 and 0. An experimental verification of the model will be provided in
-Section ~\ref{sec:experiments}.
+Section ~\ref{sec:experiments}. \tristan{this is not a model, it is a count}
 
 %----------------------------------------
 \section{The \keep heuristic}
@@ -627,7 +627,7 @@ The first term represents the number of seeks required to read input
 
 \subsection{Implementation}
 
-\tristan{mention tests}
+\tristan{mention tests; mention that we check seek model after each run; mention profiling}
 
 \tristan{Mention array copies in Python, slicing doesnt copy data but references are copied
 look at https://stackoverflow.com/questions/5131538/slicing-a-list-in-python-without-generating-a-copy}

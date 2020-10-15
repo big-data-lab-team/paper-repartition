@@ -150,6 +150,7 @@ class Partition():
             total_bytes += t
             seeks += s
             complete_blocks = cache.insert(read_blocks.blocks[read_block])
+            peak_mem = max(peak_mem, cache.mem_usage())
             for b in complete_blocks:
                 log(f'repartition: Writing complete block {b}')
                 # TODO: it's a bit overkill to write_to all the output blocks
@@ -157,12 +158,15 @@ class Partition():
                 # need it. Also, write_to is not well named,
                 # it is the block being written to the partition
                 t, s = out_blocks.write_block(b)
+                b.clear()
                 log(f'repartition: Write required {s} seeks')
                 total_bytes += t
                 seeks += s
                 b.clear()
         message = f'Incorrect seek count. Expected: {expected_seeks}. Real: {seeks}'
         assert(expected_seeks == seeks), message
+        message = f'Incorrect memory usage. Expected: {est_peak_mem}B. Real: {peak_mem}B'
+        assert(peak_mem == est_peak_mem), message
         return total_bytes, seeks
 
     def write(self):

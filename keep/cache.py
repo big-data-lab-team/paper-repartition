@@ -8,16 +8,17 @@ class Cache():
     def insert(self, read_block):
         raise Exception('Implement in sub-class')
 
+    def mem_usage(self):
+        raise Exception('Implement in sub-class')
+
 
 class KeepCache(Cache):
-    def __init__(self, write_blocks, out_blocks, match):
+    def __init__(self, out_blocks, match):
         '''
         out_blocks: a partition
-        write_blocks: 
         match: matching between read blocks and write blocks
         '''
         self.out_blocks = out_blocks
-        self.write_blocks = write_blocks
         self.match = match
         log('Cache match:')
         for k in match:
@@ -40,17 +41,16 @@ class KeepCache(Cache):
         # return the list of write blocks that are ready to be written
         return complete_blocks
 
-    def __str__(self):
-        s = 0
-        for b in self.write_blocks.blocks:
-            s += self.write_blocks.blocks[b].data.mem_usage()
+    def mem_usage(self):
+        return sum([self.match[b].mem_usage() for b in self.match])
 
+    def __str__(self):
         return f'''
 *** Cache ***
 
-write_blocks: {self.write_blocks}
+match_blocks: {self.match_blocks}
 
-TOTAL data in mem: {s}B
+TOTAL data in mem: {self.mem_usage()}B
         '''
 
 
@@ -58,8 +58,18 @@ class BaselineCache(Cache):
     '''
     This looks like a cache but really isn't
     '''
+
+    def __init__(self):
+        self.block = None
+
     def insert(self, read_block):
+        self.block = read_block
         return [read_block]  # read block is just returned, to be written
+
+    def mem_usage(self):
+        if self.block is None:
+            return 0
+        return self.block.mem_usage()
 
 
 def log(message, level=0):

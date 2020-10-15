@@ -181,6 +181,12 @@ class Block():
                    point[i]-self.origin[i] <= self.shape[i]
                    for i in (0, 1, 2))
 
+    def mem_usage(self):
+        '''
+        Return the memory usage of the block
+        '''
+        return self.data.mem_usage()
+
     def offset(self, point):
         '''
         Return offset of point in self
