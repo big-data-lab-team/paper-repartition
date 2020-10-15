@@ -139,11 +139,10 @@ class Partition():
         '''
         log('')
         log(f'repartition: # Repartitioning {self.name} in {out_blocks.name}')
-        r, c, e = get_read_blocks_and_cache(self, out_blocks, m, self.array)
-        read_blocks, cache, expected_seeks = (r, c, e)
-        #log(f'repartition: Selected read blocks: {read_blocks}')
-        #log(f'repartition: Cache: {cache}')
+        r, c, e, p = get_read_blocks_and_cache(self, out_blocks, m, self.array)
+        read_blocks, cache, expected_seeks, est_peak_mem = (r, c, e, p)
         seeks = 0
+        peak_mem = 0
         total_bytes = 0
         for read_block in read_blocks.blocks:
             t, s = self.read_block(read_blocks.blocks[read_block])

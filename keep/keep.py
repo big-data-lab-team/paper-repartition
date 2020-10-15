@@ -1,4 +1,5 @@
 import math
+import collections
 from partition import Partition
 from block import Block
 from cache import KeepCache, BaselineCache
@@ -24,8 +25,10 @@ def baseline(in_blocks, out_blocks, m, array):
                consistency in Partition.repartition but it is ignored in this
                baseline implementation.
     '''
-    return in_blocks, BaselineCache(), baseline_seek_count(in_blocks,
-                                                           out_blocks)
+    return (in_blocks, BaselineCache(),
+            baseline_seek_count(in_blocks, out_blocks),
+            math.prod(in_blocks.shape))
+
 
 def keep(in_blocks, out_blocks, m, array):
     '''
@@ -36,29 +39,33 @@ def keep(in_blocks, out_blocks, m, array):
     Arguments:
         in_blocks: input partition, to be repartitioned
         out_blocks: output partition, to be written to disk
-        m: max memory to be used by the repartitioning.
-        array: partitioned array. Doesn't need to contain data, used just 
+        m: max memory to be used by the repartitioning. If None, memory
+           constraint is ignored.
+        array: partitioned array. Doesn't need to contain data, used just
                to get total dimensions of the array.
-               
     '''
+
     r_hat = get_r_hat(in_blocks, out_blocks)
     read_shapes = candidate_read_shapes(in_blocks, out_blocks, r_hat, array)
     min_seeks = None
     for r in read_shapes:
         read_blocks = Partition(r, 'read_blocks', array=array)
         write_blocks, cache = create_write_blocks(read_blocks, out_blocks)
-        mc = peak_memory(r, write_blocks)
-        if mc > m:
+        mc = peak_memory(array, read_blocks, write_blocks)
+        if m is not None and mc > m:
             continue
-        if r == r_hat:
+        seeks = keep_seek_count(in_blocks, read_blocks,
+                                write_blocks, out_blocks)
+        if r == r_hat:  # fix that block
+            return read_blocks, cache, seeks, mc
+        if min_seeks is None or seeks < min_seeks:
             best_read_blocks = read_blocks
             best_cache = cache
-            min_seeks = keep_seek_count(in_blocks, read_blocks, write_blocks, out_blocks)
-            break
-        s = keep_seek_count(in_blocks, read_blocks, write_blocks, out_blocks)
-        if min_seeks == None or s < min_seeks:
-            min_seeks, best_read_blocks, best_cache = s, read_blocks, cache
-    return best_read_blocks, best_cache, min_seeks
+            min_seeks = seeks
+            peak_mem = mc
+    assert(min_seeks is not None), ('Cannot find read shape that fullfills'
+                                    ' memory constraint')
+    return best_read_blocks, best_cache, min_seeks, peak_mem
 
 
 '''
@@ -85,29 +92,30 @@ def create_write_blocks(read_blocks, out_blocks):
 
     match = {}
 
-    moved_f_blocks = [ [] for i in range(len(read_blocks.blocks))]
+    moved_f_blocks = [[] for i in range(len(read_blocks.blocks))]
 
     for i, r in enumerate(read_blocks.blocks):
-        f_blocks = get_F_blocks(read_blocks.blocks[r], out_blocks, get_data=False)
+        f_blocks = get_F_blocks(read_blocks.blocks[r], out_blocks,
+                                get_data=False)
 
-        moved_f_blocks[i] += [ f_blocks[0] ]  # don't move F0
+        moved_f_blocks[i] += [f_blocks[0]]  # don't move F0
         match[(r, 0)] = i
         for f in range(1, 8):
             if not f_blocks[f] is None:
                 destF0 = destination_F0(read_blocks, i, f)
-                moved_f_blocks[destF0] += [ f_blocks[f] ]
+                moved_f_blocks[destF0] += [f_blocks[f]]
                 match[(r, f)] = destF0
 
-    merged_blocks = [ merge_blocks(blocks) for blocks in moved_f_blocks ]
-    match = { k: merged_blocks[match[k]] for k in match}
-    blocks = { m.origin: m for m in merged_blocks }
+    merged_blocks = [merge_blocks(blocks) for blocks in moved_f_blocks]
+    match = {k: merged_blocks[match[k]] for k in match}
+    blocks = {m.origin: m for m in merged_blocks}
 
     # Warning: write_blocks are a partition but a non-uniform one
-    # This may have side effects. This is also the reason for the 
+    # This may have side effects. This is also the reason for the
     # weird create_blocks param
     write_blocks = Partition((1, 1, 1),
                              name='write_blocks',
-                            array=read_blocks.array, create_blocks=False)
+                             array=read_blocks.array, create_blocks=False)
     write_blocks.blocks = blocks
     cache = KeepCache(write_blocks, out_blocks, match)
 
@@ -145,14 +153,9 @@ def divisors(n):
 
 
 def get_r_hat(in_blocks, out_blocks):
-    return tuple([ in_blocks.shape[i]*(
-                                       math.ceil(out_blocks.shape[i]/in_blocks.shape[i]))
-                                       for i in range(in_blocks.ndim)])
-
-
-def generated_seeks(in_blocks, read_blocks, write_blocks, out_blocks):
-   # print(f'TODO: implement seek model')
-    return -1
+    from math import ceil as c
+    return tuple([in_blocks.shape[i]*(c(out_blocks.shape[i]/in_blocks.shape[i]))
+                  for i in range(in_blocks.ndim)])
 
 
 def get_F_blocks(write_block, out_blocks, get_data=False):
@@ -236,9 +239,32 @@ def merge_blocks(block_list):
     return b
 
 
-def peak_memory(r, write_blocks):
-   # print(f'TODO: implement peak memory')
-    return -1
+def peak_memory(array, read_blocks, write_blocks):
+    peak = 0
+    b1 = collections.deque(maxlen=1)
+
+    size2 = int(array.shape[2]/read_blocks.shape[2])
+    b2 = collections.deque(maxlen=size2)
+
+    size3 = int(array.shape[2]/read_blocks.shape[2] *
+                array.shape[1]/read_blocks.shape[1])
+    b3 = collections.deque(maxlen=size3)
+
+    def append_f_blocks(buffer, f_indices, f_blocks):
+        size = sum([math.prod(f_blocks[i].shape)
+                    if f_blocks[i] is not None else 0
+                    for i in f_indices
+                    ])
+        buffer.append(size)
+
+    for b in read_blocks.blocks:
+        f_blocks = get_F_blocks(read_blocks.blocks[b], write_blocks)
+        append_f_blocks(b1, (1,), f_blocks)
+        append_f_blocks(b2, (2, 3), f_blocks)
+        append_f_blocks(b3, (4, 5, 6, 7), f_blocks)
+        peak = max(peak, sum(b1) + sum(b2) + sum(b3))
+
+    return peak
 
 
 '''

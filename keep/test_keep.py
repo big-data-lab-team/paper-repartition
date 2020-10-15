@@ -13,15 +13,18 @@ def cleanup_blocks():
     for f in glob.glob('*.bin'):
         os.remove(f)
 
+
 def test_inside():
     b = Block((4, 5, 6), (2, 4, 6))
     assert(b.inside((5, 8, 11)))
     assert(not b.inside((3, 5, 6)))
     assert(not b.inside((5, 10, 7)))
 
+
 def test_zeros():
     b = Block((4, 5, 6), (2, 4, 6), fill='zeros')
     assert(b.data.bytes() == bytearray(math.prod(b.shape)))
+
 
 def test_read_from_disjoint():
     b = Block((4, 5, 6), (2, 4, 6))
@@ -34,12 +37,12 @@ def test_offset():
     assert(b.offset((1, 1, 3)) == 2)
     assert(b.offset((2, 2, 2)) == 1+6+30)
 
-    c = Block((1,2,3), (5, 6, 7))
-    assert(c.offset((1, 2, 9))==6)
-    assert(c.offset((1, 7, 3))==35)
-    assert(c.offset((1, 7, 9))==41)
-    assert(c.offset((2, 2, 3))==42)
-    assert(c.offset((5, 7, 9))==math.prod(c.shape)-1)
+    c = Block((1, 2, 3), (5, 6, 7))
+    assert(c.offset((1, 2, 9)) == 6)
+    assert(c.offset((1, 7, 3)) == 35)
+    assert(c.offset((1, 7, 9)) == 41)
+    assert(c.offset((2, 2, 3)) == 42)
+    assert(c.offset((5, 7, 9)) == math.prod(c.shape)-1)
 
 
 def test_block_offsets():
@@ -165,7 +168,7 @@ def test_repartition_baseline(cleanup_blocks):
     array = Partition((2, 2, 2), name='array', fill='random')
     array.write()
     out_blocks = Partition((2, 1, 2), name='out', array=array)
-    array.repartition(out_blocks, -1, keep.baseline)
+    array.repartition(out_blocks, None, keep.baseline)
     array.blocks[(0,0,0)].read()
     out_blocks.blocks[(0,0,0)].read()
     out_blocks.blocks[(0,1,0)].read()
@@ -176,7 +179,7 @@ def test_repartition_baseline(cleanup_blocks):
     assert(array.blocks[(0,0,0)].data.bytes()[6:8] == out_blocks.blocks[(0,1,0)].data.bytes()[2:4])
 
     rein_blocks = Partition((2, 2, 2), name='rein')
-    out_blocks.repartition(rein_blocks, -1, keep.baseline)
+    out_blocks.repartition(rein_blocks, None, keep.baseline)
     rein_blocks.blocks[(0,0,0)].read()
 
     assert(array.blocks[(0,0,0)].data.bytes() == rein_blocks.blocks[(0,0,0)].data.bytes())
@@ -185,7 +188,7 @@ def test_repartition_baseline_1(cleanup_blocks):
     array = Partition((5, 6, 7), name='array', fill='random')
     array.write()
     out_blocks = Partition((5, 3, 7), name='out', array=array)
-    array.repartition(out_blocks, -1, keep.baseline)
+    array.repartition(out_blocks, None, keep.baseline)
     array.blocks[(0,0,0)].read()
     out_blocks.blocks[(0,0,0)].read()
     out_blocks.blocks[(0,3,0)].read()
@@ -193,9 +196,8 @@ def test_repartition_baseline_1(cleanup_blocks):
     assert(array.blocks[(0,0,0)].data.bytes()[:20] == out_blocks.blocks[(0,0,0)].data.bytes()[:20])
     assert(array.blocks[(0,0,0)].data.bytes()[-20:] == out_blocks.blocks[(0,3,0)].data.bytes()[-20:])
 
-
     rein_blocks = Partition((5, 6, 7), name='rein')
-    out_blocks.repartition(rein_blocks, -1, keep.baseline)
+    out_blocks.repartition(rein_blocks, None, keep.baseline)
     rein_blocks.blocks[(0,0,0)].read()
 
     assert(array.blocks[(0,0,0)].data.bytes() == rein_blocks.blocks[(0,0,0)].data.bytes())
@@ -203,15 +205,15 @@ def test_repartition_baseline_1(cleanup_blocks):
 def test_repartition_baseline_2(cleanup_blocks):
     array = Partition((10, 20, 30), name='array')
     in_blocks = Partition((10, 20, 30), name='in', array=array, fill='random')
-    in_data = in_blocks.blocks[(0,0,0)].data.bytes()
+    in_data = in_blocks.blocks[(0, 0, 0)].data.bytes()
     in_blocks.write()
     out_blocks = Partition((10, 10, 15), name='out', array=array)
-    in_blocks.repartition(out_blocks, -1, keep.baseline)
+    in_blocks.repartition(out_blocks, None, keep.baseline)
 
     rein_blocks = Partition((10, 20, 30), name='rein', array=array)
-    out_blocks.repartition(rein_blocks, -1, keep.baseline)
-    rein_blocks.blocks[(0,0,0)].read()
-    rein_data = rein_blocks.blocks[(0,0,0)].data.bytes()
+    out_blocks.repartition(rein_blocks, None, keep.baseline)
+    rein_blocks.blocks[(0, 0, 0)].read()
+    rein_data = rein_blocks.blocks[(0, 0, 0)].data.bytes()
 
     assert(rein_data == in_data)
 
@@ -247,7 +249,7 @@ def test_repartition_keep(cleanup_blocks):
     array = Partition((2, 2, 2), name='array', fill='random')
     array.write()
     out_blocks = Partition((2, 1, 2), name='out', array=array)
-    array.repartition(out_blocks, -1, keep.keep)
+    array.repartition(out_blocks, None, keep.keep)
     array.blocks[(0,0,0)].read()
     out_blocks.blocks[(0,0,0)].read()
     out_blocks.blocks[(0,1,0)].read()
@@ -258,14 +260,14 @@ def test_repartition_keep(cleanup_blocks):
     assert(array.blocks[(0,0,0)].data.bytes()[6:8] == out_blocks.blocks[(0,1,0)].data.bytes()[2:4])
 
     rein_blocks = Partition((2, 2, 2), name='rein')
-    out_blocks.repartition(rein_blocks, -1, keep.keep)
+    out_blocks.repartition(rein_blocks, None, keep.keep)
     rein_blocks.blocks[(0,0,0)].read()
 
 def test_repartition_keep_1(cleanup_blocks):
     array = Partition((5, 6, 7), name='array', fill='random')
     array.write()
     out_blocks = Partition((5, 3, 7), name='out', array=array)
-    array.repartition(out_blocks, -1, keep.keep)
+    array.repartition(out_blocks, None, keep.keep)
     array.blocks[(0,0,0)].read()
     out_blocks.blocks[(0,0,0)].read()
     out_blocks.blocks[(0,3,0)].read()
@@ -275,7 +277,7 @@ def test_repartition_keep_1(cleanup_blocks):
 
 
     rein_blocks = Partition((5, 6, 7), name='rein')
-    out_blocks.repartition(rein_blocks, -1, keep.keep)
+    out_blocks.repartition(rein_blocks, None, keep.keep)
     rein_blocks.blocks[(0,0,0)].read()
 
     assert(array.blocks[(0,0,0)].data.bytes() == rein_blocks.blocks[(0,0,0)].data.bytes())
@@ -286,10 +288,10 @@ def test_repartition_keep_2(cleanup_blocks):
     in_data = in_blocks.blocks[(0,0,0)].data.bytes()
     in_blocks.write()
     out_blocks = Partition((10, 10, 15), name='out', array=array)
-    in_blocks.repartition(out_blocks, -1, keep.keep)
+    in_blocks.repartition(out_blocks, None, keep.keep)
 
     rein_blocks = Partition((10, 20, 30), name='rein', array=array)
-    out_blocks.repartition(rein_blocks, -1, keep.keep)
+    out_blocks.repartition(rein_blocks, None, keep.keep)
     rein_blocks.blocks[(0,0,0)].read()
     rein_data = rein_blocks.blocks[(0,0,0)].data.bytes()
 
@@ -299,14 +301,14 @@ def test_repartition_baseline_3(cleanup_blocks):
     array = Partition((12, 12, 12), name='array', fill='random')
     array.write()
     in_blocks = Partition((4, 4, 4), name='in', array=array)
-    array.repartition(in_blocks, -1, keep.baseline)
+    array.repartition(in_blocks, None, keep.baseline)
 
 
     out_blocks = Partition((3, 3, 3), name='out', array=array)
-    in_blocks.repartition(out_blocks, -1, keep.baseline)
+    in_blocks.repartition(out_blocks, None, keep.baseline)
 
     rein_blocks = Partition((12, 12, 12), name='rein', array=array)
-    out_blocks.repartition(rein_blocks, -1, keep.baseline)
+    out_blocks.repartition(rein_blocks, None, keep.baseline)
 
     rein_blocks.blocks[(0,0,0)].read()
     rein_data = rein_blocks.blocks[(0,0,0)].data.bytes()
@@ -320,14 +322,14 @@ def test_repartition_keep_3(cleanup_blocks):
     array = Partition((12, 12, 12), name='array', fill='random')
     array.write()
     in_blocks = Partition((4, 4, 4), name='in', array=array)
-    array.repartition(in_blocks, -1, keep.keep)
+    array.repartition(in_blocks, None, keep.keep)
 
 
     out_blocks = Partition((3, 3, 3), name='out', array=array)
-    in_blocks.repartition(out_blocks, -1, keep.keep)
+    in_blocks.repartition(out_blocks, None, keep.keep)
 
     rein_blocks = Partition((12, 12, 12), name='rein', array=array)
-    out_blocks.repartition(rein_blocks, -1, keep.keep)
+    out_blocks.repartition(rein_blocks, None, keep.keep)
 
     rein_blocks.blocks[(0,0,0)].read()
     rein_data = rein_blocks.blocks[(0,0,0)].data.bytes()
@@ -368,4 +370,4 @@ def test_seeks(cleanup_blocks):
                 in_blocks.write()
                 out_blocks = Partition(d, name='out', array=array)
                 # raises an exception if seek count doesnt match real
-                in_blocks.repartition(out_blocks, -1, keep.baseline)
+                in_blocks.repartition(out_blocks, None, keep.baseline)
