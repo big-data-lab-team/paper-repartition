@@ -1,4 +1,5 @@
 import keep
+import os
 
 
 class Cache():
@@ -33,6 +34,7 @@ class KeepCache(Cache):
             if f_blocks[i] is None or f_blocks[i].empty():
                 continue
             dest_block = self.match[(read_block.origin, i)]
+            print(f'adding {f_blocks[i].mem_usage()}B to {dest_block}')
             dest_block.put_data_block(f_blocks[i])  # in-memory copy
             if dest_block.complete():
                 complete_blocks += [dest_block]
@@ -45,10 +47,13 @@ class KeepCache(Cache):
         return sum([self.match[b].mem_usage() for b in self.match])
 
     def __str__(self):
+        blocks = ''
+        for b in self.match:
+            blocks += str(self.match[b]) + os.linesep
         return f'''
 *** Cache ***
 
-match_blocks: {self.match.blocks}
+match_blocks: {blocks}
 
 TOTAL data in mem: {self.mem_usage()}B
         '''

@@ -16,24 +16,29 @@ class Data():
         data: a bytearray containing the data to put in the buffer
         '''
         self.data = data
+        self.bytes_put = len(data)
 
     def mem_usage(self):
         '''
         Return the size of the data buffer in memory
         '''
-        return len(self.data)
+        # Warning: this is not real memory usage due to Python overheads
+        # and most importantly zero padding in put()
+        return self.bytes_put 
 
     def clear(self):
         '''
         Clear the buffer content
         '''
         self.data = bytearray()
+        self.bytes_put = 0
 
     def put(self, offset, buffer):
         '''
         Insert buffer at given offset in self. This function was the main
         motivation to create the class
         '''
+        print(f'putting {len(buffer)} bytes')
         if len(self.data) < offset:
             # We need to allocate the buffer until the offset
             # TODO: This increases mem usage, might be solved by numpy views
@@ -41,6 +46,7 @@ class Data():
 
         self.data[offset:offset+len(buffer)] = buffer
         assert(self.data[offset:offset+len(buffer)] == buffer)
+        self.bytes_put += len(buffer)
 
     def get(self, start_offset, end_offset):
         '''
@@ -211,9 +217,13 @@ class Block():
                 continue
             next_data_offset = (data_offset + self_offsets[i+1][1] -
                                 self_offsets[i][1] + 1)
+            print('put put')
             self.data.put(self_offsets[i][1], block.data.get(data_offset,
                                                              next_data_offset))
             data_offset = next_data_offset
+        message = (f'Block of shape {self.shape} uses '
+                   f'{self.data.mem_usage()}B of memory')
+        assert(self.data.mem_usage() <= math.prod(self.shape)), message
         message = (f'Block is {block.data.mem_usage()}B but only {data_offset}'
                    ' were copied')
         assert(data_offset == block.data.mem_usage()), message
@@ -227,10 +237,18 @@ class Block():
 
         Similar to write but for reading
         '''
+        if self.data.mem_usage() == math.prod(self.shape):
+            # don't read the block again if it was already read
+            # TODO: investigate why this is happening
+            return self.data.mem_usage()
+
         log(f'<< Reading {self.file_name}', 0)
         with open(self.file_name, 'rb') as f:
+            print('read put')
             self.data.put(0, f.read())
-        assert(self.data.mem_usage() == math.prod(self.shape))
+        message = (f'Block contains {self.data.mem_usage()}B but shape is '
+                  f' {math.prod(self.shape)}B')
+        assert(self.data.mem_usage() == math.prod(self.shape)), message
         return self.data.mem_usage()
 
     def read_from(self, block):

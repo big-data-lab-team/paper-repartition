@@ -25,7 +25,11 @@ def baseline(in_blocks, out_blocks, m, array):
                consistency in Partition.repartition but it is ignored in this
                baseline implementation.
     '''
-    return (in_blocks, BaselineCache(),
+    print(str(math.prod(in_blocks.shape))+" model")
+    # TODO: creating a new partition makes memory estimates correct, 
+    # but it adds an in-memory copy, this could be fixed
+    return (Partition(in_blocks.shape, 'read_blocks', array),
+            BaselineCache(),
             baseline_seek_count(in_blocks, out_blocks),
             math.prod(in_blocks.shape))
 
@@ -51,12 +55,14 @@ def keep(in_blocks, out_blocks, m, array):
     for r in read_shapes:
         read_blocks = Partition(r, 'read_blocks', array=array)
         write_blocks, cache = create_write_blocks(read_blocks, out_blocks)
-        mc = peak_memory(array, read_blocks, write_blocks) + math.prod(out_blocks.shape)
+        print('-------', r)
+        mc = peak_memory(array, read_blocks, write_blocks) + math.prod(r)
         if m is not None and mc > m:
             continue
         seeks = keep_seek_count(in_blocks, read_blocks,
                                 write_blocks, out_blocks)
         if r == r_hat:  # fix that block
+            print(f'returning cache: {cache}', mc)
             return read_blocks, cache, seeks, mc
         if min_seeks is None or seeks < min_seeks:
             best_read_blocks = read_blocks
@@ -65,6 +71,7 @@ def keep(in_blocks, out_blocks, m, array):
             peak_mem = mc
     assert(min_seeks is not None), ('Cannot find read shape that fullfills'
                                     ' memory constraint')
+    print(peak_mem, f'returning cache: {best_cache}', peak_mem)
     return best_read_blocks, best_cache, min_seeks, peak_mem
 
 
