@@ -48,7 +48,7 @@ class KeepCache(Cache):
         return f'''
 *** Cache ***
 
-match_blocks: {self.match_blocks}
+match_blocks: {self.match.blocks}
 
 TOTAL data in mem: {self.mem_usage()}B
         '''

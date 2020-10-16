@@ -51,7 +51,7 @@ def keep(in_blocks, out_blocks, m, array):
     for r in read_shapes:
         read_blocks = Partition(r, 'read_blocks', array=array)
         write_blocks, cache = create_write_blocks(read_blocks, out_blocks)
-        mc = peak_memory(array, read_blocks, write_blocks)
+        mc = peak_memory(array, read_blocks, write_blocks) + math.prod(out_blocks.shape)
         if m is not None and mc > m:
             continue
         seeks = keep_seek_count(in_blocks, read_blocks,

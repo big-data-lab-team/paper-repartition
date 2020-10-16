@@ -149,7 +149,9 @@ class Partition():
             log(f'repartition: Read required {s} seeks')
             total_bytes += t
             seeks += s
+            print(f'inserting read block of size {read_blocks.blocks[read_block].mem_usage()}B to cache')
             complete_blocks = cache.insert(read_blocks.blocks[read_block])
+            print(cache)
             peak_mem = max(peak_mem, cache.mem_usage())
             for b in complete_blocks:
                 log(f'repartition: Writing complete block {b}')
