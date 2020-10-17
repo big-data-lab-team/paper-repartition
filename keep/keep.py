@@ -25,7 +25,6 @@ def baseline(in_blocks, out_blocks, m, array):
                consistency in Partition.repartition but it is ignored in this
                baseline implementation.
     '''
-    print(str(math.prod(in_blocks.shape))+" model")
     # TODO: creating a new partition makes memory estimates correct, 
     # but it adds an in-memory copy, this could be fixed
     return (Partition(in_blocks.shape, 'read_blocks', array),
@@ -55,14 +54,12 @@ def keep(in_blocks, out_blocks, m, array):
     for r in read_shapes:
         read_blocks = Partition(r, 'read_blocks', array=array)
         write_blocks, cache = create_write_blocks(read_blocks, out_blocks)
-        print('-------', r)
-        mc = peak_memory(array, read_blocks, write_blocks) + math.prod(r)
+        mc = peak_memory(array, read_blocks, write_blocks)
         if m is not None and mc > m:
             continue
         seeks = keep_seek_count(in_blocks, read_blocks,
                                 write_blocks, out_blocks)
         if r == r_hat:  # fix that block
-            print(f'returning cache: {cache}', mc)
             return read_blocks, cache, seeks, mc
         if min_seeks is None or seeks < min_seeks:
             best_read_blocks = read_blocks
@@ -71,7 +68,6 @@ def keep(in_blocks, out_blocks, m, array):
             peak_mem = mc
     assert(min_seeks is not None), ('Cannot find read shape that fullfills'
                                     ' memory constraint')
-    print(peak_mem, f'returning cache: {best_cache}', peak_mem)
     return best_read_blocks, best_cache, min_seeks, peak_mem
 
 
@@ -172,8 +168,18 @@ def get_F_blocks(write_block, out_blocks, get_data=False):
 
     # F0 is where the write_block origin is
     origin = write_block.origin
-    out_ends = [ math.floor((write_block.origin[i]+write_block.shape[i])/out_blocks.shape[i])*out_blocks.shape[i] for i in range(len(origin)) ]
-    shape = [ out_ends[i]-write_block.origin[i] if out_ends[i] > write_block.origin[i] else write_block.shape[i] for i in range(len(origin))] 
+    shape = write_block.shape
+    out_ends = partition_to_end_coords(out_blocks)
+
+    block_ends = list(origin)
+    for d in (0, 1, 2):
+        ends = sorted(out_ends[d])
+        for o in ends:
+            if o > origin[d] and o <= origin[d] + shape[d] - 1:
+                block_ends[d] = o
+
+    block_ends_old = [ math.floor((write_block.origin[i]+write_block.shape[i])/out_blocks.shape[i])*out_blocks.shape[i]-1 for i in range(len(origin)) ]
+    shape = [ block_ends[i] - origin[i] + 1 for i in range(len(origin))] 
     F0 = Block(origin, shape)
     if get_data:
         F0 = write_block.get_data_block(F0)
@@ -258,6 +264,7 @@ def peak_memory(array, read_blocks, write_blocks):
     b3 = collections.deque(maxlen=size3)
 
     def append_f_blocks(buffer, f_indices, f_blocks):
+
         size = sum([math.prod(f_blocks[i].shape)
                     if f_blocks[i] is not None else 0
                     for i in f_indices
@@ -266,12 +273,16 @@ def peak_memory(array, read_blocks, write_blocks):
 
     for b in read_blocks.blocks:
         f_blocks = get_F_blocks(read_blocks.blocks[b], write_blocks)
+        print(f'fblocks {[str(b) for b in f_blocks]}')
+        # print(f'write blocks {[str(b) for b in write_blocks.blocks]}')
         append_f_blocks(b1, (1,), f_blocks)
         append_f_blocks(b2, (2, 3), f_blocks)
         append_f_blocks(b3, (4, 5, 6, 7), f_blocks)
         peak = max(peak, sum(b1) + sum(b2) + sum(b3))
+        print(b1, b2, b3)
+        print(f'estimated after {b}: {sum(b1) + sum(b2) + sum(b3)}B')
 
-    return peak
+    return peak + math.prod(read_blocks.shape)
 
 
 '''
@@ -297,7 +308,7 @@ def partition_to_end_coords(p):
     '''
 
     return tuple(  # this isn't so efficient...
-            sorted(set([p.blocks[b].origin[i] + p.blocks[b].shape[i]
+            sorted(set([p.blocks[b].origin[i] + p.blocks[b].shape[i] - 1
                         for b in p.blocks]))
             for i in (0, 1, 2)
     )

@@ -21,10 +21,10 @@ class KeepCache(Cache):
         '''
         self.out_blocks = out_blocks
         self.match = match
-        log('Cache match:')
-        for k in match:
-            log(k)
-            log(match[k])
+        # log('Cache match:')
+        # for k in match:
+        #     log(k)
+        #     log(match[k])
 
     def insert(self, read_block):
         f_blocks = keep.get_F_blocks(read_block, self.out_blocks,
@@ -34,17 +34,15 @@ class KeepCache(Cache):
             if f_blocks[i] is None or f_blocks[i].empty():
                 continue
             dest_block = self.match[(read_block.origin, i)]
-            print(f'adding {f_blocks[i].mem_usage()}B to {dest_block}')
             dest_block.put_data_block(f_blocks[i])  # in-memory copy
             if dest_block.complete():
                 complete_blocks += [dest_block]
-
-        log(self)
         # return the list of write blocks that are ready to be written
         return complete_blocks
 
     def mem_usage(self):
-        return sum([self.match[b].mem_usage() for b in self.match])
+        blocks = { self.match[b] for b in self.match}
+        return sum([b.mem_usage() for b in blocks])
 
     def __str__(self):
         blocks = ''
@@ -78,6 +76,6 @@ class BaselineCache(Cache):
 
 
 def log(message, level=0):
-    LOG_LEVEL = 1
+    LOG_LEVEL = 0
     if level >= LOG_LEVEL:
         print(message)

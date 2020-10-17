@@ -38,7 +38,7 @@ class Data():
         Insert buffer at given offset in self. This function was the main
         motivation to create the class
         '''
-        print(f'putting {len(buffer)} bytes')
+        #print(f'putting {len(buffer)} bytes')
         if len(self.data) < offset:
             # We need to allocate the buffer until the offset
             # TODO: This increases mem usage, might be solved by numpy views
@@ -217,7 +217,6 @@ class Block():
                 continue
             next_data_offset = (data_offset + self_offsets[i+1][1] -
                                 self_offsets[i][1] + 1)
-            print('put put')
             self.data.put(self_offsets[i][1], block.data.get(data_offset,
                                                              next_data_offset))
             data_offset = next_data_offset
@@ -244,7 +243,6 @@ class Block():
 
         log(f'<< Reading {self.file_name}', 0)
         with open(self.file_name, 'rb') as f:
-            print('read put')
             self.data.put(0, f.read())
         message = (f'Block contains {self.data.mem_usage()}B but shape is '
                   f' {math.prod(self.shape)}B')
