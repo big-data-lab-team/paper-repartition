@@ -25,7 +25,7 @@ def baseline(in_blocks, out_blocks, m, array):
                consistency in Partition.repartition but it is ignored in this
                baseline implementation.
     '''
-    # TODO: creating a new partition makes memory estimates correct, 
+    # TODO: creating a new partition makes memory estimates correct,
     # but it adds an in-memory copy, this could be fixed
     return (Partition(in_blocks.shape, 'read_blocks', array),
             BaselineCache(),
@@ -81,7 +81,7 @@ def candidate_read_shapes(in_blocks, out_blocks, r_hat, array):
     log(f'keep: rhat is {r_hat}')
     divs0 = [x for x in divisors(array.shape[0]) if x <= r_hat[0]]
     divs1 = [x for x in divisors(array.shape[1]) if x <= r_hat[1]]
-    shapes = [ (x, y, r_hat[2]) for x in divs0 for y in divs1 ]
+    shapes = [ (x, y, r_hat[2]) for x in divs0 for y in divs1]
     shapes.sort(key=lambda x: (x[1], x[0]),reverse=True)
     log(f'keep: shapes = {shapes}')
     return shapes
@@ -171,7 +171,7 @@ def get_F_blocks(write_block, out_blocks, get_data=False, dry_run=False):
     shape = write_block.shape
     out_ends = partition_to_end_coords(out_blocks)
 
-    # TODO: list comprehension
+    # TODO: turn to list comprehension
     block_ends = list(origin)
     for d in (0, 1, 2):
         ends = sorted(out_ends[d])
@@ -292,9 +292,10 @@ def keep_seek_count(in_blocks, read_blocks, write_blocks, out_blocks):
 def partition_to_end_coords(p):
     '''
     p: a partition
-    Return: end coordinates of the blocks, in each dimension. Example: ([500, 1000, 1500, 2000, 2500, 3000, 3500],
-                                                                   [500, 1000, 1500, 2000, 2500, 3000, 3500],
-                                                                   [500, 1000, 1500, 2000, 2500, 3000, 3500])
+    Return: end coordinates of the blocks, in each dimension.
+    Example: ([500, 1000, 1500, 2000, 2500, 3000, 3500],
+              [500, 1000, 1500, 2000, 2500, 3000, 3500],
+              [500, 1000, 1500, 2000, 2500, 3000, 3500])
     '''
 
     return tuple(  # this isn't so efficient...
@@ -346,6 +347,6 @@ def seek_count_block(block, M):
 
 
 def log(message, level=0):
-    LOG_LEVEL = 0
+    LOG_LEVEL = 1
     if level >= LOG_LEVEL:
         print(message)

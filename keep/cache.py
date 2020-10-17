@@ -32,14 +32,12 @@ class KeepCache(Cache):
                                      get_data=True, dry_run=dry_run)
         complete_blocks = []
         for i in range(8):
-            print(f_blocks[i])
             if f_blocks[i] is None or f_blocks[i].empty():
                 continue
             dest_block = self.match[(read_block.origin, i)]
             dest_block.put_data_block(f_blocks[i], dry_run)  # in-memory copy
             if dest_block.complete():
                 complete_blocks += [dest_block]
-        print(self)
         # return the list of write blocks that are ready to be written
         return complete_blocks
 

@@ -94,6 +94,7 @@ def test_block_offsets():
                                    ((3, 3, 1), 61),
                                    ((3, 3, 3), 63))))
 
+
 def test_write_to_shape_match(cleanup_blocks):
 
     b = Block((1, 2, 3), (5, 6, 7), fill='random', file_name='test.bin')

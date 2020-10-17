@@ -138,7 +138,7 @@ class Partition():
         Return number of bytes read or written, and number of seeks done
         '''
         log('')
-        log(f'repartition: # Repartitioning {self.name} in {out_blocks.name} {dry_run}', 1)
+        log(f'repartition: # Repartitioning {self.name} in {out_blocks.name}')
         r, c, e, p = get_read_blocks_and_cache(self, out_blocks, m, self.array)
         read_blocks, cache, expected_seeks, est_peak_mem = (r, c, e, p)
         seeks = 0
