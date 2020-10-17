@@ -54,7 +54,7 @@ def keep(in_blocks, out_blocks, m, array):
     for r in read_shapes:
         read_blocks = Partition(r, 'read_blocks', array=array)
         write_blocks, cache = create_write_blocks(read_blocks, out_blocks)
-        mc = peak_memory(array, read_blocks, write_blocks)
+        mc = peak_memory(array, read_blocks, write_blocks, in_blocks, out_blocks, cache)
         if m is not None and mc > m:
             continue
         seeks = keep_seek_count(in_blocks, read_blocks,
@@ -161,7 +161,7 @@ def get_r_hat(in_blocks, out_blocks):
                   for i in range(in_blocks.ndim)])
 
 
-def get_F_blocks(write_block, out_blocks, get_data=False):
+def get_F_blocks(write_block, out_blocks, get_data=False, dry_run=False):
     '''
     Assuming out_blocks are of uniform size
     '''
@@ -171,6 +171,7 @@ def get_F_blocks(write_block, out_blocks, get_data=False):
     shape = write_block.shape
     out_ends = partition_to_end_coords(out_blocks)
 
+    # TODO: list comprehension
     block_ends = list(origin)
     for d in (0, 1, 2):
         ends = sorted(out_ends[d])
@@ -182,56 +183,56 @@ def get_F_blocks(write_block, out_blocks, get_data=False):
     shape = [ block_ends[i] - origin[i] + 1 for i in range(len(origin))] 
     F0 = Block(origin, shape)
     if get_data:
-        F0 = write_block.get_data_block(F0)
+        F0 = write_block.get_data_block(F0, dry_run)
 
     # F1
     origin = (F0.origin[0], F0.origin[1], F0.origin[2] + F0.shape[2])
     shape = [ F0.shape[0], F0.shape[1], write_block.shape[2] - F0.shape[2] ]
     F1 = Block(origin, shape)
     if get_data:
-        F1 = write_block.get_data_block(F1)
+        F1 = write_block.get_data_block(F1, dry_run)
 
     # F2
     origin = (F0.origin[0], F0.origin[1] + F0.shape[1], F0.origin[2])
     shape = [ F0.shape[0], write_block.shape[1] - F0.shape[1], F0.shape[2] ]
     F2 = Block(origin, shape)
     if get_data:
-        F2 = write_block.get_data_block(F2)
+        F2 = write_block.get_data_block(F2, dry_run)
 
     # F3
     origin = (F0.origin[0], F0.origin[1] + F0.shape[1], F0.origin[2] + F0.shape[2])
     shape = [ F0.shape[0], write_block.shape[1] - F0.shape[1], write_block.shape[2] - F0.shape[2] ]
     F3 = Block(origin, shape)
     if get_data:
-        F3 = write_block.get_data_block(F3)
+        F3 = write_block.get_data_block(F3, dry_run)
 
     # F4
     origin = ( F0.origin[0] + F0.shape[0], F0.origin[1], F0.origin[2] )
     shape = [ write_block.shape[0] - F0.shape[0], F0.shape[1], F0.shape[2] ]
     F4 = Block(origin, shape)
     if get_data:
-        F4 = write_block.get_data_block(F4)
+        F4 = write_block.get_data_block(F4, dry_run)
 
     # F5
     origin = ( F0.origin[0] + F0.shape[0], F0.origin[1], F0.origin[2] + F0.shape[2] )
     shape = [ write_block.shape[0] - F0.shape[0], F0.shape[1], write_block.shape[2] - F0.shape[2] ]
     F5 = Block(origin, shape)
     if get_data:
-        F5 = write_block.get_data_block(F5)
+        F5 = write_block.get_data_block(F5, dry_run)
 
     # F6
     origin = ( F0.origin[0] + F0.shape[0], F0.origin[1] + F0.shape[1], F0.origin[2] )
     shape = [ write_block.shape[0] - F0.shape[0], write_block.shape[1] - F0.shape[1], F0.shape[2] ]
     F6 = Block(origin, shape)
     if get_data:
-        F6 = write_block.get_data_block(F6)
+        F6 = write_block.get_data_block(F6, dry_run)
 
     # F7
     origin = ( F0.origin[0] + F0.shape[0], F0.origin[1] + F0.shape[1], F0.origin[2] + F0.shape[2] )
     shape = [ write_block.shape[0] - F0.shape[0], write_block.shape[1] - F0.shape[1], write_block.shape[2] - F0.shape[2] ]
     F7 = Block(origin, shape)
     if get_data:
-        F7 = write_block.get_data_block(F7)
+        F7 = write_block.get_data_block(F7, dry_run)
 
     # Remove empty blocks and return
     f_blocks = [ f if not f.empty() else None for f in [F0, F1, F2, F3, F4, F5, F6, F7]]
@@ -252,38 +253,27 @@ def merge_blocks(block_list):
     return b
 
 
-def peak_memory(array, read_blocks, write_blocks):
-    peak = 0
-    b1 = collections.deque(maxlen=1)
+def peak_memory(array, read_blocks, write_blocks, in_blocks, out_blocks,
+                cache):
+    '''
+    Return the estimated amount of memory required to repartition in_blocks
+    into out_blocks, using read_blocks and write_blocks.
+    '''
 
-    size2 = int(array.shape[2]/read_blocks.shape[2])
-    b2 = collections.deque(maxlen=size2)
+    # To estimate the amount of memory required, we run a dry run of the
+    # repartitioning
 
-    size3 = int(array.shape[2]/read_blocks.shape[2] *
-                array.shape[1]/read_blocks.shape[1])
-    b3 = collections.deque(maxlen=size3)
+    def local_get_read_blocks_and_cache(in_blocks, out_blocks, m, array):
+        return read_blocks, cache, None, None
 
-    def append_f_blocks(buffer, f_indices, f_blocks):
-
-        size = sum([math.prod(f_blocks[i].shape)
-                    if f_blocks[i] is not None else 0
-                    for i in f_indices
-                    ])
-        buffer.append(size)
-
-    for b in read_blocks.blocks:
-        f_blocks = get_F_blocks(read_blocks.blocks[b], write_blocks)
-        print(f'fblocks {[str(b) for b in f_blocks]}')
-        # print(f'write blocks {[str(b) for b in write_blocks.blocks]}')
-        append_f_blocks(b1, (1,), f_blocks)
-        append_f_blocks(b2, (2, 3), f_blocks)
-        append_f_blocks(b3, (4, 5, 6, 7), f_blocks)
-        peak = max(peak, sum(b1) + sum(b2) + sum(b3))
-        print(b1, b2, b3)
-        print(f'estimated after {b}: {sum(b1) + sum(b2) + sum(b3)}B')
-
-    return peak + math.prod(read_blocks.shape)
-
+    _, _, peak_mem = in_blocks.repartition(out_blocks, None,
+                                           local_get_read_blocks_and_cache,
+                                           dry_run=True)
+    read_blocks.clear()
+    write_blocks.clear()
+    in_blocks.clear()
+    out_blocks.clear()
+    return peak_mem
 
 '''
     Seek model

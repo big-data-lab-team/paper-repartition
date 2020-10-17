@@ -107,7 +107,7 @@ class Partition():
             neighbor_ind = block_ind + n_blocks[2]*n_blocks[1]
         return neighbor_ind
 
-    def read_block(self, block):
+    def read_block(self, block, dry_run=False):
         '''
         Read block from partition. Shape of block may or may not match shape of
         partition.
@@ -118,12 +118,12 @@ class Partition():
         total_bytes = 0
         for b in self.blocks:
             # block may be read from multiple blocks of self
-            t, s = block.read_from(self.blocks[b])
+            t, s = block.read_from(self.blocks[b], dry_run)
             seeks += s
             total_bytes += t
         return total_bytes, seeks
 
-    def repartition(self, out_blocks, m, get_read_blocks_and_cache):
+    def repartition(self, out_blocks, m, get_read_blocks_and_cache, dry_run=False):
         '''
         Write data from self in files of partition out_blocks. Implements
         Algorithm 1 in the paper.
@@ -138,7 +138,7 @@ class Partition():
         Return number of bytes read or written, and number of seeks done
         '''
         log('')
-        log(f'repartition: # Repartitioning {self.name} in {out_blocks.name}', 1)
+        log(f'repartition: # Repartitioning {self.name} in {out_blocks.name} {dry_run}', 1)
         r, c, e, p = get_read_blocks_and_cache(self, out_blocks, m, self.array)
         read_blocks, cache, expected_seeks, est_peak_mem = (r, c, e, p)
         seeks = 0
@@ -147,14 +147,13 @@ class Partition():
         bytes_in_cache = 0
         for read_block in read_blocks.blocks:
             log(f'repartition: reading block: {read_block}', 0)
-            t, s = self.read_block(read_blocks.blocks[read_block])
+            t, s = self.read_block(read_blocks.blocks[read_block], dry_run)
             #log(f'repartition: Read required {s} seeks and {t} bytes', 1)
-            assert(t == read_blocks.blocks[read_block].mem_usage())
             bytes_in_cache += t
             total_bytes += t
             seeks += s
             log(f'repartition: inserting read block of size {read_blocks.blocks[read_block].mem_usage()}B to cache', 0)
-            complete_blocks = cache.insert(read_blocks.blocks[read_block])
+            complete_blocks = cache.insert(read_blocks.blocks[read_block], dry_run)
             log(f'repartition: Cache: {str(cache)}', 0)
             peak_mem = max(peak_mem, cache.mem_usage())
             for b in complete_blocks:
@@ -163,7 +162,7 @@ class Partition():
                 # although nothing is actually written to blocks that don't
                 # need it. Also, write_to is not well named,
                 # it is the block being written to the partition
-                t, s = out_blocks.write_block(b)
+                t, s = out_blocks.write_block(b, dry_run)
                 assert(t == b.mem_usage())
                 b.clear()
                 bytes_in_cache -= t
@@ -172,14 +171,13 @@ class Partition():
                 total_bytes += t
                 seeks += s
                 b.clear()
-            assert(bytes_in_cache == cache.mem_usage())
-            print(f'real mem after {read_block}:', bytes_in_cache)
-            print(cache)
+            assert(bytes_in_cache == cache.mem_usage()), f'{bytes_in_cache}, {cache.mem_usage()}'
+
         message = f'Incorrect seek count. Expected: {expected_seeks}. Real: {seeks}'
-        assert(expected_seeks == seeks), message
+        assert(dry_run or (expected_seeks == seeks)), message
         message = f'Incorrect memory usage. Expected: {est_peak_mem}B. Real: {peak_mem}B.'
-        assert(est_peak_mem == peak_mem), message
-        return total_bytes, seeks
+        assert(dry_run or (est_peak_mem == peak_mem)), message
+        return total_bytes, seeks, peak_mem
 
     def write(self):
         '''
@@ -188,7 +186,7 @@ class Partition():
         for b in self.blocks:
             self.blocks[b].write()
 
-    def write_block(self, block):
+    def write_block(self, block, dry_run=False):
         '''
         Write data in block to partition blocks. Shape of block may not match
         shape of partition.
@@ -197,18 +195,11 @@ class Partition():
         '''
         seeks = 0
         total_bytes = 0
-        if block.shape == self.shape:
-            # Return partition block
-            my_block = self.blocks[block.origin]
-            my_block.data = block.data
-            total_bytes = my_block.write()
-            seeks = 1
-        else:
-            for b in self.blocks:
-                # block may be written to multiple blocks in self
-                t, s = block.write_to(self.blocks[b])
-                seeks += s
-                total_bytes += t
+        for b in self.blocks:
+            # block may be written to multiple blocks in self
+            t, s = block.write_to(self.blocks[b], dry_run)
+            seeks += s
+            total_bytes += t
         return total_bytes, seeks
 
 

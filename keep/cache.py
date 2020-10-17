@@ -6,7 +6,7 @@ class Cache():
     '''
     An abstract Cache class for use in the repartition function
     '''
-    def insert(self, read_block):
+    def insert(self, read_block, dry_run):
         raise Exception('Implement in sub-class')
 
     def mem_usage(self):
@@ -14,30 +14,32 @@ class Cache():
 
 
 class KeepCache(Cache):
-    def __init__(self, out_blocks, match, dry_run=False):
+    def __init__(self, out_blocks, match):
         '''
         out_blocks: a partition
         match: matching between read blocks and write blocks
         '''
         self.out_blocks = out_blocks
         self.match = match
-        self.dry_run = dry_run
+        # self.dry_run = dry_run
         # log('Cache match:')
         # for k in match:
         #     log(k)
         #     log(match[k])
 
-    def insert(self, read_block):
+    def insert(self, read_block, dry_run):
         f_blocks = keep.get_F_blocks(read_block, self.out_blocks,
-                                     get_data=not self.dry_run)
+                                     get_data=True, dry_run=dry_run)
         complete_blocks = []
         for i in range(8):
+            print(f_blocks[i])
             if f_blocks[i] is None or f_blocks[i].empty():
                 continue
             dest_block = self.match[(read_block.origin, i)]
-            dest_block.put_data_block(f_blocks[i], self.dry_run)  # in-memory copy
+            dest_block.put_data_block(f_blocks[i], dry_run)  # in-memory copy
             if dest_block.complete():
                 complete_blocks += [dest_block]
+        print(self)
         # return the list of write blocks that are ready to be written
         return complete_blocks
 
@@ -66,7 +68,7 @@ class BaselineCache(Cache):
     def __init__(self):
         self.block = None
 
-    def insert(self, read_block):
+    def insert(self, read_block, dry_run):
         self.block = read_block
         return [read_block]  # read block is just returned, to be written
 
