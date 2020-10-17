@@ -105,6 +105,16 @@ def test_write_to_shape_match(cleanup_blocks):
     assert(data == b.data.bytes())
     os.remove(b.file_name)
 
+def test_seek_model():
+    array = Partition((2, 2, 2), name='array', fill='random')
+    out_blocks = Partition((2, 1, 2), name='out', array=array)
+    
+    _, _, seeks, _ = keep.keep(array, out_blocks, None, array)
+    assert(seeks == 3)
+    
+    _, _, seeks, _ = keep.baseline(out_blocks, array, None, array)
+    assert(seeks == 6)
+
 def test_write_to_shape_mismatch(cleanup_blocks):
     b = Block((1, 2, 3), (5, 6, 7), fill='random', file_name='test.bin')
     c = Block((1, 2, 3), (5, 2, 7), file_name='block1.bin')
