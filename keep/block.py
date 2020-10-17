@@ -33,11 +33,16 @@ class Data():
         self.data = bytearray()
         self.bytes_put = 0
 
-    def put(self, offset, buffer):
+    def put(self, offset, buffer, dry_run=False):
         '''
         Insert buffer at given offset in self. This function was the main
         motivation to create the class
         '''
+
+        self.bytes_put += len(buffer)
+        if dry_run:
+            return
+
         #print(f'putting {len(buffer)} bytes')
         if len(self.data) < offset:
             # We need to allocate the buffer until the offset
@@ -46,7 +51,7 @@ class Data():
 
         self.data[offset:offset+len(buffer)] = buffer
         assert(self.data[offset:offset+len(buffer)] == buffer)
-        self.bytes_put += len(buffer)
+
 
     def get(self, start_offset, end_offset):
         '''
@@ -204,7 +209,7 @@ class Block():
                   self.shape[2]*self.shape[1]*(point[0]-self.origin[0]))
         return offset
 
-    def put_data_block(self, block):
+    def put_data_block(self, block, dry_run=False):
         '''
         Write the relevant sections of block.data into self.data
 
@@ -218,7 +223,7 @@ class Block():
             next_data_offset = (data_offset + self_offsets[i+1][1] -
                                 self_offsets[i][1] + 1)
             self.data.put(self_offsets[i][1], block.data.get(data_offset,
-                                                             next_data_offset))
+                                                             next_data_offset), dry_run)
             data_offset = next_data_offset
         message = (f'Block of shape {self.shape} uses '
                    f'{self.data.mem_usage()}B of memory')

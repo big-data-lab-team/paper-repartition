@@ -14,13 +14,14 @@ class Cache():
 
 
 class KeepCache(Cache):
-    def __init__(self, out_blocks, match):
+    def __init__(self, out_blocks, match, dry_run=False):
         '''
         out_blocks: a partition
         match: matching between read blocks and write blocks
         '''
         self.out_blocks = out_blocks
         self.match = match
+        self.dry_run = dry_run
         # log('Cache match:')
         # for k in match:
         #     log(k)
@@ -28,13 +29,13 @@ class KeepCache(Cache):
 
     def insert(self, read_block):
         f_blocks = keep.get_F_blocks(read_block, self.out_blocks,
-                                     get_data=True)
+                                     get_data=not self.dry_run)
         complete_blocks = []
         for i in range(8):
             if f_blocks[i] is None or f_blocks[i].empty():
                 continue
             dest_block = self.match[(read_block.origin, i)]
-            dest_block.put_data_block(f_blocks[i])  # in-memory copy
+            dest_block.put_data_block(f_blocks[i], self.dry_run)  # in-memory copy
             if dest_block.complete():
                 complete_blocks += [dest_block]
         # return the list of write blocks that are ready to be written

@@ -339,10 +339,9 @@ def seek_count_block(block, M):
 
     # Cuts
     c = tuple(len([m for m in M[d]
-                   if (block.origin[d] < m
-                   and m < block.origin[d] + block.shape[d])])
+                   if (block.origin[d] <= m
+                   and m < block.origin[d] + block.shape[d] - 1)])
               for d in (0, 1, 2))
-
     shape = block.shape
     if c[2] != 0:
         return (c[2] + 1)*shape[0]*shape[1]
