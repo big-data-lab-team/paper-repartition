@@ -103,6 +103,7 @@ class Block():
                                             "{shape} don't match")
         self.origin = tuple(origin)
         self.shape = tuple(shape)
+        self.end = tuple(origin[i] + shape[i] - 1 for i in (0, 1, 2))
         self.file_name = file_name
 
         # Create data buffer
@@ -127,28 +128,48 @@ class Block():
 
     def block_offsets(self, block):
         '''
-        Return the offsets in self of contiguous data segments in block.
+        Return the offsets in self of contiguous data segments of block.
         '''
-        origin = tuple(max(block.origin[i], self.origin[i]) for i in (0, 1, 2))
-        end = tuple(min(block.origin[i] + block.shape[i],
-                    self.origin[i] + self.shape[i]) for i in (0, 1, 2))
-        if any(end[i] - origin[i] <= 0 for i in (0, 1, 2)):
-            # blocks don't overlap
+
+        # If self and block don't overlap then don't bother
+        if not self.overlap(block):
             return (), (), ()
 
-        read_points = tuple(((i, j, k),
-                            self.offset((i, j, k)))
-                            for i in range(origin[0], end[0])
-                            for j in range(origin[1], end[1])
-                            for k in (origin[2], end[2]-1))
-        # Remove duplicate offsets
-        read_points = tuple(x for i, x in enumerate(read_points)
-                            # always keep the first and last
-                            if i == len(read_points)-1 or i == 0 or
-                            ((i % 2 == 0 or x[1] != read_points[i+1][1]-1) and
-                             (i % 2 == 1 or x[1] != read_points[i-1][1]+1))
-                            )
-        return origin, tuple(end[i]-origin[i] for i in (0, 1, 2)), read_points
+        # Origin and end + 1 of the intersection between self and block
+        origin = (max(block.origin[0], self.origin[0]),
+                  max(block.origin[1], self.origin[1]),
+                  max(block.origin[2], self.origin[2]))
+        end = tuple(min(block.origin[i] + block.shape[i],
+                    self.origin[i] + self.shape[i]) for i in (0, 1, 2))
+
+        delta_2 = end[2] - origin[2]
+        delta_1 = self.shape[2] - (end[2] - origin[2])
+        delta_0 = (self.shape[1] - (end[1] - origin[1]))*self.shape[2]
+
+        current_offset = self.offset(origin)
+        read_points = []  # start new segment
+
+        start_seg = current_offset
+        for i in range(end[0]-origin[0]):
+            for j in range(end[1]-origin[1]):
+                if delta_2 != 0:
+                    current_offset += delta_2  # extend segment
+                if delta_1 != 0:
+                    end_seg = current_offset - 1
+                    read_points += [start_seg, end_seg]
+                    current_offset += delta_1
+                    start_seg = current_offset
+            if delta_0 != 0:
+                if delta_1 == 0:
+                    end_seg = current_offset - 1
+                    read_points += [start_seg, end_seg]
+                current_offset += delta_0
+                start_seg = current_offset
+
+        end_seg = current_offset - 1
+        if read_points == []:
+            read_points += [start_seg, end_seg]
+        return origin, tuple(end[i]-origin[i] for i in (0, 1, 2)), tuple(read_points)
 
     def clear(self):
         '''
@@ -179,19 +200,19 @@ class Block():
         Similar to put_data_block but to copy from self to block
         '''
 
-        origin, shape, self_offsets = self.block_offsets(block)
-        if len(self_offsets) == 0:
-            # if there is nothing to read there is nothing to write
+        if not self.overlap(block):
             return Block((-1, -1, -1), (0, 0, 0))
 
-        data_size = sum([(self_offsets[i+1][1]+1)-self_offsets[i][1]
+        origin, shape, self_offsets = self.block_offsets(block)
+
+        data_size = sum([(self_offsets[i+1]+1)-self_offsets[i]
                         if i % 2 == 0 else 0
                         for i in range(len(self_offsets))])
         data = bytearray()
         for i, x in enumerate(self_offsets):
             if i % 2 == 1 or dry_run:
                 continue
-            data += self.data.get(self_offsets[i][1], (self_offsets[i+1][1]+1))
+            data += self.data.get(self_offsets[i], (self_offsets[i+1]+1))
         assert(dry_run or (len(data) == data_size)), f'{dry_run}, {len(data)}, {data_size}'
         block = Block(origin, shape, data)
         if dry_run:
@@ -225,12 +246,24 @@ class Block():
         '''
         Return offset of point in self
         '''
-        assert(self.inside(point)), (f'Cannot get offset of point {point}'
-                                     ' which is outside of block {self}')
+        # This assertion turns out to be very costly
+        # assert(self.inside(point)), (f'Cannot get offset of point {point}'
+        #                             ' which is outside of block {self}')
         offset = (point[2]-self.origin[2] +
                   self.shape[2]*(point[1]-self.origin[1]) +
                   self.shape[2]*self.shape[1]*(point[0]-self.origin[0]))
         return offset
+
+    def overlap(self, block):
+        '''
+        Return True if self ovelaps with block
+        '''
+        return all((block.origin[i] >= self.origin[i] and
+                    block.origin[i] <= self.end[i])
+                   or (self.origin[i] >= block.origin[i] and
+                       self.origin[i] <= block.end[i])
+                   for i in (0, 1, 2)
+                   )
 
     def put_data_block(self, block, dry_run=False):
         '''
@@ -240,18 +273,22 @@ class Block():
         '''
         assert(self.data.mem_usage() <= math.prod(self.shape)), message
 
+        if not self.overlap(block):
+            return
+
         _, _, self_offsets = self.block_offsets(block)
         data_offset = 0
         for i, x in enumerate(self_offsets):
             if i % 2 == 1:
                 continue
-            next_data_offset = (data_offset + self_offsets[i+1][1] -
-                                self_offsets[i][1] + 1)
+            next_data_offset = (data_offset + self_offsets[i+1] -
+                                self_offsets[i] + 1)
             if dry_run:
-                self.set_data_size(self.get_data_size() + next_data_offset - data_offset)
+                self.set_data_size(self.get_data_size() + next_data_offset
+                                   - data_offset)
             else:
-                self.data.put(self_offsets[i][1], block.data.get(data_offset,
-                                                             next_data_offset),
+                self.data.put(self_offsets[i],
+                              block.data.get(data_offset, next_data_offset),
                               dry_run)
             data_offset = next_data_offset
         message = (f'Block {self} of shape {self.shape} uses '
@@ -294,13 +331,16 @@ class Block():
         Similar to write_to but for reading
         '''
 
+        if not self.overlap(block):
+            return 0, 0
+
         data = bytearray()
         origin, shape, block_offsets = block.block_offsets(self)
         if len(block_offsets) == 0:
             return 0, 0  # nothing to read
         # Read in block
         seeks = len(block_offsets)/2
-        est_total_bytes = sum([block_offsets[i+1][1]-block_offsets[i][1] + 1
+        est_total_bytes = sum([block_offsets[i+1]-block_offsets[i] + 1
                               if i % 2 == 0 else 0
                               for i in range(len(block_offsets))])
         if dry_run:
@@ -313,9 +353,9 @@ class Block():
             for i, r in enumerate(block_offsets):
                 if i % 2 == 1:
                     continue
-                f.seek(block_offsets[i][1])
-                data += f.read(block_offsets[i+1][1]-block_offsets[i][1] + 1)
-                total_bytes += block_offsets[i+1][1]-block_offsets[i][1] + 1
+                f.seek(block_offsets[i])
+                data += f.read(block_offsets[i+1]-block_offsets[i] + 1)
+                total_bytes += block_offsets[i+1]-block_offsets[i] + 1
             assert(len(data) == total_bytes), (f'Data size: {len(data)}, '
                                                'read {total_bytes} bytes '
                                                ' from block {block}')
@@ -358,8 +398,10 @@ class Block():
 
         Similar to read_from but for writes.
         '''
+        if not self.overlap(block):
+            return 0, 0
+
         assert(block.file_name), f"Block {block} has no file name"
-        #log(f'Writing block {self} to {block}')
 
         data_b = self.get_data_block(block, dry_run)
         data = data_b.data
@@ -379,14 +421,15 @@ class Block():
             for i, r in enumerate(block_offsets):
                 if i % 2 == 1:
                     continue
-                f.seek(block_offsets[i][1])
+                f.seek(block_offsets[i])
                 next_data_offset = (data_offset +
-                                    block_offsets[i+1][1] -
-                                    block_offsets[i][1] + 1)
+                                    block_offsets[i+1] -
+                                    block_offsets[i] + 1)
                 if dry_run:
                     wrote_bytes = next_data_offset - data_offset
                 else:
-                    wrote_bytes = f.write(data.get(data_offset, next_data_offset))
+                    wrote_bytes = f.write(data.get(data_offset,
+                                                   next_data_offset))
                 total_bytes += wrote_bytes
                 data_offset = next_data_offset
             if total_bytes != 0:
