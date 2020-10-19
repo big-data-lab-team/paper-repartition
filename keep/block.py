@@ -1,6 +1,6 @@
 import math
 import os
-
+import time
 
 class Data():
     '''
@@ -177,6 +177,13 @@ class Block():
         '''
         self.data.clear()
 
+    def delete(self):
+        '''
+        Delete the block from disk
+        '''
+        if os.path.isfile(self.file_name):
+            os.remove(self.file_name)
+
     def complete(self):
         '''
         Return True if buffer contains data for the entire
@@ -228,14 +235,6 @@ class Block():
         '''
         return self.data.get_data_size()
 
-    def inside(self, point):
-        '''
-        Return True if point is inside of self
-        '''
-        return all(point[i] >= self.origin[i] and
-                   point[i]-self.origin[i] <= self.shape[i]
-                   for i in (0, 1, 2))
-
     def mem_usage(self):
         '''
         Return the memory usage of the block
@@ -246,9 +245,6 @@ class Block():
         '''
         Return offset of point in self
         '''
-        # This assertion turns out to be very costly
-        # assert(self.inside(point)), (f'Cannot get offset of point {point}'
-        #                             ' which is outside of block {self}')
         offset = (point[2]-self.origin[2] +
                   self.shape[2]*(point[1]-self.origin[1]) +
                   self.shape[2]*self.shape[1]*(point[0]-self.origin[0]))
@@ -313,12 +309,15 @@ class Block():
             return self.data.mem_usage()
 
         log(f'<< Reading {self.file_name}', 0)
+        start = time.time()
         with open(self.file_name, 'rb') as f:
-            self.data.put(0, f.read())
+            data = f.read()
+        read_time = time.time() - start
+        self.data.put(0, data)
         message = (f'Block contains {self.data.mem_usage()}B but shape is '
-                  f' {math.prod(self.shape)}B')
+                   f' {math.prod(self.shape)}B')
         assert(self.data.mem_usage() == math.prod(self.shape)), message
-        return self.data.mem_usage()
+        return self.data.mem_usage(), read_time
 
     def read_from(self, block, dry_run=False):
         '''
@@ -345,7 +344,8 @@ class Block():
                               for i in range(len(block_offsets))])
         if dry_run:
             self.set_data_size(self.get_data_size() + est_total_bytes)
-            return est_total_bytes, seeks
+            return est_total_bytes, seeks, 0
+        read_time = 0
         with open(block.file_name, 'rb') as f:
             log(f'<< Reading from {block.file_name}'
                 f' ({len(block_offsets)/2} seeks)', 0)
@@ -353,8 +353,10 @@ class Block():
             for i, r in enumerate(block_offsets):
                 if i % 2 == 1:
                     continue
+                start = time.time()
                 f.seek(block_offsets[i])
                 data += f.read(block_offsets[i+1]-block_offsets[i] + 1)
+                read_time += time.time() - start
                 total_bytes += block_offsets[i+1]-block_offsets[i] + 1
             assert(len(data) == total_bytes), (f'Data size: {len(data)}, '
                                                'read {total_bytes} bytes '
@@ -365,7 +367,7 @@ class Block():
         data_block = Block(origin=origin, shape=shape, data=data)
         self.put_data_block(data_block)
         assert(total_bytes == est_total_bytes)
-        return total_bytes, seeks
+        return total_bytes, seeks, read_time
 
     def set_data_size(self, size):
         '''
@@ -384,10 +386,10 @@ class Block():
         assert(self.data.mem_usage() ==
                math.prod(self.shape)), ("Block shape"
                                         " doesn't match data size")
+        start = time.time()
         with open(self.file_name, 'wb+') as f:
             b = f.write(self.data.get(0, math.prod(self.shape)))
-        f.close()
-        return b
+        return b, time.time() - start
 
     def write_to(self, block, dry_run=False):
         '''
@@ -416,26 +418,30 @@ class Block():
             # if file already exists, open in r+b mode
             #  to modify without overwriting
             mode = 'r+b'
+        write_time = 0
         with open(block.file_name, mode) as f:
             total_bytes = 0
             for i, r in enumerate(block_offsets):
                 if i % 2 == 1:
                     continue
-                f.seek(block_offsets[i])
                 next_data_offset = (data_offset +
                                     block_offsets[i+1] -
                                     block_offsets[i] + 1)
                 if dry_run:
                     wrote_bytes = next_data_offset - data_offset
                 else:
+                    start = time.time()
+                    f.seek(block_offsets[i])
                     wrote_bytes = f.write(data.get(data_offset,
                                                    next_data_offset))
+                    write_time += time.time() - start
                 total_bytes += wrote_bytes
                 data_offset = next_data_offset
             if total_bytes != 0:
-                log(f'  Wrote {total_bytes} bytes to {block.file_name} ({len(block_offsets)/2} seeks)', 0)
+                log(f'  Wrote {total_bytes} bytes to {block.file_name} '
+                    f'({len(block_offsets)/2} seeks)', 0)
         f.close()
-        return total_bytes, seeks
+        return total_bytes, seeks, write_time
 
 
 def log(message, level=0):

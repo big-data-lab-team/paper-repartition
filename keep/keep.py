@@ -266,14 +266,16 @@ def peak_memory(array, read_blocks, write_blocks, in_blocks, out_blocks,
     def local_get_read_blocks_and_cache(in_blocks, out_blocks, m, array):
         return read_blocks, cache, None, None
 
-    _, _, peak_mem = in_blocks.repartition(out_blocks, None,
-                                           local_get_read_blocks_and_cache,
-                                           dry_run=True)
+    (_, _, peak_mem,
+     _, _) = in_blocks.repartition(out_blocks, None,
+                                   local_get_read_blocks_and_cache,
+                                   dry_run=True)
     read_blocks.clear()
     write_blocks.clear()
     in_blocks.clear()
     out_blocks.clear()
     return peak_mem
+
 
 '''
     Seek model

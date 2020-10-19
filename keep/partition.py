@@ -88,6 +88,13 @@ class Partition():
         for b in self.blocks:
             self.blocks[b].clear()
 
+    def delete(self):
+        '''
+        Delete all the blocks in the partition from disk
+        '''
+        for b in self.blocks:
+            self.blocks[b].delete()
+
     def get_neighbor_block_ind(self, block_ind, dim):
         '''
         Return the block index of the neighbor of block of index block_ind
@@ -117,16 +124,19 @@ class Partition():
         '''
         seeks = 0
         total_bytes = 0
+        read_time = 0
         for b in self.blocks:
             if not self.blocks[b].overlap(block):
                 continue
             # block may be read from multiple blocks of self
-            t, s = block.read_from(self.blocks[b], dry_run)
+            t, s, rt = block.read_from(self.blocks[b], dry_run)
             seeks += s
             total_bytes += t
-        return total_bytes, seeks
+            read_time += rt
+        return total_bytes, seeks, read_time
 
-    def repartition(self, out_blocks, m, get_read_blocks_and_cache, dry_run=False):
+    def repartition(self, out_blocks, m, get_read_blocks_and_cache,
+                    dry_run=False):
         '''
         Write data from self in files of partition out_blocks. Implements
         Algorithm 1 in the paper.
@@ -148,20 +158,24 @@ class Partition():
         peak_mem = 0
         total_bytes = 0
         bytes_in_cache = 0
+        read_time = 0
+        write_time = 0
         for read_block in read_blocks.blocks:
             log(f'repartition: reading block: {read_block}', 0)
-            t, s = self.read_block(read_blocks.blocks[read_block], dry_run)
-            #log(f'repartition: Read required {s} seeks and {t} bytes', 1)
+            t, s, rt = self.read_block(read_blocks.blocks[read_block], dry_run)
             bytes_in_cache += t
             total_bytes += t
             seeks += s
-            log(f'repartition: inserting read block of size {read_blocks.blocks[read_block].mem_usage()}B to cache', 0)
-            complete_blocks = cache.insert(read_blocks.blocks[read_block], dry_run)
+            read_time += rt
+            log(f'repartition: inserting read block of size '
+                f'{read_blocks.blocks[read_block].mem_usage()}B to cache')
+            complete_blocks = cache.insert(read_blocks.blocks[read_block],
+                                           dry_run)
             log(f'repartition: Cache: {str(cache)}', 0)
             peak_mem = max(peak_mem, cache.mem_usage())
             for b in complete_blocks:
                 log(f'repartition: Writing complete block {b}', 0)
-                t, s = out_blocks.write_block(b, dry_run)
+                t, s, wt = out_blocks.write_block(b, dry_run)
                 assert(t == b.mem_usage())
                 b.clear()
                 bytes_in_cache -= t
@@ -169,14 +183,18 @@ class Partition():
                 log(f'repartition: Cache: {str(cache)}', 0)
                 total_bytes += t
                 seeks += s
+                write_time += wt
                 b.clear()
-            assert(bytes_in_cache == cache.mem_usage()), f'{bytes_in_cache}, {cache.mem_usage()}'
+            message = (f'{bytes_in_cache}, {cache.mem_usage()}')
+            assert(bytes_in_cache == cache.mem_usage()), message
 
-        message = f'Incorrect seek count. Expected: {expected_seeks}. Real: {seeks}'
+        message = (f'Incorrect seek count. Expected: {expected_seeks}.'
+                   f' Real: {seeks}')
         assert(dry_run or (expected_seeks == seeks)), message
-        message = f'Incorrect memory usage. Expected: {est_peak_mem}B. Real: {peak_mem}B.'
+        message = (f'Incorrect memory usage. Expected: {est_peak_mem}B.'
+                   f' Real: {peak_mem}B.')
       #  assert(dry_run or (est_peak_mem == peak_mem)), message
-        return total_bytes, seeks, peak_mem
+        return total_bytes, seeks, peak_mem, read_time, write_time
 
     def write(self):
         '''
@@ -194,15 +212,17 @@ class Partition():
         '''
         seeks = 0
         total_bytes = 0
+        write_time = 0
         #print(f'write {block} to {self} with {len(self.blocks)} calls')
         for b in self.blocks:
             # block may be written to multiple blocks in self
             if not self.blocks[b].overlap(block):
                 continue
-            t, s = block.write_to(self.blocks[b], dry_run)
+            t, s, wt = block.write_to(self.blocks[b], dry_run)
             seeks += s
             total_bytes += t
-        return total_bytes, seeks
+            write_time += wt
+        return total_bytes, seeks, write_time
 
 
 def log(message, level=0):
