@@ -1,9 +1,8 @@
-
 import math
 import os
-from block import Block
-from cache import Cache
-from log import log
+from keep.block import Block
+from keep.cache import Cache
+from keep.log import log
 
 
 class Partition():

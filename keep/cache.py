@@ -1,6 +1,6 @@
-import keep
 import os
-from log import log
+from keep import keep
+from keep.log import log
 
 
 class Cache():
