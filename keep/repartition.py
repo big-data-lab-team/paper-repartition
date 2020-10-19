@@ -74,7 +74,7 @@ def main(args=None):
     log(f'Seeks, peak memory (B), read time (s),'
         f' write time (s), elapsed time (s):' + os.linesep +
         f'{seeks},{peak_mem},{round(read_time,2)},'
-        f'{round(write_time,2)},{round(total_time,2)}', 1)
+        f'{round(write_time,2)},{round(total_time,2)}', 2)
 
     if args.test_data:
         log('Testing data', 1)
