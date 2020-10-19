@@ -45,44 +45,18 @@ def keep(in_blocks, out_blocks, m, array):
                to get total dimensions of the array.
     '''
 
-    r_hat = get_r_hat(in_blocks, out_blocks)
-    read_shapes = candidate_read_shapes(in_blocks, out_blocks, r_hat, array)
-    min_seeks = None
-    for r in read_shapes:
-        read_blocks = Partition(r, 'read_blocks', array=array)
-        write_blocks, cache = create_write_blocks(read_blocks, out_blocks)
-        mc = peak_memory(array, read_blocks, write_blocks,
-                         in_blocks, out_blocks, cache)
-        if m is not None and mc > m:
-            continue
-        seeks = keep_seek_count(in_blocks, read_blocks,
-                                write_blocks, out_blocks)
-        if r == r_hat:  # fix that block
-            return read_blocks, cache, seeks, mc
-        if min_seeks is None or seeks < min_seeks:
-            best_read_blocks = read_blocks
-            best_cache = cache
-            min_seeks = seeks
-            peak_mem = mc
-    assert(min_seeks is not None), ('Cannot find read shape that fullfills'
-                                    ' memory constraint')
-    return best_read_blocks, best_cache, min_seeks, peak_mem
+    r, peak_mem = find_shape_with_constraint(in_blocks, out_blocks, m)
+    read_blocks = Partition(r, 'read_blocks', array=array)
+    write_blocks, cache = create_write_blocks(read_blocks, out_blocks)
+    # Technically this count is not necessary
+    seeks = keep_seek_count(in_blocks, read_blocks,
+                            write_blocks, out_blocks)
+    return read_blocks, cache, seeks, peak_mem
 
 
 '''
     Utils
 '''
-
-
-def candidate_read_shapes(in_blocks, out_blocks, r_hat, array):
-    assert(in_blocks.ndim == 3), 'Only supports dimension 3'
-    log(f'keep: rhat is {r_hat}')
-    divs0 = [x for x in divisors(array.shape[0]) if x <= r_hat[0]]
-    divs1 = [x for x in divisors(array.shape[1]) if x <= r_hat[1]]
-    shapes = [(x, y, r_hat[2]) for x in divs0 for y in divs1]
-    shapes.sort(key=lambda x: (x[1], x[0]), reverse=True)
-    log(f'keep: shapes = {shapes}')
-    return shapes
 
 
 def create_write_blocks(read_blocks, out_blocks):
@@ -151,6 +125,60 @@ def destination_F0(read_blocks, read_block_ind, F_ind):
 
 def divisors(n):
     return [x for x in range(1, n+1) if n % x == 0]
+
+
+def find_shape_with_constraint(in_blocks, out_blocks, m):
+    '''
+    Search for a read block shape that respects memory constraint m
+    '''
+
+    assert(in_blocks.ndim == 3), 'Only supports dimension 3'
+
+    # r_hat is the best shape, if it fits in memory or there is no memory
+    # constraint, return it
+    r_hat = get_r_hat(in_blocks, out_blocks)
+    log(f'keep: rhat is {r_hat}')
+    mc = peak_memory(r_hat, in_blocks, out_blocks)
+    if m is None or mc <= m:
+        return r_hat, mc
+
+    array = in_blocks.array
+    nmax = 3
+
+    # evaluate nmax shapes of the form (divs0[i], r_hat[1], r_hat[2])
+    divs0 = sorted([x for x in divisors(array.shape[0]) if x <= r_hat[0]],
+                   reverse=True)
+
+    def f(i):
+        shape = (divs0[i], r_hat[1], r_hat[2])
+        return peak_memory(shape, in_blocks, out_blocks)
+
+    ind = None
+    for i in range(min(nmax, len(divs0))):
+        mc = f(i)
+        if(mc <= m):
+            ind = i
+            break
+    if ind is not None:
+        return (divs0[ind], r_hat[1], r_hat[2]), mc
+
+    # evaluate nmax shapes of the form (divs0[-1], divs1[i], r_hat[2])
+    divs1 = sorted([x for x in divisors(array.shape[1]) if x <= r_hat[1]],
+                   reverse=True)
+
+    def g(i):
+        shape = (divs0[-1], divs1[i], r_hat[2])
+        return peak_memory(shape, in_blocks, out_blocks)
+
+    for i in range(min(nmax, len(divs1))):
+        mc = g(i)
+        if(mc <= m):
+            ind = i
+            break
+    if ind is not None:
+        return (divs0[-1], divs1[ind], r_hat[2]), mc
+
+    assert(False), "Cannot find read shape that satisfies memory constraint"
 
 
 def get_r_hat(in_blocks, out_blocks):
@@ -267,8 +295,7 @@ def merge_blocks(block_list):
     return b
 
 
-def peak_memory(array, read_blocks, write_blocks, in_blocks, out_blocks,
-                cache):
+def peak_memory(read_shape, in_blocks, out_blocks):
     '''
     Return the estimated amount of memory required to repartition in_blocks
     into out_blocks, using read_blocks and write_blocks.
@@ -277,6 +304,9 @@ def peak_memory(array, read_blocks, write_blocks, in_blocks, out_blocks,
     # To estimate the amount of memory required, we run a dry run of the
     # repartitioning
 
+    read_blocks = Partition(read_shape, 'read_blocks', array=in_blocks.array)
+    _, cache = create_write_blocks(read_blocks, out_blocks)
+
     def local_get_read_blocks_and_cache(in_blocks, out_blocks, m, array):
         return read_blocks, cache, None, None
 
@@ -284,8 +314,6 @@ def peak_memory(array, read_blocks, write_blocks, in_blocks, out_blocks,
      _, _) = in_blocks.repartition(out_blocks, None,
                                    local_get_read_blocks_and_cache,
                                    dry_run=True)
-    read_blocks.clear()
-    write_blocks.clear()
     in_blocks.clear()
     out_blocks.clear()
     return peak_mem
