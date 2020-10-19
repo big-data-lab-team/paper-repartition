@@ -1,6 +1,7 @@
 import keep
 import os
 import keep
+import pytest
 from partition import Partition
 
 
@@ -67,6 +68,14 @@ def test_r_hat_1():
 
     r_hat = keep.get_r_hat(in_blocks, out_blocks)
     assert(r_hat == (20, 20, 20))
+
+
+def test_r_hat_2():
+    array = Partition((10, 10, 10), name='array')
+    in_blocks = Partition((2, 2, 2), array=array, name='in')
+    out_blocks = Partition((5, 5, 5), array=array, name='out')
+    with pytest.raises(Exception):
+        r_hat = keep.get_r_hat(in_blocks, out_blocks)
 
 
 def test_divisors():

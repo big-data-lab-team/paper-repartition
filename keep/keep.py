@@ -156,8 +156,12 @@ def divisors(n):
 def get_r_hat(in_blocks, out_blocks):
     from math import ceil as c
     inb = in_blocks
-    return tuple([inb.shape[i]*(c(out_blocks.shape[i]/in_blocks.shape[i]))
+    r_hat = tuple([inb.shape[i]*(c(out_blocks.shape[i]/in_blocks.shape[i]))
                   for i in range(in_blocks.ndim)])
+    array = in_blocks.array
+    message = 'Cannot find r hat'
+    assert(all(array.shape[i] % r_hat[i] == 0 for i in (0, 1, 2))), message
+    return r_hat
 
 
 def get_F_blocks(write_block, out_blocks, get_data=False, dry_run=False):
