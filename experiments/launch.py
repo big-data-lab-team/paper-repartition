@@ -2,7 +2,6 @@
 
 import click
 import subprocess as sp
-import sys
 from random import shuffle
 from json import load
 from os import linesep, makedirs, path as op
@@ -12,9 +11,9 @@ from time import time
 def launch(sbatch_file, nodelist):
 
     if nodelist is None:
-        cmd = ['sbatch', sbatch_file]
+        cmd = ["sbatch", sbatch_file]
     else:
-        cmd = ['sbatch', f'--nodelist={nodelist}', sbatch_file]
+        cmd = ["sbatch", f"--nodelist={nodelist}", sbatch_file]
 
     print("Executing command", " ".join(cmd))
 
@@ -36,8 +35,10 @@ def gen_sbatch(exp, results_dir):
     sbatch_file = op.join(results_dir, f"sbatch_{exp['name']}.sh")
     log_file = op.join(results_dir, "logs.csv")
 
-    with open(log_file, 'w') as f:
-        f.write('Seeks, peak memory (B), read time (s),  write time (s), elapsed time (s)\n')
+    with open(log_file, "w") as f:
+        f.write(
+            "Seeks, peak memory (B), read time (s),  write time (s), elapsed time (s)\n"
+        )
 
     # create sbatch file for launching script
     template = (
@@ -95,7 +96,6 @@ def main(conditions, repetitions, results_dir, nodelist):
 
             # launch experiments
             launch(sb_file, nodelist)
-            sys.exit(1)
 
 
 if __name__ == "__main__":
