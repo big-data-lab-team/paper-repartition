@@ -47,15 +47,16 @@ def main(args=None):
         'keep': keep.keep
     }
 
-    array = Partition(make_tuple(args.A), name='array', fill='random')
-    in_blocks = Partition(make_tuple(args.I), name='in', array=array)
-
+    array = Partition(make_tuple(args.A), name='array')
     if args.create:
-        log('Writing complete array', 1)
-        array.write()
-        log('Creating input blocks', 1)
-        array.repartition(in_blocks, None, repart_func[args.method])
-        in_blocks.clear()
+        fill = 'random'
+    else:
+        fill = None
+    
+    log('Creating input blocks', 1)
+    in_blocks = Partition(make_tuple(args.I), name='in', array=array,
+                          fill=fill)
+    in_blocks.clear()
 
     # Repartitioning
     out_blocks = Partition(make_tuple(args.O), name='out', array=array)
