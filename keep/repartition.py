@@ -5,10 +5,7 @@ import os
 from argparse import ArgumentParser
 from ast import literal_eval as make_tuple
 from partition import Partition
-
-
-def log(message):
-    print(f'[ {datetime.datetime.now().time()} ] {message}')
+from log import log
 
 
 def main(args=None):
@@ -33,17 +30,19 @@ def main(args=None):
 
     array = Partition(make_tuple(args.A), name='array', fill='random')
     in_blocks = Partition(make_tuple(args.I), name='in', array=array)
+
     if args.create:
-        log('Writing complete array')
+        log('Writing complete array', 1)
         array.write()
-        log('Creating input blocks')
+        log('Creating input blocks', 1)
         array.repartition(in_blocks, None, repart_func[args.method])
         in_blocks.clear()
 
+    # Repartitioning
     out_blocks = Partition(make_tuple(args.O), name='out', array=array)
     out_blocks.delete()
     out_blocks.clear()  # shouldn't be necessary but just in case
-    log('Repartitioning input blocks into output blocks')
+    log('Repartitioning input blocks into output blocks', 1)
     start = time.time()
     (total_bytes, seeks, peak_mem,
      read_time, write_time) = in_blocks.repartition(out_blocks,
@@ -55,7 +54,22 @@ def main(args=None):
     log(f'Data read/written (B), seeks, peak memory (B), read time (s),'
         f' write time (s), elapsed time (s):' + os.linesep +
         f'{total_bytes},{seeks},{peak_mem},{round(read_time,2)},'
-        f'{round(write_time,2)},{round(total_time,2)}')
+        f'{round(write_time,2)},{round(total_time,2)}', 1)
+
+    if args.test_data:
+        log('Testing data', 1)
+        in_blocks.repartition(array, None, repart_func[args.method])
+        with open(array.blocks[(0, 0, 0)].file_name, 'rb') as f:
+            in_data = f.read()
+        array.delete()
+        out_blocks.repartition(array, None, repart_func[args.method])
+        with open(array.blocks[(0, 0, 0)].file_name, 'rb') as f:
+            out_data = f.read()
+        assert(in_data == out_data)
+
+    if args.delete:
+        log('Deleting output blocks', 1)
+        out_blocks.delete
 
 
 if __name__ == '__main__':

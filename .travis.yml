@@ -11,7 +11,7 @@ install:
 - pip install pytest pytest-cov
 
 script:
-  - pytest --cov=keep keep
+  - pytest --cov=keep --cov-report term-missing -v keep
   
 after_success:
   - bash <(curl -s https://codecov.io/bash)

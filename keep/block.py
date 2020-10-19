@@ -1,6 +1,8 @@
 import math
 import os
 import time
+from log import log
+
 
 class Data():
     '''
@@ -442,12 +444,3 @@ class Block():
                     f'({len(block_offsets)/2} seeks)', 0)
         f.close()
         return total_bytes, seeks, write_time
-
-
-def log(message, level=0):
-    '''
-    Temporary logger
-    '''
-    LOG_LEVEL = 1
-    if level >= LOG_LEVEL:
-        print(message)

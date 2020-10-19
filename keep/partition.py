@@ -3,6 +3,7 @@ import math
 import os
 from block import Block
 from cache import Cache
+from log import log
 
 
 class Partition():
@@ -223,12 +224,3 @@ class Partition():
             total_bytes += t
             write_time += wt
         return total_bytes, seeks, write_time
-
-
-def log(message, level=0):
-    '''
-    Temporary logger
-    '''
-    LOG_LEVEL = 1
-    if level >= LOG_LEVEL:
-        print(message)

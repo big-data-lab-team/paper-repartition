@@ -1,16 +1,20 @@
 import keep
 import os
+from log import log
 
 
 class Cache():
     '''
     An abstract Cache class for use in the repartition function
-    '''
+
+    Derived classes must implement the following methods:
+
     def insert(self, read_block, dry_run):
         raise Exception('Implement in sub-class')
 
     def mem_usage(self):
         raise Exception('Implement in sub-class')
+    '''
 
 
 class KeepCache(Cache):
@@ -71,12 +75,4 @@ class BaselineCache(Cache):
         return [read_block]  # read block is just returned, to be written
 
     def mem_usage(self):
-        if self.block is None:
-            return 0
         return self.block.mem_usage()
-
-
-def log(message, level=0):
-    LOG_LEVEL = 0
-    if level >= LOG_LEVEL:
-        print(message)

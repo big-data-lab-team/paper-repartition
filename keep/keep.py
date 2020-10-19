@@ -3,10 +3,7 @@ import collections
 from partition import Partition
 from block import Block
 from cache import KeepCache, BaselineCache
-
-'''
-This module is the entrypoint for array repartitioning. 
-'''
+from log import log
 
 
 def baseline(in_blocks, out_blocks, m, array):
@@ -346,9 +343,3 @@ def seek_count_block(block, M):
         return c[0] + 1
 
     return 1
-
-
-def log(message, level=0):
-    LOG_LEVEL = 1
-    if level >= LOG_LEVEL:
-        print(message)
