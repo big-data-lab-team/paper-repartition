@@ -1,7 +1,7 @@
 import glob
 import pytest
 import os
-from repartition import main
+from keep.repartition import main
 
 
 @pytest.fixture

@@ -1,9 +1,9 @@
 import math
 import collections
-from partition import Partition
-from block import Block
-from cache import KeepCache, BaselineCache
-from log import log
+from keep.partition import Partition
+from keep.block import Block
+from keep.cache import KeepCache, BaselineCache
+from keep.log import log
 
 
 def baseline(in_blocks, out_blocks, m, array):

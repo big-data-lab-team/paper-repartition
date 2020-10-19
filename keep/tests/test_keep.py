@@ -1,8 +1,7 @@
-import keep
 import os
-import keep
 import pytest
-from partition import Partition
+from keep import keep
+from keep.partition import Partition
 
 
 def test_seek_model():

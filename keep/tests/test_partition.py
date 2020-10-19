@@ -1,8 +1,8 @@
 import glob
-import keep
 import os
 import pytest
-from partition import Partition
+from keep import keep
+from keep.partition import Partition
 
 
 @pytest.fixture

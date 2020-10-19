@@ -1,12 +1,12 @@
 import datetime
-import keep
 import math
 import time
 import os
 from argparse import ArgumentParser
 from ast import literal_eval as make_tuple
-from partition import Partition
-from log import log
+from keep import keep
+from keep.partition import Partition
+from keep.log import log
 
 
 def main(args=None):
