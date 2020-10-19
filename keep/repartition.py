@@ -1,5 +1,6 @@
 import datetime
 import keep
+import math
 import time
 import os
 from argparse import ArgumentParser
@@ -30,11 +31,16 @@ def main(args=None):
                              "reconstruct array from output blocks, "
                              "check that data is identical in both "
                              "reconstructions.")
+    parser.add_argument("--max-mem", action="store",
+                        help="max memory to use, in bytes")
     parser.add_argument("method", action="store",
                         help="repartitioning method to use",
                         choices=["baseline", "keep"])
 
     args, params = parser.parse_known_args(args)
+    mem = args.max_mem
+    if mem is not None:
+        mem = int(mem)
 
     repart_func = {
         'baseline': keep.baseline,
@@ -59,23 +65,26 @@ def main(args=None):
     start = time.time()
     (total_bytes, seeks, peak_mem,
      read_time, write_time) = in_blocks.repartition(out_blocks,
-                                                    None,
+                                                    mem,
                                                     repart_func[args.method])
     end = time.time()
     total_time = end - start
     assert(total_time > read_time + write_time)
-    log(f'Data read/written (B), seeks, peak memory (B), read time (s),'
+    assert(total_bytes == 2*math.prod(array.shape))
+    log(f'Seeks, peak memory (B), read time (s),'
         f' write time (s), elapsed time (s):' + os.linesep +
-        f'{total_bytes},{seeks},{peak_mem},{round(read_time,2)},'
+        f'{seeks},{peak_mem},{round(read_time,2)},'
         f'{round(write_time,2)},{round(total_time,2)}', 1)
 
     if args.test_data:
         log('Testing data', 1)
-        in_blocks.repartition(array, None, repart_func[args.method])
+        in_blocks.repartition(array, mem,
+                              repart_func[args.method])
         with open(array.blocks[(0, 0, 0)].file_name, 'rb') as f:
             in_data = f.read()
         array.delete()
-        out_blocks.repartition(array, None, repart_func[args.method])
+        out_blocks.repartition(array, mem,
+                               repart_func[args.method])
         with open(array.blocks[(0, 0, 0)].file_name, 'rb') as f:
             out_data = f.read()
         assert(in_data == out_data)
