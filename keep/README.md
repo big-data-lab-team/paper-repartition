@@ -5,3 +5,8 @@
 Implementation of the keep heuristic described in the paper.
 
 For usage, see ```python repartition.py --help```
+
+Example:
+```
+python repartition.py --max-mem 5000000 --create --delete --test-data '(500, 500, 500)' '(50, 50, 50)' '(100, 100, 100)' keep
+```
