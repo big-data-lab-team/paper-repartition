@@ -9,6 +9,7 @@ python:
 install:
 - pip install codecov
 - pip install pytest pytest-cov pycodestyle
+- pip install .
 
 script:
   - pytest --cov=keep --cov-report term-missing -v keep
