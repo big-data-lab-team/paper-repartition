@@ -143,41 +143,25 @@ def find_shape_with_constraint(in_blocks, out_blocks, m):
         return r_hat, mc
 
     array = in_blocks.array
-    nmax = 3
 
     # evaluate nmax shapes of the form (divs0[i], r_hat[1], r_hat[2])
     divs0 = sorted([x for x in divisors(array.shape[0]) if x <= r_hat[0]],
                    reverse=True)
-
-    def f(i):
-        shape = (divs0[i], r_hat[1], r_hat[2])
-        return peak_memory(shape, in_blocks, out_blocks)
-
+    nmax = len(divs0)
     ind = None
+
     for i in range(min(nmax, len(divs0))):
-        mc = f(i)
+        shape = (divs0[i], r_hat[1], r_hat[2])
+        log(f'Evaluating shape {shape}, memory constraint is {m}', 1)
+        mc = peak_memory(shape, in_blocks, out_blocks)
+        log(f'Memory estimate: {mc}B', 1)
         if(mc <= m):
             ind = i
             break
     if ind is not None:
         return (divs0[ind], r_hat[1], r_hat[2]), mc
 
-    # evaluate nmax shapes of the form (divs0[-1], divs1[i], r_hat[2])
-    divs1 = sorted([x for x in divisors(array.shape[1]) if x <= r_hat[1]],
-                   reverse=True)
-
-    def g(i):
-        shape = (divs0[-1], divs1[i], r_hat[2])
-        return peak_memory(shape, in_blocks, out_blocks)
-
-    for i in range(min(nmax, len(divs1))):
-        mc = g(i)
-        if(mc <= m):
-            ind = i
-            break
-    if ind is not None:
-        return (divs0[-1], divs1[ind], r_hat[2]), mc
-
+    # We're going to have to seek in the second dimension, let's just give up
     assert(False), "Cannot find read shape that satisfies memory constraint"
 
 
