@@ -44,7 +44,7 @@ def test_get_f_blocks_1():
     array = Partition((12, 12, 12), name='array', fill='random')
     in_blocks = Partition((4, 4, 4), name='in', array=array)
 
-    fblocks = keep.get_F_blocks(array.blocks[(0,0,0)], in_blocks)
+    fblocks = keep.get_F_blocks(array.blocks[(0, 0, 0)], in_blocks)
 
     assert([str(b) for b in fblocks] ==
            ['Block: origin (0, 0, 0); shape (12, 12, 12); data in mem: 0B',
@@ -79,7 +79,8 @@ def test_candidate_read_shapes():
     in_blocks = Partition((875, 875, 875), array=array, name='in')
     out_blocks = Partition((700, 875, 700), array=array, name='out')
     r_hat = keep.get_r_hat(in_blocks, out_blocks)
-    read_shapes = keep.candidate_read_shapes(in_blocks, out_blocks, r_hat, array)
+    read_shapes = keep.candidate_read_shapes(in_blocks, out_blocks,
+                                             r_hat, array)
     # TODO: add assertion on read shapes
 
 

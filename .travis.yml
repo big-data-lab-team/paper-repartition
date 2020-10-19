@@ -8,10 +8,11 @@ python:
   
 install:
 - pip install codecov
-- pip install pytest pytest-cov
+- pip install pytest pytest-cov pycodestyle
 
 script:
   - pytest --cov=keep --cov-report term-missing -v keep
+  - pycodestyle keep/*.py
   
 after_success:
   - bash <(curl -s https://codecov.io/bash)

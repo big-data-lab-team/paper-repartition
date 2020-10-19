@@ -46,7 +46,7 @@ class KeepCache(Cache):
         return complete_blocks
 
     def mem_usage(self):
-        blocks = { self.match[b] for b in self.match}
+        blocks = {self.match[b] for b in self.match}
         return sum([b.mem_usage() for b in blocks])
 
     def __str__(self):

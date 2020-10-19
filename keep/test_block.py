@@ -108,7 +108,6 @@ def test_read_from_shape_mismatch(cleanup_blocks):
         os.remove(fn)
 
 
-
 def test_offset():
     b = Block((1, 1, 1), (4, 5, 6))
     assert(b.offset((1, 1, 3)) == 2)

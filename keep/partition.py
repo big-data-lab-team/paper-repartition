@@ -194,7 +194,7 @@ class Partition():
         assert(dry_run or (expected_seeks == seeks)), message
         message = (f'Incorrect memory usage. Expected: {est_peak_mem}B.'
                    f' Real: {peak_mem}B.')
-      #  assert(dry_run or (est_peak_mem == peak_mem)), message
+        assert(dry_run or (est_peak_mem == peak_mem)), message
         return total_bytes, seeks, peak_mem, read_time, write_time
 
     def write(self):
@@ -214,7 +214,6 @@ class Partition():
         seeks = 0
         total_bytes = 0
         write_time = 0
-        #print(f'write {block} to {self} with {len(self.blocks)} calls')
         for b in self.blocks:
             # block may be written to multiple blocks in self
             if not self.blocks[b].overlap(block):

@@ -8,3 +8,4 @@ algorithm_paper.pdf
 *.bbl
 *.out
 algorithm_paper_v1.pdf
+__pycache__

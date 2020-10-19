@@ -171,7 +171,8 @@ class Block():
         end_seg = current_offset - 1
         if read_points == []:
             read_points += [start_seg, end_seg]
-        return origin, tuple(end[i]-origin[i] for i in (0, 1, 2)), tuple(read_points)
+        return (origin, tuple(end[i]-origin[i] for i in (0, 1, 2)),
+                tuple(read_points))
 
     def clear(self):
         '''
@@ -222,7 +223,8 @@ class Block():
             if i % 2 == 1 or dry_run:
                 continue
             data += self.data.get(self_offsets[i], (self_offsets[i+1]+1))
-        assert(dry_run or (len(data) == data_size)), f'{dry_run}, {len(data)}, {data_size}'
+        mesage = f'{dry_run}, {len(data)}, {data_size}'
+        assert(dry_run or (len(data) == data_size)), message
         block = Block(origin, shape, data)
         if dry_run:
             block.set_data_size(data_size)

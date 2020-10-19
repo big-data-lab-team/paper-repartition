@@ -11,12 +11,25 @@ from log import log
 def main(args=None):
     parser = ArgumentParser()
 
-    parser.add_argument("A", action="store", help="shape of the reconstructed array")
-    parser.add_argument("I", action="store", help="shape of the input blocks. Input blocks called 'in...' must be stored on disk")
-    parser.add_argument("O", action="store", help="shape of the outut blocks. Output blocks called 'out...' will be created on disk")
-    parser.add_argument("--create", action="store_true", help="create input blocks on disk before repartitioning.")
-    parser.add_argument("--delete", action="store_true", help="delete output blocks after repartitioning.")
-    parser.add_argument("--test-data", action="store_true", help="reconstruct array from input blocks, reconstruct array from output blocks, check that data is identical in both reconstructions.")
+    parser.add_argument("A",
+                        action="store",
+                        help="shape of the reconstructed array")
+    parser.add_argument("I", action="store",
+                        help="shape of the input blocks. Input blocks "
+                             "called 'in...' must be stored on disk")
+    parser.add_argument("O", action="store",
+                        help="shape of the outut blocks. Output blocks"
+                             " called 'out...' will be created on disk")
+    parser.add_argument("--create", action="store_true",
+                        help="create input blocks on disk"
+                             " before repartitioning.")
+    parser.add_argument("--delete", action="store_true",
+                        help="delete output blocks after repartitioning.")
+    parser.add_argument("--test-data", action="store_true",
+                        help="reconstruct array from input blocks, "
+                             "reconstruct array from output blocks, "
+                             "check that data is identical in both "
+                             "reconstructions.")
     parser.add_argument("method", action="store",
                         help="repartitioning method to use",
                         choices=["baseline", "keep"])
