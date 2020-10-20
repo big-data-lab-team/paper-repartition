@@ -80,6 +80,7 @@ def main(args=None):
     in_blocks = Partition(
         make_tuple(args.I), name="in", array=array, fill=fill
     )
+
     in_blocks.clear()
 
     if not args.create:
