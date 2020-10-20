@@ -357,6 +357,7 @@
         "mem": 200,
         "cwd": "/disk0/vhs/repartition",
         "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
+        "alg": "baseline",
         "a": "(3500, 3500, 3500)",
         "i": "(350, 350, 350)",
         "o": "(250, 250, 250)"
@@ -366,6 +367,7 @@
         "account": "vhs",
         "mem": 200,
         "cwd": "/disk0/vhs/repartition",
+        "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
         "alg": "baseline",
         "a": "(3500, 3500, 3500)",
         "i": "(250, 250, 250)",

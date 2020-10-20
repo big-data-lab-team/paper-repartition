@@ -57,12 +57,12 @@ def gen_sbatch(exp, results_dir):
         f"source {exp['venv']}\n"
         f"export KEEP_LOG={log_file}"
         f"start=`date +%s.%N`\n"
-        f"repartition --max-mem {memory_bytes} --create --delete --test-data \"{exp['a']}\" \"{exp['i']}\" \"{exp['o']}\" {exp['alg']}\n"
+        f"repartition --max-mem {memory_bytes} --create --delete \"{exp['a']}\" \"{exp['i']}\" \"{exp['o']}\" {exp['alg']}\n"
         f"end=`date +%s.%N`"
         f'runtime=$( echo "$end - $start" | bc -l)\n'
         f"echo \"Runtime: $runtime\" > {op.join(results_dir, 'runtime.txt')}\n"
         f'echo "Removing directories"\n'
-        f"srun -N1 rm -rf {exp['cwd']}"
+        f"rm -rf {exp['cwd']}"
     )
 
     with open(sbatch_file, "w+") as f:
@@ -82,7 +82,9 @@ def main(conditions, repetitions, results_dir, nodelist):
     rand_exp = load(conditions)
     shuffle(rand_exp)
 
-    results_dir = op.abspath(op.join(results_dir, f"execution-{str(int(time()))}"))
+    results_dir = op.abspath(
+        op.join(results_dir, f"execution-{str(int(time()))}")
+    )
 
     for i in range(repetitions):
         for exp in rand_exp:
