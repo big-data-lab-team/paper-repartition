@@ -116,6 +116,9 @@ class Block():
         if data is None:
             data = bytearray()
         self.data = Data(data)
+        if fill is not None:
+            self.write()
+            self.clear()
 
     def __str__(self):
         '''
@@ -223,7 +226,7 @@ class Block():
             if i % 2 == 1 or dry_run:
                 continue
             data += self.data.get(self_offsets[i], (self_offsets[i+1]+1))
-        mesage = f'{dry_run}, {len(data)}, {data_size}'
+        message = f'{dry_run}, {len(data)}, {data_size}'
         assert(dry_run or (len(data) == data_size)), message
         block = Block(origin, shape, data)
         if dry_run:

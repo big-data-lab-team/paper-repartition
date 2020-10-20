@@ -65,7 +65,6 @@ def test_block_offsets():
 def test_delete():
     file_name = 'test.bin'
     b = Block((1, 1, 1), (4, 5, 6), fill='zeros', file_name=file_name)
-    b.write()
     assert(os.path.isfile(file_name))
     b.delete()
     assert(not os.path.isfile(file_name))
@@ -79,7 +78,6 @@ def test_read_from_disjoint():
 
 def test_read_from_shape_match(cleanup_blocks):
     b = Block((1, 2, 3), (5, 6, 7), fill='random', file_name='test.bin')
-    b.write()
     b.clear()
 
     by, _, _ = b.read_from(b)
@@ -95,13 +93,14 @@ def test_read_from_shape_mismatch(cleanup_blocks):
     b = Block((1, 2, 3), (5, 6, 7), file_name='test.bin')
     c = Block((1, 2, 3), (5, 2, 7), fill='random', file_name='block1.bin')
     d = Block((1, 4, 3), (5, 4, 7), fill='random', file_name='block2.bin')
-    c.write()
-    d.write()
     l, _, _ = b.read_from(c)
     m, _, _ = b.read_from(d)
     assert(l + m == math.prod(b.shape))
 
     # Check content
+    c.read()
+    b.read()
+    d.read()
     assert(c.data.bytes()[:10] == b.data.bytes()[:10])
     assert(d.data.bytes()[-10:] == b.data.bytes()[-10:])
     for fn in (c.file_name, d.file_name):
@@ -124,6 +123,7 @@ def test_offset():
 def test_write_to_shape_match(cleanup_blocks):
 
     b = Block((1, 2, 3), (5, 6, 7), fill='random', file_name='test.bin')
+    b.read()
     by, _, _ = b.write_to(b)
     assert(by == math.prod(b.shape))
 
@@ -133,8 +133,9 @@ def test_write_to_shape_match(cleanup_blocks):
     os.remove(b.file_name)
 
 
-def test_zeros():
-    b = Block((4, 5, 6), (2, 4, 6), fill='zeros')
+def test_zeros(cleanup_blocks):
+    b = Block((4, 5, 6), (2, 4, 6), fill='zeros', file_name='block.bin')
+    b.read()
     assert(b.data.bytes() == bytearray(math.prod(b.shape)))
 
 
@@ -142,6 +143,7 @@ def test_write_to_shape_mismatch(cleanup_blocks):
     b = Block((1, 2, 3), (5, 6, 7), fill='random', file_name='test.bin')
     c = Block((1, 2, 3), (5, 2, 7), file_name='block1.bin')
     d = Block((1, 4, 3), (5, 4, 7), file_name='block2.bin')
+    b.read()
     l, _, _ = b.write_to(c)
     m, _, _ = b.write_to(d)
     assert(l + m == math.prod(b.shape))
@@ -159,6 +161,7 @@ def test_write_to_read_from(cleanup_blocks):
     b = Block((1, 2, 3), (5, 6, 7), fill='random', file_name='test.bin')
     c = Block((1, 2, 3), (5, 2, 7), file_name='block1.bin')
     d = Block((1, 4, 3), (5, 4, 7), file_name='block2.bin')
+    b.read()
     l, _, _ = b.write_to(c)
     m, _, _ = b.write_to(d)
 

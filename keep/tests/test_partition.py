@@ -14,7 +14,6 @@ def cleanup_blocks():
 
 def test_repartition_baseline(cleanup_blocks):
     array = Partition((2, 2, 2), name='array', fill='random')
-    array.write()
     out_blocks = Partition((2, 1, 2), name='out', array=array)
     array.repartition(out_blocks, None, keep.baseline)
     array.blocks[(0, 0, 0)].read()
@@ -40,7 +39,6 @@ def test_repartition_baseline(cleanup_blocks):
 
 def test_repartition_baseline_1(cleanup_blocks):
     array = Partition((5, 6, 7), name='array', fill='random')
-    array.write()
     out_blocks = Partition((5, 3, 7), name='out', array=array)
     array.repartition(out_blocks, None, keep.baseline)
     array.blocks[(0, 0, 0)].read()
@@ -63,8 +61,8 @@ def test_repartition_baseline_1(cleanup_blocks):
 def test_repartition_baseline_2(cleanup_blocks):
     array = Partition((10, 20, 30), name='array')
     in_blocks = Partition((10, 20, 30), name='in', array=array, fill='random')
+    in_blocks.blocks[(0, 0, 0)].read()
     in_data = in_blocks.blocks[(0, 0, 0)].data.bytes()
-    in_blocks.write()
     out_blocks = Partition((10, 10, 15), name='out', array=array)
     in_blocks.repartition(out_blocks, None, keep.baseline)
 
@@ -78,7 +76,6 @@ def test_repartition_baseline_2(cleanup_blocks):
 
 def test_repartition_keep(cleanup_blocks):
     array = Partition((2, 2, 2), name='array', fill='random')
-    array.write()
     out_blocks = Partition((2, 1, 2), name='out', array=array)
     array.repartition(out_blocks, None, keep.keep)
     array.blocks[(0, 0, 0)].read()
@@ -101,7 +98,6 @@ def test_repartition_keep(cleanup_blocks):
 
 def test_repartition_keep_1(cleanup_blocks):
     array = Partition((5, 6, 7), name='array', fill='random')
-    array.write()
     out_blocks = Partition((5, 3, 7), name='out', array=array)
     array.repartition(out_blocks, None, keep.keep)
     array.blocks[(0, 0, 0)].read()
@@ -124,8 +120,8 @@ def test_repartition_keep_1(cleanup_blocks):
 def test_repartition_keep_2(cleanup_blocks):
     array = Partition((10, 20, 30), name='array')
     in_blocks = Partition((10, 20, 30), name='in', array=array, fill='random')
+    in_blocks.blocks[(0, 0, 0)].read()
     in_data = in_blocks.blocks[(0, 0, 0)].data.bytes()
-    in_blocks.write()
     out_blocks = Partition((10, 10, 15), name='out', array=array)
     in_blocks.repartition(out_blocks, None, keep.keep)
 
@@ -139,7 +135,6 @@ def test_repartition_keep_2(cleanup_blocks):
 
 def test_repartition_baseline_3(cleanup_blocks):
     array = Partition((12, 12, 12), name='array', fill='random')
-    array.write()
     in_blocks = Partition((4, 4, 4), name='in', array=array)
     array.repartition(in_blocks, None, keep.baseline)
 
@@ -160,7 +155,6 @@ def test_repartition_baseline_3(cleanup_blocks):
 
 def test_repartition_keep_3(cleanup_blocks):
     array = Partition((6, 6, 6), name='array', fill='random')
-    array.write()
     array.clear()
     in_blocks = Partition((3, 3, 3), name='in', array=array)
     array.repartition(in_blocks, None, keep.keep)
@@ -170,7 +164,6 @@ def test_repartition_keep_3(cleanup_blocks):
     in_blocks.repartition(out_blocks, None, keep.keep)
 
     array = Partition((12, 12, 12), name='array', fill='random')
-    array.write()
     array.clear()
     in_blocks = Partition((4, 4, 4), name='in', array=array)
     array.repartition(in_blocks, None, keep.keep)
