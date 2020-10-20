@@ -5,10 +5,32 @@ import subprocess as sp
 from random import shuffle
 from json import load
 from os import linesep, makedirs, path as op
-from time import time
+from time import time, sleep
+
+
+def wait(job_id):
+    print(f"Waiting for job {job_id} termination")
+
+    while True:
+        p = sp.Popen(
+            ["squeue", "--job", job_id], stdout=sp.PIPE, stderr=sp.PIPE
+        )
+        out, err = p.communicate()
+
+        out = out.decode("utf-8")
+        err = err.decode("utf-8")
+
+        if len(out.strip(linesep).split("\n")) <= 1:
+            print(f"Slurm job {job_id} completed")
+            break
+
+        else:
+            sleep(10)
 
 
 def launch(sbatch_file, nodelist):
+
+    job_id = None
 
     if nodelist is None:
         cmd = ["sbatch", sbatch_file]
@@ -20,9 +42,17 @@ def launch(sbatch_file, nodelist):
     p = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE)
     out, err = p.communicate()
 
-    print("Output:", str(out), linesep)
-    print("Error:", str(err), linesep)
+    out = out.decode("utf-8")
+    err = err.decode("utf-8")
+
+    if out != "":
+        job_id = out.strip(linesep).split(" ")[-1]
+
+    print("Output:", out, linesep)
+    print("Error:", err, linesep)
     print("Command completed.\n")
+
+    return job_id
 
 
 def gen_sbatch(exp, results_dir):
@@ -55,10 +85,16 @@ def gen_sbatch(exp, results_dir):
         f"\n\n"
         f'echo "Clearing cache" && sync && echo 3 | sudo tee /proc/sys/vm/drop_caches\n'
         f"source {exp['venv']}\n"
-        f"export KEEP_LOG={log_file}"
+        f"export KEEP_LOG={log_file}\n"
+        f"\n\n"
+        f"repartition --max-mem {memory_bytes} --create  \"{exp['a']}\" \"{exp['i']}\" \"{exp['o']}\" {exp['alg']}\n"
+        f"\n"
         f"start=`date +%s.%N`\n"
-        f"repartition --max-mem {memory_bytes} --create --delete \"{exp['a']}\" \"{exp['i']}\" \"{exp['o']}\" {exp['alg']}\n"
-        f"end=`date +%s.%N`"
+        f"repartition --max-mem {memory_bytes} --repartition \"{exp['a']}\" \"{exp['i']}\" \"{exp['o']}\" {exp['alg']}\n"
+        f"end=`date +%s.%N`\n"
+        f"\n"
+        f"repartition --max-mem {memory_bytes} --delete \"{exp['a']}\" \"{exp['i']}\" \"{exp['o']}\" {exp['alg']}\n"
+        f"\n\n"
         f'runtime=$( echo "$end - $start" | bc -l)\n'
         f"echo \"Runtime: $runtime\" > {op.join(results_dir, 'runtime.txt')}\n"
         f'echo "Removing directories"\n'
@@ -97,7 +133,10 @@ def main(conditions, repetitions, results_dir, nodelist):
             sb_file = gen_sbatch(exp, it_dir)
 
             # launch experiments
-            launch(sb_file, nodelist)
+            job_id = launch(sb_file, nodelist)
+
+            # wait for experiment to complete
+            wait(job_id)
 
 
 if __name__ == "__main__":
