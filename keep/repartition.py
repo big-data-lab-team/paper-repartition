@@ -52,7 +52,7 @@ def main(args=None):
         fill = 'random'
     else:
         fill = None
-    
+
     log('Creating input blocks', 1)
     in_blocks = Partition(make_tuple(args.I), name='in', array=array,
                           fill=fill)
