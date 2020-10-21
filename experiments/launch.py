@@ -24,8 +24,8 @@ def wait(job_id):
             print(f"Slurm job {job_id} completed")
             break
 
-        else:
-            sleep(10)
+        # sleep before querying again
+        sleep(10)
 
 
 def launch(sbatch_file, nodelist):
@@ -89,14 +89,10 @@ def gen_sbatch(exp, results_dir):
         f"\n\n"
         f"repartition --max-mem {memory_bytes} --create  \"{exp['a']}\" \"{exp['i']}\" \"{exp['o']}\" {exp['alg']}\n"
         f"\n"
-        f"start=`date +%s.%N`\n"
-        f"repartition --max-mem {memory_bytes} --repartition \"{exp['a']}\" \"{exp['i']}\" \"{exp['o']}\" {exp['alg']}\n"
-        f"end=`date +%s.%N`\n"
+        f"repartition --max-mem {memory_bytes} --repartition \"{exp['a']}\" \"{exp['i']}\" \"{exp['o']}\" {exp['alg']} > {op.join(results_dir, 'runtime.txt')}\n"
         f"\n"
         f"repartition --max-mem {memory_bytes} --delete \"{exp['a']}\" \"{exp['i']}\" \"{exp['o']}\" {exp['alg']}\n"
         f"\n\n"
-        f'runtime=$( echo "$end - $start" | bc -l)\n'
-        f"echo \"Runtime: $runtime\" > {op.join(results_dir, 'runtime.txt')}\n"
         f'echo "Removing directories"\n'
         f"rm -rf {exp['cwd']}"
     )
