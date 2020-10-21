@@ -138,9 +138,9 @@
         "cwd": "/disk0/vhs/repartition",
         "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
         "alg": "keep",
-        "a": "(8000, 8000, 8000)",
-        "i": "(800, 800, 800)",
-        "o": "(4000, 4000, 4000)"
+        "a": "(6000, 6000, 6000)",
+        "i": "(1000, 1000, 1000)",
+        "o": "(3000, 3000, 3000)"
     },
     {
         "name": "bi_1b_200G_keep",
@@ -149,9 +149,9 @@
         "cwd": "/disk0/vhs/repartition",
         "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
         "alg": "keep",
-        "a": "(8000, 8000, 8000)",
-        "i": "(4000, 4000, 4000)",
-        "o": "(800, 800, 800)"
+        "a": "(6000, 6000, 6000)",
+        "i": "(3000, 3000, 3000)",
+        "o": "(1000, 1000, 1000)"
     },
     {
         "name": "bi_2a_200G_keep",
@@ -160,8 +160,8 @@
         "cwd": "/disk0/vhs/repartition",
         "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
         "alg": "keep",
-        "a": "(8000, 8000, 8000)",
-        "i": "(800, 800, 800)",
+        "a": "(6000, 6000, 6000)",
+        "i": "(1000, 1000, 1000)",
         "o": "(2000, 2000, 2000)"
     },
     {
@@ -171,9 +171,9 @@
         "cwd": "/disk0/vhs/repartition",
         "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
         "alg": "keep",
-        "a": "(8000, 8000, 8000)",
+        "a": "(6000, 6000, 6000)",
         "i": "(2000, 2000, 2000)",
-        "o": "(800, 800, 800)"
+        "o": "(1000, 1000, 1000)"
     },
     {
         "name": "bi_3a_200G_keep",
@@ -182,9 +182,9 @@
         "cwd": "/disk0/vhs/repartition",
         "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
         "alg": "keep",
-        "a": "(8000, 8000, 8000)",
-        "i": "(800, 800, 800)",
-        "o": "(1600, 1600, 1600)"
+        "a": "(6000, 6000, 6000)",
+        "i": "(1000, 1000, 1000)",
+        "o": "(1500, 1500, 1500)"
     },
     {
         "name": "bi_3b_200G_keep",
@@ -193,9 +193,9 @@
         "cwd": "/disk0/vhs/repartition",
         "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
         "alg": "keep",
-        "a": "(8000, 8000, 8000)",
-        "i": "(1600, 1600, 1600)",
-        "o": "(800, 800, 800)"
+        "a": "(6000, 6000, 6000)",
+        "i": "(1500, 1500, 1500)",
+        "o": "(1000, 1000, 1000)"
     },
     {
         "name": "bi_4a_200G_keep",
@@ -204,9 +204,9 @@
         "cwd": "/disk0/vhs/repartition",
         "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
         "alg": "keep",
-        "a": "(8000, 8000, 8000)",
-        "i": "(800, 800, 800)",
-        "o": "(1000, 1000, 1000)"
+        "a": "(6000, 6000, 6000)",
+        "i": "(1000, 1000, 1000)",
+        "o": "(1200, 1200, 1200)"
     },
     {
         "name": "bi_4b_200G_keep",
@@ -215,9 +215,9 @@
         "cwd": "/disk0/vhs/repartition",
         "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
         "alg": "keep",
-        "a": "(8000, 8000, 8000)",
-        "i": "(1000, 1000, 1000)",
-        "o": "(800, 800, 800)"
+        "a": "(6000, 6000, 6000)",
+        "i": "(1200, 1200, 1200)",
+        "o": "(1000, 1000, 1000)"
     },
     {
         "name": "bi_5a_200G_keep",
@@ -226,9 +226,9 @@
         "cwd": "/disk0/vhs/repartition",
         "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
         "alg": "keep",
-        "a": "(8000, 8000, 8000)",
-        "i": "(800, 800, 800)",
-        "o": "(500, 500, 500)"
+        "a": "(6000, 6000, 6000)",
+        "i": "(1000, 1000, 1000)",
+        "o": "(750, 750, 750)"
     },
     {
         "name": "bi_5b_200G_keep",
@@ -237,9 +237,9 @@
         "cwd": "/disk0/vhs/repartition",
         "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
         "alg": "keep",
-        "a": "(8000, 8000, 8000)",
-        "i": "(500, 500, 500)",
-        "o": "(800, 800, 800)"
+        "a": "(6000, 6000, 6000)",
+        "i": "(750, 750, 750)",
+        "o": "(1000, 1000, 1000)"
     },
     {
         "name": "bi_6a_200G_keep",
@@ -248,9 +248,9 @@
         "cwd": "/disk0/vhs/repartition",
         "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
         "alg": "keep",
-        "a": "(8000, 8000, 8000)",
-        "i": "(800, 800, 800)",
-        "o": "(400, 400, 400)"
+        "a": "(6000, 6000, 6000)",
+        "i": "(1000, 1000, 1000)",
+        "o": "(600, 600, 600)"
     },
     {
         "name": "bi_6b_200G_keep",
@@ -259,9 +259,9 @@
         "cwd": "/disk0/vhs/repartition",
         "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
         "alg": "keep",
-        "a": "(8000, 8000, 8000)",
-        "i": "(400, 400, 400)",
-        "o": "(800, 800, 800)"
+        "a": "(6000, 6000, 6000)",
+        "i": "(600, 600, 600)",
+        "o": "(1000, 1000, 1000)"
     },
     {
         "name": "si_1a_200G_baseline",
@@ -357,6 +357,7 @@
         "mem": 200,
         "cwd": "/disk0/vhs/repartition",
         "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
+        "alg": "baseline",
         "a": "(3500, 3500, 3500)",
         "i": "(350, 350, 350)",
         "o": "(250, 250, 250)"
@@ -366,6 +367,7 @@
         "account": "vhs",
         "mem": 200,
         "cwd": "/disk0/vhs/repartition",
+        "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
         "alg": "baseline",
         "a": "(3500, 3500, 3500)",
         "i": "(250, 250, 250)",
@@ -400,9 +402,9 @@
         "cwd": "/disk0/vhs/repartition",
         "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
         "alg": "baseline",
-        "a": "(8000, 8000, 8000)",
-        "i": "(800, 800, 800)",
-        "o": "(4000, 4000, 4000)"
+        "a": "(6000, 6000, 6000)",
+        "i": "(1000, 1000, 1000)",
+        "o": "(3000, 3000, 3000)"
     },
     {
         "name": "bi_1b_200G_baseline",
@@ -411,9 +413,9 @@
         "cwd": "/disk0/vhs/repartition",
         "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
         "alg": "baseline",
-        "a": "(8000, 8000, 8000)",
-        "i": "(4000, 4000, 4000)",
-        "o": "(800, 800, 800)"
+        "a": "(6000, 6000, 6000)",
+        "i": "(3000, 3000, 3000)",
+        "o": "(1000, 1000, 1000)"
     },
     {
         "name": "bi_2a_200G_baseline",
@@ -422,8 +424,8 @@
         "cwd": "/disk0/vhs/repartition",
         "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
         "alg": "baseline",
-        "a": "(8000, 8000, 8000)",
-        "i": "(800, 800, 800)",
+        "a": "(6000, 6000, 6000)",
+        "i": "(1000, 1000, 1000)",
         "o": "(2000, 2000, 2000)"
     },
     {
@@ -433,9 +435,9 @@
         "cwd": "/disk0/vhs/repartition",
         "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
         "alg": "baseline",
-        "a": "(8000, 8000, 8000)",
+        "a": "(6000, 6000, 6000)",
         "i": "(2000, 2000, 2000)",
-        "o": "(800, 800, 800)"
+        "o": "(1000, 1000, 1000)"
     },
     {
         "name": "bi_3a_200G_baseline",
@@ -444,9 +446,9 @@
         "cwd": "/disk0/vhs/repartition",
         "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
         "alg": "baseline",
-        "a": "(8000, 8000, 8000)",
-        "i": "(800, 800, 800)",
-        "o": "(1600, 1600, 1600)"
+        "a": "(6000, 6000, 6000)",
+        "i": "(1000, 1000, 1000)",
+        "o": "(1500, 1500, 1500)"
     },
     {
         "name": "bi_3b_200G_baseline",
@@ -455,9 +457,9 @@
         "cwd": "/disk0/vhs/repartition",
         "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
         "alg": "baseline",
-        "a": "(8000, 8000, 8000)",
-        "i": "(1600, 1600, 1600)",
-        "o": "(800, 800, 800)"
+        "a": "(6000, 6000, 6000)",
+        "i": "(1500, 1500, 1500)",
+        "o": "(1000, 1000, 1000)"
     },
     {
         "name": "bi_4a_200G_baseline",
@@ -466,9 +468,9 @@
         "cwd": "/disk0/vhs/repartition",
         "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
         "alg": "baseline",
-        "a": "(8000, 8000, 8000)",
-        "i": "(800, 800, 800)",
-        "o": "(1000, 1000, 1000)"
+        "a": "(6000, 6000, 6000)",
+        "i": "(1000, 1000, 1000)",
+        "o": "(1200, 1200, 1200)"
     },
     {
         "name": "bi_4b_200G_baseline",
@@ -477,9 +479,9 @@
         "cwd": "/disk0/vhs/repartition",
         "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
         "alg": "baseline",
-        "a": "(8000, 8000, 8000)",
-        "i": "(1000, 1000, 1000)",
-        "o": "(800, 800, 800)"
+        "a": "(6000, 6000, 6000)",
+        "i": "(1200, 1200, 1200)",
+        "o": "(1000, 1000, 1000)"
     },
     {
         "name": "bi_5a_200G_baseline",
@@ -488,9 +490,9 @@
         "cwd": "/disk0/vhs/repartition",
         "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
         "alg": "baseline",
-        "a": "(8000, 8000, 8000)",
-        "i": "(800, 800, 800)",
-        "o": "(500, 500, 500)"
+        "a": "(6000, 6000, 6000)",
+        "i": "(1000, 1000, 1000)",
+        "o": "(750, 750, 750)"
     },
     {
         "name": "bi_5b_200G_baseline",
@@ -499,9 +501,9 @@
         "cwd": "/disk0/vhs/repartition",
         "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
         "alg": "baseline",
-        "a": "(8000, 8000, 8000)",
-        "i": "(500, 500, 500)",
-        "o": "(800, 800, 800)"
+        "a": "(6000, 6000, 6000)",
+        "i": "(750, 750, 750)",
+        "o": "(1000, 1000, 1000)"
     },
     {
         "name": "bi_6a_200G_baseline",
@@ -510,9 +512,9 @@
         "cwd": "/disk0/vhs/repartition",
         "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
         "alg": "baseline",
-        "a": "(8000, 8000, 8000)",
-        "i": "(800, 800, 800)",
-        "o": "(400, 400, 400)"
+        "a": "(6000, 6000, 6000)",
+        "i": "(1000, 1000, 1000)",
+        "o": "(600, 600, 600)"
     },
     {
         "name": "bi_6b_200G_baseline",
@@ -521,9 +523,9 @@
         "cwd": "/disk0/vhs/repartition",
         "venv": "/home/vhs/paper-repartition/.venv/bin/activate",
         "alg": "baseline",
-        "a": "(8000, 8000, 8000)",
-        "i": "(400, 400, 400)",
-        "o": "(800, 800, 800)"
+        "a": "(6000, 6000, 6000)",
+        "i": "(600, 600, 600)",
+        "o": "(1000, 1000, 1000)"
     }
 
 ]

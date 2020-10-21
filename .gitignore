@@ -9,3 +9,5 @@ algorithm_paper.pdf
 *.out
 algorithm_paper_v1.pdf
 __pycache__
+experiments/results
+.venv
