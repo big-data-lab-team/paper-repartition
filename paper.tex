@@ -48,8 +48,8 @@ but their manipulation raises performance issues when they exceed memory
 capacity. In particular, accessing specific array regions can require
 millions to billions of disk seek operations, with important consequences
 on I/O performance. While traditional approaches to address this problem
-focus on file format optimizations, we are searching for algorithmic
-solutions where applications control I/O to reduce
+focus on file format optimizations, we are looking for algorithmic
+solutions where applications control their I/O to reduce
 seeking. In this paper, we propose the \keep heuristic to minimize the
 number of seeks required for the repartitioning of large multi-dimensional
 arrays. The \keep heuristic uses a memory cache to reconstruct contiguous
@@ -104,14 +104,14 @@ The source code, data, and/or other artifacts have been made available at \url{\
 
 % Multidimensional arrays are important
 Multidimensional arrays are
-used in many scientific disciplines as the main data structure~\cite{harris2020array}. In neuroimaging, our main application area, arrays
+used in many scientific disciplines as the main data structure~\cite{harris2020array}. In neuroimaging for instance, arrays
 commonly store 2D, 3D or 3D+t brain images acquired from histology, magnetic
 resonance imaging (MRI), or other modalities. Due to the improvement of
 acquisition methods, it is now common for such images to exceed the amount
 of working memory available on typical computers, requiring their
 partitioning in blocks stored in independent files or in multiple HDF5
 sections. BigBrain~\cite{Amunts1472}, for instance, is a human brain model
-providing microscopic data at the resolution of 20 micrometres that comes
+providing microscopic data at the resolution of 20 micrometers that comes
 in the form of many 3D blocks. Partitioning large arrays enables efficient
 queries, flexibility in adding new data~\cite{optimal_chuking}, granular data
 transfers, and parallel processing with frameworks such as
@@ -120,7 +120,7 @@ different block geometries depending on their processing requirements, such
 as 2D slices or 3D blocks.
 
 % Seeks create performance issues
-Manipulating large multidimensional arrays, however, come with performance
+Manipulating large multidimensional arrays, however, comes with performance
 challenges related to the ordering and organization of array elements on
 storage devices. In particular, reading or writing elements scattered in different
 disk regions can generate millions to billions of \emph{seeks}, the
@@ -257,16 +257,12 @@ the block.
     \STATE
     \STATE \textbf{Algorithm}
     \STATE readBlocks, writeBlocks $\leftarrow$ getReadWriteBlocks($I$, $O$, $m$)
-    \STATE initialize(cache)
+    \STATE cache $\leftarrow$ init\_cache(readBlocks, writeBlocks)
     \FOR{readBlock in readBlocks}
       \STATE data $\leftarrow$ read(readBlock, inBlocks)
-      \STATE \tristan{return complete blocks here, avoid for loop next}cache.insert(data)
-      \FOR{writeBlock in writeBlocks}
-        \IF{$\mathrm{readBlock} \cap \mathrm{writeBlock} \neq \emptyset$ \\
-             \quad \textbf{and} cache.isComplete(writeBlock)}
-          \STATE data $\leftarrow$ cache.pop(writeBlock)
-          \STATE write(data, outBlocks)
-        \ENDIF
+      \STATE completeBlocks = cache.insert(data)
+      \FOR{writeBlock in completeBlocks}
+          \STATE write(writeBlock, outBlocks)
       \ENDFOR
     \ENDFOR
 
@@ -274,9 +270,9 @@ the block.
 \end{algorithm}
 
 We focus on 3D arrays for simplicity. Consider a 3D array \texttt{A} of shape $A =
-(A_i, A_j, A_k)$, partitioned in uniformly-shaped input blocks of shape $I =
-(I_i, I_j, I_k)$ stored on disk. Our goal is to re-partition the input
-blocks into uniform output blocks of shape $O = (O_i, O_j, O_k)$,
+(A_0, A_1, A_2)$, partitioned in uniformly-shaped input blocks of shape $I =
+(I_0, I_1, I_2)$ stored on disk. Our goal is to re-partition the input
+blocks into uniform output blocks of shape $O = (O_0, O_1, O_2)$,
 where $O \neq I$. Notations are summarized in
 Table~\ref{table:notations}.
 
@@ -287,19 +283,19 @@ blocks \texttt{outBlocks}, and the amount of memory \texttt{m}
 available for the algorithm. Subject to $m$, the algorithm determines (1)
 \texttt{readBlocks}, a list of uniformly-shaped blocks of shape $R$ to be read from the
 input blocks, and (2) \texttt{writeBlocks}, a list of blocks,
-usually not uniformly-shaped, to be written to output blocks (line 10).
+usually not uniformly-shaped, to be written to output blocks.
 If read blocks and input blocks have a different shape, then reading read blocks requires
 more than one seek. Similarly, if write blocks and output blocks have a different shape,
 then writing write blocks requires more than one seeks. Input, output, read
 and write blocks all form a partition of the 3D array \texttt{A}. The
 main loop of the algorithm (line 12) loads one read block at a time (line
 13), inserts it into a cache (line 14), and writes write blocks from the
-cache when they are complete (lines 15 -- 20). Function \texttt{write} is assumed
-to open each output block only once, and to write the required elements of \texttt{data} in it.
+cache when they are complete (lines 15 -- 17). Function \texttt{write} opens
+each output block only once, and writes the required elements of \texttt{data} in it.
 
 It should be noted that blocks are passed to the algorithm by reference,
-not by data. Only variables \texttt{data} (lines 13, 17) and \texttt{cache}
-(line 14) hold actual data, contributing to the consumed memory.
+not by data. Only variables \texttt{data} and \texttt{cache}
+hold actual data, contributing to the consumed memory.
 
 Since read and write blocks both represent a partition of $A$, all the
 elements in \texttt{inBlocks} are read exactly once and written exactly once too. Other
@@ -308,7 +304,7 @@ discarded, to reduce seeking. Exploring such a trade-off
 between seeks and redundant reads could be an interesting extension to this problem.
 
 Our goal is to minimize the number of seeks done by the algorithm, which
-occurs during reads (line 13) and writes (line 18). The re-partitioning
+occurs during reads (line 13) and writes (line 16). The re-partitioning
 problem is therefore to find \texttt{readBlocks} and \texttt{writeBlocks} that
 minimize the number of
 seeks done by the algorithm, subject to the memory constraint $m$.
@@ -327,8 +323,8 @@ blocks. Indeed, input and output blocks all have to be opened at least
 once, which requires a seek.
 
 For simplicity, we require that all blocks in \texttt{readBlocks} have the
-same shape $R$. We also equate the size of an array in memory as its
-number of elements. To the best of our knowledge, no algorithm has been
+same shape $R$. We also assume that the size of array elements is 1B. 
+To the best of our knowledge, no algorithm was
 proposed for the repartitioning problem.
 
 
@@ -339,7 +335,8 @@ at a time ($R$=$I$), and directly writes it to the appropriate output
 blocks ($W$=$R$). It assumes that input blocks fit in memory. The number of
 generated seeks $s_b$
 depends on how write blocks overlap with
-output blocks in each dimension (Fig.~\ref{fig:baseline_figure}). To determine $s_b$, we define
+output blocks in each dimension (Fig.~\ref{fig:baseline_figure} \todo{check}).
+To determine $s_b$, we define 
 $\mathcal{W}_d$ and $\mathcal{O}_d$, the sets of write and output block end
 coordinates in dimension $d$:
 \[
@@ -416,6 +413,11 @@ contiguously to the output blocks.
     \STATE writeBlocks: a list of write blocks
     \STATE
     \STATE \textbf{Algorithm}
+    r = rat 
+    for x in sorted(divisors(A0), x < r0 ascending=False)
+      if (x, r1, r2) fits in mem:
+          return
+
     \STATE readShapes = candidateReadShapes($I$, $O$, $A$)
     \STATE minSeeks = None
     \FOR{$R$ in readShapes}
