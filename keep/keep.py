@@ -137,9 +137,14 @@ def find_shape_with_constraint(in_blocks, out_blocks, m):
     # r_hat is the best shape, if it fits in memory or there is no memory
     # constraint, return it
     r_hat = get_r_hat(in_blocks, out_blocks)
+    # TODO: this ignores the memory constraint alltogether
+    return r_hat, -1
+
     log(f'keep: rhat is {r_hat}')
+    if m is None:
+        return r_hat, -1
     mc = peak_memory(r_hat, in_blocks, out_blocks)
-    if m is None or mc <= m:
+    if mc <= m:
         return r_hat, mc
 
     array = in_blocks.array

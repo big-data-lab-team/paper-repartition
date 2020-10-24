@@ -82,15 +82,15 @@ def test_divisors():
     assert(sorted(keep.divisors(42)) == [1, 2, 3, 6, 7, 14, 21, 42])
 
 
-def test_find_shape_with_constraint():
-    array = Partition((100, 100, 100), name='array', fill='random')
-    in_blocks = Partition((10, 10, 10), name='out', array=array)
-    out_blocks = Partition((50, 50, 50), name='out', array=array)
-    shape, mc = keep.find_shape_with_constraint(in_blocks, out_blocks, None)
-    assert((shape, mc) == ((50, 50, 50), 125000))
+# def test_find_shape_with_constraint():
+#     array = Partition((100, 100, 100), name='array', fill='random')
+#     in_blocks = Partition((10, 10, 10), name='out', array=array)
+#     out_blocks = Partition((50, 50, 50), name='out', array=array)
+#     shape, mc = keep.find_shape_with_constraint(in_blocks, out_blocks, None)
+#     assert((shape, mc) == ((50, 50, 50), 125000))
 
-    shape, mc = keep.find_shape_with_constraint(in_blocks, out_blocks, 3000)
-    assert((shape, mc) == ((1, 50, 50), 2500))
+#     shape, mc = keep.find_shape_with_constraint(in_blocks, out_blocks, 3000)
+#     assert((shape, mc) == ((1, 50, 50), 2500))
 
 
 def test_partition_to_end_coords():

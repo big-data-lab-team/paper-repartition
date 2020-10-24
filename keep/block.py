@@ -219,13 +219,9 @@ class Block():
         origin, shape, self_offsets = self.block_offsets(block)
 
         data_size = sum([(self_offsets[i+1]+1)-self_offsets[i]
-                        if i % 2 == 0 else 0
-                        for i in range(len(self_offsets))])
-        data = bytearray()
-        for i, x in enumerate(self_offsets):
-            if i % 2 == 1 or dry_run:
-                continue
-            data += self.data.get(self_offsets[i], (self_offsets[i+1]+1))
+                        for i in range(0, len(self_offsets), 2)])
+        data = b''.join([self.data.get(self_offsets[i], (self_offsets[i+1]+1))
+                         for i in range(0, len(self_offsets), 2)])
         message = f'{dry_run}, {len(data)}, {data_size}'
         assert(dry_run or (len(data) == data_size)), message
         block = Block(origin, shape, data)
@@ -275,25 +271,27 @@ class Block():
         Similar to get_data_block but to copy from block to self
         '''
         assert(self.data.mem_usage() <= math.prod(self.shape)), message
-
         if not self.overlap(block):
             return
 
         _, _, self_offsets = self.block_offsets(block)
+
+        if dry_run:
+            size = sum([self_offsets[i+1] - self_offsets[i] + 1
+                        for i in range(0, len(self_offsets), 2)])
+            self.set_data_size(self.get_data_size()+size)
+            return
+
         data_offset = 0
-        for i, x in enumerate(self_offsets):
-            if i % 2 == 1:
-                continue
+
+        for i in range(0, len(self_offsets), 2):
             next_data_offset = (data_offset + self_offsets[i+1] -
                                 self_offsets[i] + 1)
-            if dry_run:
-                self.set_data_size(self.get_data_size() + next_data_offset
-                                   - data_offset)
-            else:
-                self.data.put(self_offsets[i],
-                              block.data.get(data_offset, next_data_offset),
-                              dry_run)
+            self.data.put(self_offsets[i],
+                          block.data.get(data_offset, next_data_offset),
+                          dry_run)
             data_offset = next_data_offset
+
         message = (f'Block {self} of shape {self.shape} uses '
                    f'{self.data.mem_usage()}B of memory')
         assert(self.data.mem_usage() <= math.prod(self.shape)), message
@@ -347,34 +345,35 @@ class Block():
         # Read in block
         seeks = len(block_offsets)/2
         est_total_bytes = sum([block_offsets[i+1]-block_offsets[i] + 1
-                              if i % 2 == 0 else 0
-                              for i in range(len(block_offsets))])
+                              for i in range(0, len(block_offsets), 2)])
         if dry_run:
             self.set_data_size(self.get_data_size() + est_total_bytes)
             return est_total_bytes, seeks, 0
-        read_time = 0
+
+        # Initialize counters
+        counters = {'time': 0, 'seeks': 0, 'bytes': 0}
+
+        # Function to be used in list comprehension
+        def seek_and_read(f, start_offset, end_offset, counters):
+            start = time.time()
+            f.seek(start_offset)
+            data = f.read(end_offset - start_offset + 1)
+            counters['time'] += time.time() - start
+            counters['bytes'] += end_offset - start_offset + 1
+            return data
+
         with open(block.file_name, 'rb') as f:
             log(f'<< Reading from {block.file_name}'
-                f' ({len(block_offsets)/2} seeks)', 0)
-            total_bytes = 0
-            for i, r in enumerate(block_offsets):
-                if i % 2 == 1:
-                    continue
-                start = time.time()
-                f.seek(block_offsets[i])
-                data += f.read(block_offsets[i+1]-block_offsets[i] + 1)
-                read_time += time.time() - start
-                total_bytes += block_offsets[i+1]-block_offsets[i] + 1
-            assert(len(data) == total_bytes), (f'Data size: {len(data)}, '
-                                               'read {total_bytes} bytes '
-                                               ' from block {block}')
-            log(f'Read {total_bytes} bytes', 0)
+                f' ({len(block_offsets)/2} seeks)', 1)
+            data = b''.join([seek_and_read(f, block_offsets[i],
+                                           block_offsets[i+1], counters)
+                             for i in range(0, len(block_offsets), 2)])
 
         # Write data block to self
         data_block = Block(origin=origin, shape=shape, data=data)
         self.put_data_block(data_block)
-        assert(total_bytes == est_total_bytes)
-        return total_bytes, seeks, read_time
+        assert(counters['bytes'] == est_total_bytes)
+        return counters['bytes'], seeks, counters['time']
 
     def set_data_size(self, size):
         '''
@@ -426,22 +425,24 @@ class Block():
             #  to modify without overwriting
             mode = 'r+b'
         write_time = 0
+
+        if dry_run:
+            total_bytes = sum([block_offsets[i+1] - block_offsets[i] + 1
+                               for i in range(0, len(block_offsets), 2)])
+            return total_bytes, seeks, write_time
+
+        log('>> Writing to {block.file_name} ({seeks} seeks)', 1)
         with open(block.file_name, mode) as f:
             total_bytes = 0
-            for i, r in enumerate(block_offsets):
-                if i % 2 == 1:
-                    continue
+            for i in range(0, len(block_offsets), 2):
                 next_data_offset = (data_offset +
                                     block_offsets[i+1] -
                                     block_offsets[i] + 1)
-                if dry_run:
-                    wrote_bytes = next_data_offset - data_offset
-                else:
-                    start = time.time()
-                    f.seek(block_offsets[i])
-                    wrote_bytes = f.write(data.get(data_offset,
-                                                   next_data_offset))
-                    write_time += time.time() - start
+                start = time.time()
+                f.seek(block_offsets[i])
+                wrote_bytes = f.write(data.get(data_offset,
+                                               next_data_offset))
+                write_time += time.time() - start
                 total_bytes += wrote_bytes
                 data_offset = next_data_offset
             if total_bytes != 0:
