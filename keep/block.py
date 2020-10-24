@@ -431,7 +431,7 @@ class Block():
                                for i in range(0, len(block_offsets), 2)])
             return total_bytes, seeks, write_time
 
-        log('>> Writing to {block.file_name} ({seeks} seeks)', 1)
+        log(f'>> Writing to {block.file_name} ({seeks} seeks)', 1)
         with open(block.file_name, mode) as f:
             total_bytes = 0
             for i in range(0, len(block_offsets), 2):
