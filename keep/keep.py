@@ -181,7 +181,7 @@ def get_r_hat(in_blocks, out_blocks):
     return r_hat
 
 
-def get_F_blocks(write_block, out_blocks, get_data=False, dry_run=False):
+def get_F_blocks(write_block, out_blocks, get_data=False):
     '''
     Assuming out_blocks are of uniform size
     '''
@@ -191,32 +191,27 @@ def get_F_blocks(write_block, out_blocks, get_data=False, dry_run=False):
     shape = write_block.shape
     out_ends = partition_to_end_coords(out_blocks)
 
-    # TODO: turn to list comprehension
-    block_ends = list(origin)
-    for d in (0, 1, 2):
-        ends = sorted(out_ends[d])
-        for o in ends:
-            if o > origin[d] and o <= origin[d] + shape[d] - 1:
-                block_ends[d] = o
+    shape = tuple(max([o for o in out_ends[d] if o > origin[d]
+                       and o <= origin[d] + shape[d] - 1]) - origin[d] + 1
+                  for d in (0, 1, 2))
 
-    shape = [block_ends[i] - origin[i] + 1 for i in range(len(origin))]
     F0 = Block(origin, shape)
     if get_data:
-        F0 = write_block.get_data_block(F0, dry_run)
+        F0 = write_block.get_data_block(F0)
 
     # F1
     origin = (F0.origin[0], F0.origin[1], F0.origin[2] + F0.shape[2])
     shape = [F0.shape[0], F0.shape[1], write_block.shape[2] - F0.shape[2]]
     F1 = Block(origin, shape)
     if get_data:
-        F1 = write_block.get_data_block(F1, dry_run)
+        F1 = write_block.get_data_block(F1)
 
     # F2
     origin = (F0.origin[0], F0.origin[1] + F0.shape[1], F0.origin[2])
     shape = [F0.shape[0], write_block.shape[1] - F0.shape[1], F0.shape[2]]
     F2 = Block(origin, shape)
     if get_data:
-        F2 = write_block.get_data_block(F2, dry_run)
+        F2 = write_block.get_data_block(F2)
 
     # F3
     origin = (F0.origin[0], F0.origin[1] + F0.shape[1],
@@ -225,14 +220,14 @@ def get_F_blocks(write_block, out_blocks, get_data=False, dry_run=False):
              write_block.shape[2] - F0.shape[2]]
     F3 = Block(origin, shape)
     if get_data:
-        F3 = write_block.get_data_block(F3, dry_run)
+        F3 = write_block.get_data_block(F3)
 
     # F4
     origin = (F0.origin[0] + F0.shape[0], F0.origin[1], F0.origin[2])
     shape = [write_block.shape[0] - F0.shape[0], F0.shape[1], F0.shape[2]]
     F4 = Block(origin, shape)
     if get_data:
-        F4 = write_block.get_data_block(F4, dry_run)
+        F4 = write_block.get_data_block(F4)
 
     # F5
     origin = (F0.origin[0] + F0.shape[0], F0.origin[1],
@@ -241,7 +236,7 @@ def get_F_blocks(write_block, out_blocks, get_data=False, dry_run=False):
              write_block.shape[2] - F0.shape[2]]
     F5 = Block(origin, shape)
     if get_data:
-        F5 = write_block.get_data_block(F5, dry_run)
+        F5 = write_block.get_data_block(F5)
 
     # F6
     origin = (F0.origin[0] + F0.shape[0], F0.origin[1] + F0.shape[1],
@@ -250,7 +245,7 @@ def get_F_blocks(write_block, out_blocks, get_data=False, dry_run=False):
              write_block.shape[1] - F0.shape[1], F0.shape[2]]
     F6 = Block(origin, shape)
     if get_data:
-        F6 = write_block.get_data_block(F6, dry_run)
+        F6 = write_block.get_data_block(F6)
 
     # F7
     origin = (F0.origin[0] + F0.shape[0], F0.origin[1] + F0.shape[1],
@@ -260,7 +255,7 @@ def get_F_blocks(write_block, out_blocks, get_data=False, dry_run=False):
              write_block.shape[2] - F0.shape[2]]
     F7 = Block(origin, shape)
     if get_data:
-        F7 = write_block.get_data_block(F7, dry_run)
+        F7 = write_block.get_data_block(F7)
 
     # Remove empty blocks and return
     f_blocks = [f if not f.empty() else None

@@ -20,21 +20,21 @@ def test_repartition_baseline(cleanup_blocks):
     out_blocks.blocks[(0, 0, 0)].read()
     out_blocks.blocks[(0, 1, 0)].read()
 
-    assert(array.blocks[(0, 0, 0)].data.bytes()[:2] ==
-           out_blocks.blocks[(0, 0, 0)].data.bytes()[:2])
-    assert(array.blocks[(0, 0, 0)].data.bytes()[2:4] ==
-           out_blocks.blocks[(0, 1, 0)].data.bytes()[:2])
-    assert(array.blocks[(0, 0, 0)].data.bytes()[4:6] ==
-           out_blocks.blocks[(0, 0, 0)].data.bytes()[2:4])
-    assert(array.blocks[(0, 0, 0)].data.bytes()[6:8] ==
-           out_blocks.blocks[(0, 1, 0)].data.bytes()[2:4])
+    assert(array.blocks[(0, 0, 0)].data.get()[:2] ==
+           out_blocks.blocks[(0, 0, 0)].data.get()[:2])
+    assert(array.blocks[(0, 0, 0)].data.get()[2:4] ==
+           out_blocks.blocks[(0, 1, 0)].data.get()[:2])
+    assert(array.blocks[(0, 0, 0)].data.get()[4:6] ==
+           out_blocks.blocks[(0, 0, 0)].data.get()[2:4])
+    assert(array.blocks[(0, 0, 0)].data.get()[6:8] ==
+           out_blocks.blocks[(0, 1, 0)].data.get()[2:4])
 
     rein_blocks = Partition((2, 2, 2), name='rein')
     out_blocks.repartition(rein_blocks, None, keep.baseline)
     rein_blocks.blocks[(0, 0, 0)].read()
 
-    assert(array.blocks[(0, 0, 0)].data.bytes() ==
-           rein_blocks.blocks[(0, 0, 0)].data.bytes())
+    assert(array.blocks[(0, 0, 0)].data.get() ==
+           rein_blocks.blocks[(0, 0, 0)].data.get())
 
 
 def test_repartition_baseline_1(cleanup_blocks):
@@ -45,31 +45,31 @@ def test_repartition_baseline_1(cleanup_blocks):
     out_blocks.blocks[(0, 0, 0)].read()
     out_blocks.blocks[(0, 3, 0)].read()
 
-    assert(array.blocks[(0, 0, 0)].data.bytes()[:20] ==
-           out_blocks.blocks[(0, 0, 0)].data.bytes()[:20])
-    assert(array.blocks[(0, 0, 0)].data.bytes()[-20:] ==
-           out_blocks.blocks[(0, 3, 0)].data.bytes()[-20:])
+    assert(array.blocks[(0, 0, 0)].data.get()[:20] ==
+           out_blocks.blocks[(0, 0, 0)].data.get()[:20])
+    assert(array.blocks[(0, 0, 0)].data.get()[-20:] ==
+           out_blocks.blocks[(0, 3, 0)].data.get()[-20:])
 
     rein_blocks = Partition((5, 6, 7), name='rein')
     out_blocks.repartition(rein_blocks, None, keep.baseline)
     rein_blocks.blocks[(0, 0, 0)].read()
 
-    assert(array.blocks[(0, 0, 0)].data.bytes() ==
-           rein_blocks.blocks[(0, 0, 0)].data.bytes())
+    assert(array.blocks[(0, 0, 0)].data.get() ==
+           rein_blocks.blocks[(0, 0, 0)].data.get())
 
 
 def test_repartition_baseline_2(cleanup_blocks):
     array = Partition((10, 20, 30), name='array')
     in_blocks = Partition((10, 20, 30), name='in', array=array, fill='random')
     in_blocks.blocks[(0, 0, 0)].read()
-    in_data = in_blocks.blocks[(0, 0, 0)].data.bytes()
+    in_data = in_blocks.blocks[(0, 0, 0)].data.get()
     out_blocks = Partition((10, 10, 15), name='out', array=array)
     in_blocks.repartition(out_blocks, None, keep.baseline)
 
     rein_blocks = Partition((10, 20, 30), name='rein', array=array)
     out_blocks.repartition(rein_blocks, None, keep.baseline)
     rein_blocks.blocks[(0, 0, 0)].read()
-    rein_data = rein_blocks.blocks[(0, 0, 0)].data.bytes()
+    rein_data = rein_blocks.blocks[(0, 0, 0)].data.get()
 
     assert(rein_data == in_data)
 
@@ -82,14 +82,14 @@ def test_repartition_keep(cleanup_blocks):
     out_blocks.blocks[(0, 0, 0)].read()
     out_blocks.blocks[(0, 1, 0)].read()
 
-    assert(array.blocks[(0, 0, 0)].data.bytes()[:2] ==
-           out_blocks.blocks[(0, 0, 0)].data.bytes()[:2])
-    assert(array.blocks[(0, 0, 0)].data.bytes()[2:4] ==
-           out_blocks.blocks[(0, 1, 0)].data.bytes()[:2])
-    assert(array.blocks[(0, 0, 0)].data.bytes()[4:6] ==
-           out_blocks.blocks[(0, 0, 0)].data.bytes()[2:4])
-    assert(array.blocks[(0, 0, 0)].data.bytes()[6:8] ==
-           out_blocks.blocks[(0, 1, 0)].data.bytes()[2:4])
+    assert(array.blocks[(0, 0, 0)].data.get()[:2] ==
+           out_blocks.blocks[(0, 0, 0)].data.get()[:2])
+    assert(array.blocks[(0, 0, 0)].data.get()[2:4] ==
+           out_blocks.blocks[(0, 1, 0)].data.get()[:2])
+    assert(array.blocks[(0, 0, 0)].data.get()[4:6] ==
+           out_blocks.blocks[(0, 0, 0)].data.get()[2:4])
+    assert(array.blocks[(0, 0, 0)].data.get()[6:8] ==
+           out_blocks.blocks[(0, 1, 0)].data.get()[2:4])
 
     rein_blocks = Partition((2, 2, 2), name='rein')
     out_blocks.repartition(rein_blocks, None, keep.keep)
@@ -104,31 +104,31 @@ def test_repartition_keep_1(cleanup_blocks):
     out_blocks.blocks[(0, 0, 0)].read()
     out_blocks.blocks[(0, 3, 0)].read()
 
-    assert(array.blocks[(0, 0, 0)].data.bytes()[:20] ==
-           out_blocks.blocks[(0, 0, 0)].data.bytes()[:20])
-    assert(array.blocks[(0, 0, 0)].data.bytes()[-20:] ==
-           out_blocks.blocks[(0, 3, 0)].data.bytes()[-20:])
+    assert(array.blocks[(0, 0, 0)].data.get()[:20] ==
+           out_blocks.blocks[(0, 0, 0)].data.get()[:20])
+    assert(array.blocks[(0, 0, 0)].data.get()[-20:] ==
+           out_blocks.blocks[(0, 3, 0)].data.get()[-20:])
 
     rein_blocks = Partition((5, 6, 7), name='rein')
     out_blocks.repartition(rein_blocks, None, keep.keep)
     rein_blocks.blocks[(0, 0, 0)].read()
 
-    assert(array.blocks[(0, 0, 0)].data.bytes() ==
-           rein_blocks.blocks[(0, 0, 0)].data.bytes())
+    assert(array.blocks[(0, 0, 0)].data.get() ==
+           rein_blocks.blocks[(0, 0, 0)].data.get())
 
 
 def test_repartition_keep_2(cleanup_blocks):
     array = Partition((10, 20, 30), name='array')
     in_blocks = Partition((10, 20, 30), name='in', array=array, fill='random')
     in_blocks.blocks[(0, 0, 0)].read()
-    in_data = in_blocks.blocks[(0, 0, 0)].data.bytes()
+    in_data = in_blocks.blocks[(0, 0, 0)].data.get()
     out_blocks = Partition((10, 10, 15), name='out', array=array)
     in_blocks.repartition(out_blocks, None, keep.keep)
 
     rein_blocks = Partition((10, 20, 30), name='rein', array=array)
     out_blocks.repartition(rein_blocks, None, keep.keep)
     rein_blocks.blocks[(0, 0, 0)].read()
-    rein_data = rein_blocks.blocks[(0, 0, 0)].data.bytes()
+    rein_data = rein_blocks.blocks[(0, 0, 0)].data.get()
 
     assert(rein_data == in_data)
 
@@ -145,10 +145,10 @@ def test_repartition_baseline_3(cleanup_blocks):
     out_blocks.repartition(rein_blocks, None, keep.baseline)
 
     rein_blocks.blocks[(0, 0, 0)].read()
-    rein_data = rein_blocks.blocks[(0, 0, 0)].data.bytes()
+    rein_data = rein_blocks.blocks[(0, 0, 0)].data.get()
 
     array.blocks[(0, 0, 0)].read()
-    array_data = array.blocks[(0, 0, 0)].data.bytes()
+    array_data = array.blocks[(0, 0, 0)].data.get()
 
     assert(rein_data == array_data)
 
@@ -176,10 +176,10 @@ def test_repartition_keep_3(cleanup_blocks):
     out_blocks.repartition(rein_blocks, None, keep.keep)
 
     rein_blocks.blocks[(0, 0, 0)].read()
-    rein_data = rein_blocks.blocks[(0, 0, 0)].data.bytes()
+    rein_data = rein_blocks.blocks[(0, 0, 0)].data.get()
 
     array.blocks[(0, 0, 0)].read()
-    array_data = array.blocks[(0, 0, 0)].data.bytes()
+    array_data = array.blocks[(0, 0, 0)].data.get()
 
     assert(rein_data == array_data)
 

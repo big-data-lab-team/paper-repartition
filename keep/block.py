@@ -17,35 +17,31 @@ class Data():
         Optional keyword arguments:
         data: a bytearray containing the data to put in the buffer
         '''
-        self.data = data
-        self.bytes_put = len(data)
+        self.data = [(0, data)]  # (offset, bytearray)
+        self.mem_size = len(data)
 
-    def bytes(self):
+    def get(self, start_offset=0, end_offset=None):
         '''
-        Return a bytearray containing the data in the buffer
+        Returns the data between start_offset (included)
+        and end_offset (excluded)
         '''
-        return self.data
+        if len(self.data) > 1:
+            self.merge_dict()
+        return self.data[0][1][start_offset:end_offset]
 
     def clear(self):
         '''
         Clear the buffer content
         '''
-        self.data = bytearray()
-        self.bytes_put = 0
+        self.data = []
+        self.mem_size = 0
 
-    def get(self, start_offset, end_offset):
-        '''
-        Returns the data between start_offset (included)
-        and end_offset (excluded)
-        '''
-        buffer = self.data[start_offset:end_offset]
-        return buffer
-
-    def get_data_size(self):
-        '''
-        Get the data size of this buffer. For use in dry mode executions.
-        '''
-        return self.bytes_put
+    # def get(self, start_offset, end_offset):
+    #     '''
+    #     Returns the data between start_offset (included)
+    #     and end_offset (excluded)
+    #     '''
+    #     return self.bytes(start_offset, end_offset)
 
     def mem_usage(self):
         '''
@@ -53,31 +49,23 @@ class Data():
         '''
         # Warning: this is not real memory usage due to Python overheads
         # and most importantly zero padding in put()
-        return self.bytes_put
+        return self.mem_size
 
-    def put(self, offset, buffer, dry_run=False):
+    def merge_dict(self):
         '''
-        Insert buffer at given offset in self. This function was the main
+        Merge the data dictionary
+        '''
+        self.data.sort()
+        self.data = [(0, b''.join([self.data[i][1]
+                                   for i in range(len(self.data))]))]
+
+    def put(self, offset, buffer, length):
+        '''
+        Insert buffer of length length at given offset in self. This function was the main
         motivation to create the class
         '''
-
-        self.bytes_put += len(buffer)
-        if dry_run:
-            return
-
-        if len(self.data) < offset:
-            # We need to allocate the buffer until the offset
-            # TODO: This increases mem usage, might be solved by numpy views
-            self.data[len(self.data):offset] = bytearray(offset-len(self.data))
-
-        self.data[offset:offset+len(buffer)] = buffer
-        assert(self.data[offset:offset+len(buffer)] == buffer)
-
-    def set_data_size(self, size):
-        '''
-        Set the data size of this buffer. For use in dry mode executions.
-        '''
-        self.bytes_put = size
+        self.data += [(offset, buffer)]
+        self.mem_size += length
 
 
 class Block():
@@ -153,7 +141,7 @@ class Block():
 
         current_offset = self.offset(origin)
         read_points = []  # start new segment
-
+        n = 0
         start_seg = current_offset
         for i in range(end[0]-origin[0]):
             for j in range(end[1]-origin[1]):
@@ -162,20 +150,23 @@ class Block():
                 if delta_1 != 0:
                     end_seg = current_offset - 1
                     read_points += [start_seg, end_seg]
+                    n += 2
                     current_offset += delta_1
                     start_seg = current_offset
             if delta_0 != 0:
                 if delta_1 == 0:
                     end_seg = current_offset - 1
                     read_points += [start_seg, end_seg]
+                    n += 2
                 current_offset += delta_0
                 start_seg = current_offset
 
         end_seg = current_offset - 1
         if read_points == []:
             read_points += [start_seg, end_seg]
+            n += 2
         return (origin, tuple(end[i]-origin[i] for i in (0, 1, 2)),
-                tuple(read_points))
+                tuple(read_points), n)
 
     def clear(self):
         '''
@@ -203,7 +194,7 @@ class Block():
         '''
         return any(x <= 0 for x in self.shape)
 
-    def get_data_block(self, block, dry_run=False):
+    def get_data_block(self, block):
         '''
         Assemble and return the block of data from self that intersects
         with block
@@ -216,27 +207,11 @@ class Block():
         if not self.overlap(block):
             return Block((-1, -1, -1), (0, 0, 0))
 
-        origin, shape, self_offsets = self.block_offsets(block)
+        origin, shape, self_offsets, lb = self.block_offsets(block)
 
-        data_size = sum([(self_offsets[i+1]+1)-self_offsets[i]
-                        for i in range(0, len(self_offsets), 2)])
         data = b''.join([self.data.get(self_offsets[i], (self_offsets[i+1]+1))
-                         for i in range(0, len(self_offsets), 2)])
-        message = f'{dry_run}, {len(data)}, {data_size}'
-        assert(dry_run or (len(data) == data_size)), message
-        block = Block(origin, shape, data)
-        if dry_run:
-            block.set_data_size(data_size)
-        # Data is now the continuous block of data
-        # from self to be written into block
-        # TODO: check that no data was actually copied
-        return block
-
-    def get_data_size(self):
-        '''
-        Get the data size of the data buffer. For use in dry mode executions.
-        '''
-        return self.data.get_data_size()
+                         for i in range(0, lb, 2)])
+        return Block(origin, shape, data)
 
     def mem_usage(self):
         '''
@@ -264,32 +239,26 @@ class Block():
                    for i in (0, 1, 2)
                    )
 
-    def put_data_block(self, block, dry_run=False):
+    def put_data_block(self, block):
         '''
         Write the relevant sections of block.data into self.data
 
         Similar to get_data_block but to copy from block to self
         '''
-        assert(self.data.mem_usage() <= math.prod(self.shape)), message
+        # assert(self.data.mem_usage() <= math.prod(self.shape)), message
         if not self.overlap(block):
             return
 
-        _, _, self_offsets = self.block_offsets(block)
-
-        if dry_run:
-            size = sum([self_offsets[i+1] - self_offsets[i] + 1
-                        for i in range(0, len(self_offsets), 2)])
-            self.set_data_size(self.get_data_size()+size)
-            return
+        _, _, self_offsets, lb = self.block_offsets(block)
 
         data_offset = 0
 
-        for i in range(0, len(self_offsets), 2):
+        for i in range(0, lb, 2):
             next_data_offset = (data_offset + self_offsets[i+1] -
                                 self_offsets[i] + 1)
             self.data.put(self_offsets[i],
                           block.data.get(data_offset, next_data_offset),
-                          dry_run)
+                          next_data_offset - data_offset)
             data_offset = next_data_offset
 
         message = (f'Block {self} of shape {self.shape} uses '
@@ -318,13 +287,13 @@ class Block():
         with open(self.file_name, 'rb') as f:
             data = f.read()
         read_time = time.time() - start
-        self.data.put(0, data)
+        self.data.put(0, data, len(data))
         message = (f'Block contains {self.data.mem_usage()}B but shape is '
                    f' {math.prod(self.shape)}B')
         assert(self.data.mem_usage() == math.prod(self.shape)), message
         return self.data.mem_usage(), read_time
 
-    def read_from(self, block, dry_run=False):
+    def read_from(self, block):
         '''
         Read the relevant data sections of self from block's file name.
         In general, block doesn't have the same origin or shape as self.
@@ -339,16 +308,11 @@ class Block():
             return 0, 0
 
         data = bytearray()
-        origin, shape, block_offsets = block.block_offsets(self)
-        if len(block_offsets) == 0:
+        origin, shape, block_offsets, lb = block.block_offsets(self)
+        if lb == 0:
             return 0, 0  # nothing to read
         # Read in block
-        seeks = len(block_offsets)/2
-        est_total_bytes = sum([block_offsets[i+1]-block_offsets[i] + 1
-                              for i in range(0, len(block_offsets), 2)])
-        if dry_run:
-            self.set_data_size(self.get_data_size() + est_total_bytes)
-            return est_total_bytes, seeks, 0
+        seeks = lb/2
 
         # Initialize counters
         counters = {'time': 0, 'seeks': 0, 'bytes': 0}
@@ -364,22 +328,16 @@ class Block():
 
         with open(block.file_name, 'rb') as f:
             log(f'<< Reading from {block.file_name}'
-                f' ({len(block_offsets)/2} seeks)', 1)
+                f' ({seeks} seeks)', 1)
             data = b''.join([seek_and_read(f, block_offsets[i],
                                            block_offsets[i+1], counters)
-                             for i in range(0, len(block_offsets), 2)])
+                             for i in range(0, lb, 2)])
 
         # Write data block to self
         data_block = Block(origin=origin, shape=shape, data=data)
         self.put_data_block(data_block)
-        assert(counters['bytes'] == est_total_bytes)
+        # assert(counters['bytes'] == est_total_bytes)
         return counters['bytes'], seeks, counters['time']
-
-    def set_data_size(self, size):
-        '''
-        Set the data size of the data buffer. For use in dry mode executions.
-        '''
-        self.data.set_data_size(size)
 
     def write(self):
         '''
@@ -397,7 +355,7 @@ class Block():
             b = f.write(self.data.get(0, math.prod(self.shape)))
         return b, time.time() - start
 
-    def write_to(self, block, dry_run=False):
+    def write_to(self, block):
         '''
         Write relevant data sections of self to block's file name
 
@@ -411,14 +369,14 @@ class Block():
 
         assert(block.file_name), f"Block {block} has no file name"
 
-        data_b = self.get_data_block(block, dry_run)
+        data_b = self.get_data_block(block)
         data = data_b.data
 
-        _, _, block_offsets = block.block_offsets(data_b)
+        _, _, block_offsets, lb = block.block_offsets(data_b)
         # block offsets are now the offsets in the block to be written
 
         data_offset = 0
-        seeks = len(block_offsets) / 2
+        seeks = lb / 2
         mode = 'wb'
         if os.path.exists(block.file_name):
             # if file already exists, open in r+b mode
@@ -426,15 +384,10 @@ class Block():
             mode = 'r+b'
         write_time = 0
 
-        if dry_run:
-            total_bytes = sum([block_offsets[i+1] - block_offsets[i] + 1
-                               for i in range(0, len(block_offsets), 2)])
-            return total_bytes, seeks, write_time
-
         log(f'>> Writing to {block.file_name} ({seeks} seeks)', 1)
         with open(block.file_name, mode) as f:
             total_bytes = 0
-            for i in range(0, len(block_offsets), 2):
+            for i in range(0, lb, 2):
                 next_data_offset = (data_offset +
                                     block_offsets[i+1] -
                                     block_offsets[i] + 1)
@@ -447,6 +400,6 @@ class Block():
                 data_offset = next_data_offset
             if total_bytes != 0:
                 log(f'  Wrote {total_bytes} bytes to {block.file_name} '
-                    f'({len(block_offsets)/2} seeks)', 0)
+                    f'({seeks} seeks)', 0)
         f.close()
         return total_bytes, seeks, write_time

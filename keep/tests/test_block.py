@@ -15,7 +15,7 @@ def cleanup_blocks():
 def test_block_offsets():
     b = Block((1, 2, 3), (5, 6, 7))
     assert((b.block_offsets(b)) == (b.origin, b.shape,
-                                    (0, 209)))
+                                    (0, 209), 2))
     c = Block((0, 0, 0), (4, 4, 4))
     assert(c.block_offsets(b) == (b.origin, (3, 2, 1),
                                   (27,
@@ -29,7 +29,7 @@ def test_block_offsets():
                                    59,
                                    59,
                                    63,
-                                   63)))
+                                   63), 12))
     d = Block((1, 2, 2), (4, 4, 4))
     assert(c.block_offsets(d) == (d.origin,
                                   (3, 2, 2),
@@ -44,7 +44,7 @@ def test_block_offsets():
                                    58,
                                    59,
                                    62,
-                                   63)))
+                                   63), 12))
     e = Block((1, 2, 1), (4, 4, 4))
     assert(c.block_offsets(e) == (e.origin,
                                   (3, 2, 3),
@@ -59,7 +59,7 @@ def test_block_offsets():
                                    57,
                                    59,
                                    61,
-                                   63)))
+                                   63), 12))
 
 
 def test_delete():
@@ -85,7 +85,7 @@ def test_read_from_shape_match(cleanup_blocks):
 
     with open(b.file_name, 'rb') as f:
         data = f.read()
-    assert(data == b.data.bytes())
+    assert(data == b.data.get())
     os.remove(b.file_name)
 
 
@@ -101,8 +101,8 @@ def test_read_from_shape_mismatch(cleanup_blocks):
     c.read()
     b.read()
     d.read()
-    assert(c.data.bytes()[:10] == b.data.bytes()[:10])
-    assert(d.data.bytes()[-10:] == b.data.bytes()[-10:])
+    assert(c.data.get()[:10] == b.data.get()[:10])
+    assert(d.data.get()[-10:] == b.data.get()[-10:])
     for fn in (c.file_name, d.file_name):
         os.remove(fn)
 
@@ -129,14 +129,14 @@ def test_write_to_shape_match(cleanup_blocks):
 
     with open(b.file_name, 'rb') as f:
         data = f.read()
-    assert(data == b.data.bytes())
+    assert(data == b.data.get())
     os.remove(b.file_name)
 
 
 def test_zeros(cleanup_blocks):
     b = Block((4, 5, 6), (2, 4, 6), fill='zeros', file_name='block.bin')
     b.read()
-    assert(b.data.bytes() == bytearray(math.prod(b.shape)))
+    assert(b.data.get() == bytearray(math.prod(b.shape)))
 
 
 def test_write_to_shape_mismatch(cleanup_blocks):
@@ -150,9 +150,9 @@ def test_write_to_shape_mismatch(cleanup_blocks):
 
     # Check content
     c.read()
-    assert(c.data.bytes()[:10] == b.data.bytes()[:10])
+    assert(c.data.get()[:10] == b.data.get()[:10])
     d.read()
-    assert(d.data.bytes()[-10:] == b.data.bytes()[-10:])
+    assert(d.data.get()[-10:] == b.data.get()[-10:])
     for fn in (c.file_name, d.file_name):
         os.remove(fn)
 
@@ -166,10 +166,10 @@ def test_write_to_read_from(cleanup_blocks):
     m, _, _ = b.write_to(d)
 
     original_data = bytearray()
-    original_data[:] = b.data.bytes()
+    original_data[:] = b.data.get()
     b.clear()
     b.read_from(c)
     b.read_from(d)
-    assert(b.data.bytes() == original_data)
+    assert(b.data.get() == original_data)
     for fn in (c.file_name, d.file_name):
         os.remove(fn)

@@ -25,21 +25,16 @@ class KeepCache(Cache):
         '''
         self.out_blocks = out_blocks
         self.match = match
-        # self.dry_run = dry_run
-        # log('Cache match:')
-        # for k in match:
-        #     log(k)
-        #     log(match[k])
 
-    def insert(self, read_block, dry_run):
+    def insert(self, read_block):
         f_blocks = keep.get_F_blocks(read_block, self.out_blocks,
-                                     get_data=True, dry_run=dry_run)
+                                     get_data=True)
         complete_blocks = []
         for i in range(8):
             if f_blocks[i] is None or f_blocks[i].empty():
                 continue
             dest_block = self.match[(read_block.origin, i)]
-            dest_block.put_data_block(f_blocks[i], dry_run)  # in-memory copy
+            dest_block.put_data_block(f_blocks[i])  # in-memory copy
             if dest_block.complete():
                 complete_blocks += [dest_block]
         # return the list of write blocks that are ready to be written
@@ -70,7 +65,7 @@ class BaselineCache(Cache):
     def __init__(self):
         self.block = None
 
-    def insert(self, read_block, dry_run):
+    def insert(self, read_block):
         self.block = read_block
         return [read_block]  # read block is just returned, to be written
 
