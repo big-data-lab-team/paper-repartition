@@ -359,7 +359,10 @@ class Block():
         log(f'<< Reading from {block.file_name}'
             f' ({seeks} seeks)', 1)
         with open(block.file_name, 'rb') as f:
-            datatuples = list(map(foo, range(0, lc, 2)))
+            datatuples = [(self_offsets[i],
+                           f.read(block_offsets[i+1] - block_offsets[i]+1))
+                          for i in range(0, lc, 2)
+                          if f.seek(block_offsets[i]) >= 0]
         self.data.put_all(datatuples, nbytes)
 
         return nbytes, seeks, -1
