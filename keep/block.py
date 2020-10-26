@@ -61,7 +61,8 @@ class Data():
 
     def put(self, offset, buffer, length):
         '''
-        Insert buffer of length length at given offset in self. This function was the main
+        Insert buffer of length length at given offset in self. This
+        function was the main
         motivation to create the class
         '''
         self.data += [(offset, buffer)]
@@ -137,36 +138,52 @@ class Block():
 
         delta_2 = end[2] - origin[2]
         delta_1 = self.shape[2] - (end[2] - origin[2])
+        delta_1_block = block.shape[2] - (end[2] - origin[2])
         delta_0 = (self.shape[1] - (end[1] - origin[1]))*self.shape[2]
+        delta_0_block = (block.shape[1] - (end[1] - origin[1]))*block.shape[2]
 
         current_offset = self.offset(origin)
+        current_offset_block = block.offset(origin)
         read_points = []  # start new segment
+        read_points_block = []
         n = 0
         start_seg = current_offset
+        start_seg_block = current_offset_block
         for i in range(end[0]-origin[0]):
             for j in range(end[1]-origin[1]):
                 if delta_2 != 0:
                     current_offset += delta_2  # extend segment
+                    current_offset_block += delta_2
                 if delta_1 != 0:
                     end_seg = current_offset - 1
+                    end_seg_block = current_offset_block - 1
                     read_points += [start_seg, end_seg]
+                    read_points_block += [start_seg_block, end_seg_block]
                     n += 2
                     current_offset += delta_1
+                    current_offset_block += delta_1_block
                     start_seg = current_offset
+                    start_seg_block = current_offset_block
             if delta_0 != 0:
                 if delta_1 == 0:
                     end_seg = current_offset - 1
+                    end_seg_block = current_offset_block - 1
                     read_points += [start_seg, end_seg]
+                    read_points_block += [start_seg_block, end_seg_block]
                     n += 2
                 current_offset += delta_0
+                current_offset_block += delta_0_block
                 start_seg = current_offset
+                start_seg_block = current_offset_block
 
         end_seg = current_offset - 1
+        end_seg_block = current_offset_block - 1
         if read_points == []:
             read_points += [start_seg, end_seg]
+            read_points_block += [start_seg_block, end_seg_block]
             n += 2
         return (origin, tuple(end[i]-origin[i] for i in (0, 1, 2)),
-                tuple(read_points), n)
+                tuple(read_points), tuple(read_points_block), n)
 
     def clear(self):
         '''
@@ -207,7 +224,7 @@ class Block():
         if not self.overlap(block):
             return Block((-1, -1, -1), (0, 0, 0))
 
-        origin, shape, self_offsets, lb = self.block_offsets(block)
+        origin, shape, self_offsets, _, lb = self.block_offsets(block)
 
         data = b''.join([self.data.get(self_offsets[i], (self_offsets[i+1]+1))
                          for i in range(0, lb, 2)])
@@ -239,6 +256,17 @@ class Block():
                    for i in (0, 1, 2)
                    )
 
+    def point_from_offset(self, offset):
+        '''
+        Return point coordinates from offset
+        '''
+        a = self.shape[2]*self.shape[1]
+        x = self.origin[0] + (offset // a)
+        b = offset % a
+        y = self.origin[1] + (b // self.shape[2])
+        z = self.origin[2] + (b % self.shape[2])
+        return (x, y, z)
+
     def put_data_block(self, block):
         '''
         Write the relevant sections of block.data into self.data
@@ -249,7 +277,7 @@ class Block():
         if not self.overlap(block):
             return
 
-        _, _, self_offsets, lb = self.block_offsets(block)
+        _, _, self_offsets, _, lb = self.block_offsets(block)
 
         data_offset = 0
 
@@ -308,36 +336,33 @@ class Block():
             return 0, 0
 
         data = bytearray()
-        origin, shape, block_offsets, lb = block.block_offsets(self)
+        origin, shape, _, _, lb = block.block_offsets(self)
         if lb == 0:
             return 0, 0  # nothing to read
+
+        data_block = Block(origin=origin, shape=shape)
+        _, _, self_offsets, block_offsets, lc = self.block_offsets(data_block)
+
         # Read in block
         seeks = lb/2
 
         # Initialize counters
-        counters = {'time': 0, 'seeks': 0, 'bytes': 0}
-
-        # Function to be used in list comprehension
-        def seek_and_read(f, start_offset, end_offset, counters):
-            start = time.time()
-            f.seek(start_offset)
-            data = f.read(end_offset - start_offset + 1)
-            counters['time'] += time.time() - start
-            counters['bytes'] += end_offset - start_offset + 1
-            return data
 
         with open(block.file_name, 'rb') as f:
             log(f'<< Reading from {block.file_name}'
                 f' ({seeks} seeks)', 1)
-            data = b''.join([seek_and_read(f, block_offsets[i],
-                                           block_offsets[i+1], counters)
-                             for i in range(0, lb, 2)])
+            current_offset = 0
+            for i in range(0, lc, 2):
+                start_offset = block_offsets[i]
+                # if start_offset != 0 and start_offset != current_offset+1:
+                f.seek(start_offset)
+                end_offset = block_offsets[i+1]
+                d = end_offset - start_offset + 1
+                data = f.read(d)
+                self.data.put(self_offsets[i],
+                              data, d)
 
-        # Write data block to self
-        data_block = Block(origin=origin, shape=shape, data=data)
-        self.put_data_block(data_block)
-        # assert(counters['bytes'] == est_total_bytes)
-        return counters['bytes'], seeks, counters['time']
+        return math.prod(shape), seeks, -1
 
     def write(self):
         '''
@@ -372,7 +397,7 @@ class Block():
         data_b = self.get_data_block(block)
         data = data_b.data
 
-        _, _, block_offsets, lb = block.block_offsets(data_b)
+        _, _, block_offsets, _, lb = block.block_offsets(data_b)
         # block offsets are now the offsets in the block to be written
 
         data_offset = 0

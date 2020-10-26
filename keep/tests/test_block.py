@@ -15,7 +15,7 @@ def cleanup_blocks():
 def test_block_offsets():
     b = Block((1, 2, 3), (5, 6, 7))
     assert((b.block_offsets(b)) == (b.origin, b.shape,
-                                    (0, 209), 2))
+                                    (0, 209), (0, 209), 2))
     c = Block((0, 0, 0), (4, 4, 4))
     assert(c.block_offsets(b) == (b.origin, (3, 2, 1),
                                   (27,
@@ -29,7 +29,8 @@ def test_block_offsets():
                                    59,
                                    59,
                                    63,
-                                   63), 12))
+                                   63), (0, 0, 7, 7, 42, 42, 49, 49, 84,
+                                         84, 91, 91), 12))
     d = Block((1, 2, 2), (4, 4, 4))
     assert(c.block_offsets(d) == (d.origin,
                                   (3, 2, 2),
@@ -44,7 +45,8 @@ def test_block_offsets():
                                    58,
                                    59,
                                    62,
-                                   63), 12))
+                                   63), (0, 1, 4, 5, 16, 17, 20,
+                                         21, 32, 33, 36, 37), 12))
     e = Block((1, 2, 1), (4, 4, 4))
     assert(c.block_offsets(e) == (e.origin,
                                   (3, 2, 3),
@@ -59,7 +61,8 @@ def test_block_offsets():
                                    57,
                                    59,
                                    61,
-                                   63), 12))
+                                   63), (0, 2, 4, 6, 16, 18, 20, 22, 32,
+                                         34, 36, 38), 12))
 
 
 def test_delete():
@@ -99,12 +102,25 @@ def test_read_from_shape_mismatch(cleanup_blocks):
 
     # Check content
     c.read()
-    b.read()
+#    b.read()
     d.read()
     assert(c.data.get()[:10] == b.data.get()[:10])
     assert(d.data.get()[-10:] == b.data.get()[-10:])
     for fn in (c.file_name, d.file_name):
         os.remove(fn)
+
+
+def test_point_from_offset():
+    b = Block((1, 2, 3), (5, 2, 7))
+    assert(b.point_from_offset(0) == (1, 2, 3))
+
+    b = Block((1, 1, 1), (4, 5, 6))
+    for p in ((1, 1, 3), (2, 2, 2)):
+        assert(p == b.point_from_offset(b.offset(p)))
+
+    b = Block((1, 2, 3), (5, 6, 7))
+    for p in ((1, 2, 9), (1, 7, 3), (1, 7, 9), (2, 2, 3), (5, 7, 9)):
+        assert(p == b.point_from_offset(b.offset(p)))
 
 
 def test_offset():
@@ -168,7 +184,9 @@ def test_write_to_read_from(cleanup_blocks):
     original_data = bytearray()
     original_data[:] = b.data.get()
     b.clear()
+    print('read from c')
     b.read_from(c)
+    print('read from d')
     b.read_from(d)
     assert(b.data.get() == original_data)
     for fn in (c.file_name, d.file_name):
