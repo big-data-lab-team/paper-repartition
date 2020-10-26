@@ -68,6 +68,10 @@ class Data():
         self.data += [(offset, buffer)]
         self.mem_size += length
 
+    def put_all(self, datatuples, size):
+        self.data += datatuples
+        self.mem_size += size
+
 
 class Block():
     '''
@@ -337,6 +341,7 @@ class Block():
 
         data = bytearray()
         origin, shape, _, _, lb = block.block_offsets(self)
+        nbytes = math.prod(shape)
         if lb == 0:
             return 0, 0  # nothing to read
 
@@ -346,23 +351,20 @@ class Block():
         # Read in block
         seeks = lb/2
 
-        # Initialize counters
+        def seek_and_read(f, start, end):
+            f.seek(start)
+            return f.read(end-start+1)
 
         with open(block.file_name, 'rb') as f:
             log(f'<< Reading from {block.file_name}'
                 f' ({seeks} seeks)', 1)
-            current_offset = 0
-            for i in range(0, lc, 2):
-                start_offset = block_offsets[i]
-                # if start_offset != 0 and start_offset != current_offset+1:
-                f.seek(start_offset)
-                end_offset = block_offsets[i+1]
-                d = end_offset - start_offset + 1
-                data = f.read(d)
-                self.data.put(self_offsets[i],
-                              data, d)
+            datatuples = [(self_offsets[i],
+                           seek_and_read(f, block_offsets[i],
+                                         block_offsets[i+1]))
+                          for i in range(0, lc, 2)]
+        self.data.put_all(datatuples, nbytes)
 
-        return math.prod(shape), seeks, -1
+        return nbytes, seeks, -1
 
     def write(self):
         '''
