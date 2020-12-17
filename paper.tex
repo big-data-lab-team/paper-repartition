@@ -208,7 +208,7 @@ situations: (1) when an array block is opened for reading or writing, and
 the block.
 
 \subsection{The re-partitioning problem}
-
+\tristan{Maybe ask Harutyunan if he wants to formulate it better and check if it's NP complete}
 \begin{table}
   \caption{Notations}
   \begin{tabular}{ll}
@@ -335,7 +335,7 @@ at a time ($R$=$I$), and directly writes it to the appropriate output
 blocks ($W$=$R$). It assumes that input blocks fit in memory. The number of
 generated seeks $s_b$
 depends on how write blocks overlap with
-output blocks in each dimension (Fig.~\ref{fig:baseline_figure} \todo{check}).
+output blocks in each dimension (Fig.~\ref{fig:baseline_figure} \tristan{check}).
 To determine $s_b$, we define 
 $\mathcal{W}_d$ and $\mathcal{O}_d$, the sets of write and output block end
 coordinates in dimension $d$:
